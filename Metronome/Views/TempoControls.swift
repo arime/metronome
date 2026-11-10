@@ -39,6 +39,9 @@ private struct StepButton: View {
     let label: String
     let step: () -> Void
 
+    /// True while a finger is down. Gesture state goes back to false when the
+    /// gesture is cancelled as well as when it ends, so a hold can never outlive the touch.
+    @GestureState private var isPressed = false
     @State private var repeating: Task<Void, Never>?
 
     var body: some View {
@@ -47,23 +50,24 @@ private struct StepButton: View {
             .foregroundStyle(Theme.dialWhite)
             .frame(width: 56, height: 56)
             .background(Theme.surface, in: Circle())
-            .opacity(repeating == nil ? 1 : 0.7)
+            .opacity(isPressed ? 0.7 : 1)
             .contentShape(Circle())
             .gesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { _ in
-                        guard repeating == nil else { return }
-                        step()
-                        repeating = Task {
-                            try? await Task.sleep(for: .milliseconds(400))
-                            while !Task.isCancelled {
-                                step()
-                                try? await Task.sleep(for: .milliseconds(100))
-                            }
-                        }
-                    }
-                    .onEnded { _ in stopRepeating() }
+                    .updating($isPressed) { _, pressed, _ in pressed = true }
             )
+            .onChange(of: isPressed) { _, pressed in
+                stopRepeating()
+                guard pressed else { return }
+                step()
+                repeating = Task {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    while !Task.isCancelled {
+                        step()
+                        try? await Task.sleep(for: .milliseconds(100))
+                    }
+                }
+            }
             .onDisappear(perform: stopRepeating)
             .accessibilityElement()
             .accessibilityLabel(label)

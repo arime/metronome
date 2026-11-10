@@ -5,8 +5,6 @@ struct TempoDial: View {
     @Environment(MetronomeModel.self) private var model
     let diameter: CGFloat
 
-    /// nil until a touch has been classified; then whether it started on the ring.
-    @State private var dragIsOnRing: Bool?
     @State private var numberScale = 1.0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -67,18 +65,17 @@ struct TempoDial: View {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
                 let centre = diameter / 2
-                if dragIsOnRing == nil {
-                    dragIsOnRing = DialGeometry.startsDrag(
-                        dx: value.startLocation.x - centre,
-                        dy: value.startLocation.y - centre,
-                        dialDiameter: diameter
-                    )
-                }
-                guard dragIsOnRing == true else { return }
+                // Classified from the start location on every change rather than remembered,
+                // so a cancelled gesture cannot leave a stale answer for the next touch.
+                let startedOnRing = DialGeometry.startsDrag(
+                    dx: value.startLocation.x - centre,
+                    dy: value.startLocation.y - centre,
+                    dialDiameter: diameter
+                )
+                guard startedOnRing else { return }
                 let fraction = DialGeometry.arcFraction(dx: value.location.x - centre, dy: value.location.y - centre)
                 model.setBPM(Tempo.bpm(forArcFraction: fraction))
             }
-            .onEnded { _ in dragIsOnRing = nil }
     }
 }
 
