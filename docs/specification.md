@@ -221,7 +221,7 @@ Other haptics: a selection tick for each 1 BPM change from the ring or − / +, 
 
 Status on 2026-11-10, after the first implementation. Ticked lines were checked in the iPhone simulator, by unit tests, or both. Unticked lines carry a note on what is still missing.
 
-- [x] Tempo can be set by ring, − / + and tap tempo, when stopped and when playing, and never leaves 30…250. *(Ring and + used in the simulator; limits, tap tempo and stepping covered by unit tests. Holding − / + and the Tap tempo button were not pressed by hand.)*
+- [x] Tempo can be set by ring, − / + and tap tempo, when stopped and when playing, and never leaves 30…250. *(Ring, + and holding − used in the simulator; limits, tap tempo and stepping covered by unit tests. A tap tempo series was not tapped by hand.)*
 - [x] The lit arc, knob, number and tempo name always agree.
 - [x] All eight time signatures can be selected; the tile count matches the signature. *(4/4 and 12/8 seen in the simulator; the rest by unit tests.)*
 - [x] Changing the signature while playing stops playback and resets accents to beat 1. Reselecting the current signature, or dismissing the sheet, does neither.
