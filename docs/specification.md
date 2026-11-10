@@ -60,7 +60,7 @@ There is one screen with two states, Ready (stopped) and Playing. The layout is 
 ### 5.1 Header
 
 - Left label: `TEMPO` when stopped. When playing: an amber dot followed by `PLAYING` in dial white.
-- Right: a 40 pt round mute button (added 2026-11-10; it is not in build 1, the first TestFlight upload).
+- Right: a 40 pt round mute button (added 2026-11-10; in the TestFlight uploads from build 2 on).
   - Sound on: a dial-white speaker with sound waves on a surface fill.
   - Muted: an amber crossed-out speaker on the amber tint fill with a 1.5 pt amber outline.
   - Tapping it silences the click at once, or brings it back. The metronome keeps running: the glow, the number pulse, the tile lighting and the haptics carry on. It works when stopped and when playing.
@@ -266,7 +266,7 @@ Still open before the first TestFlight release:
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Adding testers in TestFlight. | The App Store Connect record exists and version 1.0 (build 1) was uploaded on 2026-11-10. |
+| 1 | Adding testers in TestFlight. | The App Store Connect record exists. Version 1.0 was uploaded on 2026-11-10 as build 1, and again as build 2 with the mute button. |
 
 Settled since:
 
