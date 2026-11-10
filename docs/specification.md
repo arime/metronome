@@ -255,7 +255,13 @@ Still open before the first TestFlight release:
 | # | Item | Status |
 |---|---|---|
 | 1 | Click sounds (section 7). | To be specified last, after everything else. |
-| 2 | App name and bundle identifier. | To be provided. |
+| 2 | App name. | To be provided. The app shows as "Metronome" for now. |
+
+Settled since:
+
+| Item | Decision |
+|---|---|
+| Bundle identifier | `com.metsahalme.metronome`, set on 2026-11-10. |
 
 ## 12. Later versions
 
