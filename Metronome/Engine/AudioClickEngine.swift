@@ -1,4 +1,5 @@
 import AVFoundation
+import os
 
 /// Plays the clicks with `AVAudioEngine`, scheduled on the audio clock.
 ///
@@ -30,6 +31,7 @@ final class AudioClickEngine: ClickEngine {
     /// Changes on every start and stop; late callbacks from an old run compare and bail out.
     private var runToken = 0
     private var observers: [NSObjectProtocol] = []
+    private let session = AudioSessionGate()
 
     init() {
         engine.attach(player)
@@ -38,10 +40,8 @@ final class AudioClickEngine: ClickEngine {
     func start(with settings: MetronomeSettings) throws {
         if clock != nil { stop() }
 
-        let session = AVAudioSession.sharedInstance()
-        // .playback: the click sounds even with the silent switch on.
-        try session.setCategory(.playback, mode: .default)
-        try session.setActive(true)
+        // Synchronous: no click may be scheduled before the session is active.
+        try session.activate()
 
         do {
             try startEngine()
@@ -49,7 +49,7 @@ final class AudioClickEngine: ClickEngine {
             // Activating the session paused other apps' audio. Starting failed,
             // so give the audio back before reporting the failure.
             engine.stop()
-            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            session.deactivateNow()
             throw error
         }
         player.play()
@@ -99,7 +99,8 @@ final class AudioClickEngine: ClickEngine {
             stoppedExternally()
             return
         }
-        let now = currentSampleTime()
+        let render = lastRender()
+        let now = render.sampleTime
         let horizon = now + Int64(Self.lookahead * sampleRate)
         let beats = clock.beats(
             before: horizon,
@@ -111,12 +112,17 @@ final class AudioClickEngine: ClickEngine {
         self.clock = clock
 
         let latency = AVAudioSession.sharedInstance().outputLatency
+        let hostNow = AVAudioTime.seconds(forHostTime: mach_absolute_time())
         let token = runToken
         for beat in beats {
             guard let buffer = beat.isAccented ? accentBuffer : normalBuffer else { continue }
             player.scheduleBuffer(buffer, at: AVAudioTime(sampleTime: beat.sampleTime, atRate: sampleRate))
 
-            let delay = max(0, Double(beat.sampleTime - now) / sampleRate + latency)
+            // Until the beat is heard. `now` is the last render cycle, which is already
+            // some milliseconds old, so measure against the host clock when we can.
+            let untilBeat = Double(beat.sampleTime - now) / sampleRate
+            let sinceRender = render.hostSeconds.map { hostNow - $0 } ?? 0
+            let delay = max(0, untilBeat - sinceRender + latency)
             Task { [weak self] in
                 try? await Task.sleep(for: .seconds(delay))
                 guard let self, self.runToken == token else { return }
@@ -125,12 +131,14 @@ final class AudioClickEngine: ClickEngine {
         }
     }
 
-    /// The player's own timeline, which starts at zero when it starts playing.
-    private func currentSampleTime() -> Int64 {
+    /// The last render cycle: where it was on the player's own timeline (which starts
+    /// at zero when the player starts playing) and, when known, on the host clock.
+    private func lastRender() -> (sampleTime: Int64, hostSeconds: Double?) {
         guard let nodeTime = player.lastRenderTime,
               let playerTime = player.playerTime(forNodeTime: nodeTime)
-        else { return 0 }
-        return playerTime.sampleTime
+        else { return (0, nil) }
+        let hostSeconds = nodeTime.isHostTimeValid ? AVAudioTime.seconds(forHostTime: nodeTime.hostTime) : nil
+        return (playerTime.sampleTime, hostSeconds)
     }
 
     // MARK: - Stopping
@@ -144,7 +152,9 @@ final class AudioClickEngine: ClickEngine {
         observers.removeAll()
         player.stop()
         engine.stop()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        // The sound is already off. Deactivating can block for a while (worst on
+        // Bluetooth), so it must not hold up the main thread.
+        session.deactivateLater()
     }
 
     /// Playback ended from outside: stop cleanly and tell the model.
@@ -190,6 +200,47 @@ final class AudioClickEngine: ClickEngine {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.stoppedExternally() }
         })
+    }
+}
+
+/// Activates and deactivates the shared audio session, one call at a time.
+///
+/// Deactivation runs off the main thread, so it can still be waiting when the user
+/// starts again. The lock keeps the two apart and the count tells a waiting
+/// deactivation that a newer start has taken over the session.
+private final class AudioSessionGate: Sendable {
+    private static let queue = DispatchQueue(label: "AudioSessionGate", qos: .userInitiated)
+    /// How many times the session has been activated.
+    private let activations = OSAllocatedUnfairLock(initialState: 0)
+
+    func activate() throws {
+        try activations.withLock { count in
+            let session = AVAudioSession.sharedInstance()
+            // .playback: the click sounds even with the silent switch on.
+            try session.setCategory(.playback, mode: .default)
+            try session.setActive(true)
+            // Counted only on success: after a failure a waiting deactivation must still run.
+            count += 1
+        }
+    }
+
+    func deactivateNow() {
+        activations.withLock { _ in Self.deactivate() }
+    }
+
+    func deactivateLater() {
+        let stopped = activations.withLock { $0 }
+        Self.queue.async { [activations] in
+            activations.withLock { count in
+                // Started again since: the session now belongs to the new run.
+                guard count == stopped else { return }
+                Self.deactivate()
+            }
+        }
+    }
+
+    private static func deactivate() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
 
