@@ -29,6 +29,8 @@ final class AudioClickEngine: ClickEngine {
     /// True between `start` and the moment the audio session is active.
     private var isStarting = false
     private var settings = MetronomeSettings()
+    /// Set when the next beat to be scheduled must be beat 1.
+    private var newBarPending = false
     private var timer: Timer?
     /// Changes on every start and stop; late callbacks from an old run compare and bail out.
     private var runToken = 0
@@ -99,8 +101,9 @@ final class AudioClickEngine: ClickEngine {
         try engine.start()
     }
 
-    func update(_ settings: MetronomeSettings) {
+    func update(_ settings: MetronomeSettings, startNewBar: Bool) {
         self.settings = settings
+        if startNewBar { newBarPending = true }
     }
 
     func setMuted(_ muted: Bool) {
@@ -121,6 +124,10 @@ final class AudioClickEngine: ClickEngine {
         guard engine.isRunning else {
             stoppedExternally()
             return
+        }
+        if newBarPending {
+            clock.startNewBar()
+            newBarPending = false
         }
         let render = lastRender()
         let now = render.sampleTime

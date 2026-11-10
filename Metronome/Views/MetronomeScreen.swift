@@ -3,6 +3,7 @@ import SwiftUI
 /// The one screen. Its layout is the same stopped and playing, so nothing moves on Start.
 struct MetronomeScreen: View {
     @Environment(MetronomeModel.self) private var model
+    @State private var isLibraryShown = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -40,17 +41,23 @@ struct MetronomeScreen: View {
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
-            if model.isPlaying {
-                Circle().fill(Theme.amber).frame(width: 8, height: 8)
-                SectionLabel(text: "PLAYING", color: Theme.dialWhite)
-            } else {
-                SectionLabel(text: "TEMPO")
+        HStack(spacing: 8) {
+            PresetTitle { isLibraryShown = true }
+            if model.position != nil {
+                HeaderRoundButton(symbol: "chevron.left", label: "Previous preset", isEnabled: model.canGoPrevious) {
+                    model.goToPrevious()
+                }
+                HeaderRoundButton(symbol: "chevron.right", label: "Next preset", isEnabled: model.canGoNext) {
+                    model.goToNext()
+                }
             }
-            Spacer()
             MuteButton()
         }
         .frame(height: 40)
+        .sheet(isPresented: $isLibraryShown) {
+            LibrarySheet()
+                .environment(model)
+        }
     }
 }
 

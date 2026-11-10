@@ -9,8 +9,9 @@ protocol ClickEngine: AnyObject {
 
     /// Starts on beat 1 with the first click immediately.
     func start(with settings: MetronomeSettings) throws
-    /// Applies from the next beat that is not scheduled yet.
-    func update(_ settings: MetronomeSettings)
+    /// Applies from the next beat that is not scheduled yet. With `startNewBar`,
+    /// that beat is beat 1; otherwise the bar position is kept.
+    func update(_ settings: MetronomeSettings, startNewBar: Bool)
     /// Silences or restores the click at once, without stopping. Beats keep being
     /// reported through `onBeat`, and the setting stays across stop and start.
     func setMuted(_ muted: Bool)

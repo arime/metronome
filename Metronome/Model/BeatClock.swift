@@ -22,6 +22,11 @@ struct BeatClock: Sendable {
         self.startSampleTime = startSampleTime
     }
 
+    /// Makes the next beat beat 1, whatever the bar position was. Its time is unchanged.
+    mutating func startNewBar() {
+        lastBeat = 0
+    }
+
     /// Returns, in order, every beat not yet returned whose sample time is before `horizon`.
     ///
     /// `bpm`, `beatsPerBar` and `accents` apply to the beats this call produces; beats

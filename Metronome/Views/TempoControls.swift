@@ -34,9 +34,11 @@ struct TempoControls: View {
 
 /// A round button that steps once on tap and repeats while held:
 /// after 400 ms, ten steps per second.
-private struct StepButton: View {
+struct StepButton: View {
     let symbol: String
     let label: String
+    var size: CGFloat = 56
+    var fill: Color = Theme.surface
     let step: () -> Void
 
     /// True while a finger is down. Gesture state goes back to false when the
@@ -46,10 +48,10 @@ private struct StepButton: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 20, weight: .semibold))
+            .font(.system(size: size * 0.36, weight: .semibold))
             .foregroundStyle(Theme.dialWhite)
-            .frame(width: 56, height: 56)
-            .background(Theme.surface, in: Circle())
+            .frame(width: size, height: size)
+            .background(fill, in: Circle())
             .opacity(isPressed ? 0.7 : 1)
             .contentShape(Circle())
             .gesture(

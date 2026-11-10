@@ -3,7 +3,7 @@ import Testing
 @testable import Metronome
 
 @MainActor
-private final class FakeClickEngine: ClickEngine {
+final class FakeClickEngine: ClickEngine {
     var onBeat: ((ScheduledBeat) -> Void)?
     var onStopped: (() -> Void)?
     var startCount = 0
@@ -18,13 +18,18 @@ private final class FakeClickEngine: ClickEngine {
 
     var muted = false
 
-    func update(_ settings: MetronomeSettings) { lastUpdate = settings }
+    var lastUpdateStartedNewBar: Bool?
+
+    func update(_ settings: MetronomeSettings, startNewBar: Bool) {
+        lastUpdate = settings
+        lastUpdateStartedNewBar = startNewBar
+    }
     func setMuted(_ muted: Bool) { self.muted = muted }
     func stop() { stopCount += 1 }
 }
 
 @MainActor
-private final class FakeHaptics: HapticsPlaying {
+final class FakeHaptics: HapticsPlaying {
     var beats: [Bool] = []
     var selectionCount = 0
     var transportCount = 0
@@ -43,7 +48,10 @@ struct MetronomeModelTests {
     private let store = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
 
     private func makeModel() -> MetronomeModel {
-        MetronomeModel(engine: engine, store: store, haptics: haptics)
+        MetronomeModel(
+            engine: engine, store: store, haptics: haptics,
+            libraryStore: LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        )
     }
 
     private func beat(_ number: Int, accented: Bool = false) -> ScheduledBeat {
@@ -158,16 +166,27 @@ struct MetronomeModelTests {
         #expect(store.load().accents == [1, 3])
     }
 
-    @Test func changingTheSignatureWhilePlayingStopsAndResetsAccents() {
+    @Test func changingTheSignatureWhilePlayingStartsANewBarAndResetsAccents() {
         let model = makeModel()
         model.toggleAccent(beat: 3)
         model.togglePlayback()
         model.selectTimeSignature(.threeFour)
-        #expect(model.isPlaying == false)
+        #expect(model.isPlaying)
         #expect(model.settings.timeSignature == .threeFour)
         #expect(model.settings.accents == [1])
-        #expect(engine.stopCount == 1)
+        #expect(engine.stopCount == 0)
+        #expect(engine.lastUpdate?.timeSignature == .threeFour)
+        #expect(engine.lastUpdateStartedNewBar == true)
         #expect(store.load().timeSignature == .threeFour)
+    }
+
+    @Test func tempoAndAccentChangesKeepTheBarPosition() {
+        let model = makeModel()
+        model.togglePlayback()
+        model.setBPM(140)
+        #expect(engine.lastUpdateStartedNewBar == false)
+        model.toggleAccent(beat: 2)
+        #expect(engine.lastUpdateStartedNewBar == false)
     }
 
     @Test func reselectingTheSignatureWhilePlayingChangesNothing() {

@@ -48,9 +48,9 @@ struct TimeSignatureRow: View {
 }
 
 /// The bottom sheet: a 4 × 2 grid of signatures.
-private struct TimeSignaturePicker: View {
+struct TimeSignaturePicker: View {
     let selected: TimeSignature
-    let sideMargin: CGFloat
+    var sideMargin: CGFloat = Theme.sideMargin
     let choose: (TimeSignature) -> Void
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 4)

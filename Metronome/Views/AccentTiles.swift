@@ -46,7 +46,7 @@ struct AccentTiles: View {
     }
 }
 
-private struct BeatTile: View {
+struct BeatTile: View {
     let beat: Int
     let isAccented: Bool
     let isSounding: Bool
@@ -54,6 +54,8 @@ private struct BeatTile: View {
     let soundsAccented: Bool
     let showsMark: Bool
     let height: CGFloat
+    /// The fill of a tile that is neither accented nor sounding.
+    var idleFill = Theme.surface
     let toggle: () -> Void
 
     /// How the tile looks. While it sounds it follows the beat as it was scheduled, so
@@ -65,7 +67,7 @@ private struct BeatTile: View {
 
     private var fill: Color {
         if isSounding { return looksAccented ? Theme.amber : Theme.dialWhite }
-        return looksAccented ? Theme.amberTint : Theme.surface
+        return looksAccented ? Theme.amberTint : idleFill
     }
 
     private var foreground: Color {

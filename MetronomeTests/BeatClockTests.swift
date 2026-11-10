@@ -69,6 +69,14 @@ struct BeatClockTests {
         #expect(clock.beats(before: 96_001, bpm: 120, beatsPerBar: 3, accents: [1]) == [beat(1, true, 96_000)])
     }
 
+    @Test func startingANewBarMakesTheNextBeatBeatOne() {
+        var clock = BeatClock(sampleRate: 48_000, startSampleTime: 0)
+        _ = clock.beats(before: 24_001, bpm: 120, beatsPerBar: 4, accents: [1])
+        clock.startNewBar()
+        let next = clock.beats(before: 72_001, bpm: 120, beatsPerBar: 3, accents: [1])
+        #expect(next == [beat(1, true, 48_000), beat(2, false, 72_000)])
+    }
+
     @Test func bigTempoJumpNeverSchedulesBeatsInThePast() {
         var clock = BeatClock(sampleRate: 48_000, startSampleTime: 0)
         _ = clock.beats(before: 1, bpm: 30, beatsPerBar: 4, accents: [1])

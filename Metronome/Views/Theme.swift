@@ -11,6 +11,8 @@ enum Theme {
     static let mutedDim = Color(hex: 0x6B6963)
     static let amber = Color(hex: 0xFFB224)
     static let amberTint = Color(hex: 0x1E1A12)
+    /// Remove and delete actions only.
+    static let red = Color(hex: 0xE5484D)
 
     /// The small dot on an idle, unaccented tile.
     static let tileDot = Color(hex: 0x3A3A3F)

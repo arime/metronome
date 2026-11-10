@@ -6,6 +6,14 @@ struct MetronomeSettings: Codable, Equatable, Sendable {
 
     init() {}
 
+    /// Out-of-range values are brought into range.
+    init(bpm: Int, timeSignature: TimeSignature, accents: Set<Int>) {
+        self.bpm = bpm
+        self.timeSignature = timeSignature
+        self.accents = accents
+        self = sanitized()
+    }
+
     mutating func setBPM(_ bpm: Int) {
         self.bpm = Tempo.clamp(bpm)
     }

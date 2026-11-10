@@ -6,7 +6,8 @@ struct MetronomeApp: App {
     @State private var model = MetronomeModel(
         engine: AudioClickEngine(),
         store: SettingsStore(),
-        haptics: Haptics()
+        haptics: Haptics(),
+        libraryStore: LibraryStore()
     )
 
     var body: some Scene {

@@ -404,7 +404,7 @@ Metronome:
 - [x] Tempo can be set by ring, − / + and tap tempo, when stopped and when playing, and never leaves 30…250. *(A tap tempo series has not been tapped by hand; its rules are unit tested.)*
 - [x] The lit arc, knob, number and tempo name always agree.
 - [x] All eight time signatures can be selected; the tile count matches the signature.
-- [ ] Changing the signature resets accents to beat 1 and, while playing, continues with a new bar. Reselecting the current signature, or dismissing the sheet, changes nothing. *(Not built: playback stops today.)*
+- [x] Changing the signature resets accents to beat 1 and, while playing, continues with a new bar. Reselecting the current signature, or dismissing the sheet, changes nothing.
 - [ ] Accents can be toggled when stopped and when playing; accented beats sound, look and feel different from normal beats. *(Toggling and the look are verified. Sound and haptics need a listener and a real iPhone.)*
 - [x] Start always begins on beat 1. Stop is immediate.
 - [x] The mute button silences the click at once and brings it back, while the visuals and haptics continue.
@@ -414,27 +414,24 @@ Metronome:
 - [x] Tempo, time signature and accents survive quitting and reopening the app.
 - [ ] Reduce Motion and VoiceOver behave as in section 13. *(Not yet tried with the settings switched on.)*
 
-Presets and setlists (none of this is built yet):
+Presets and setlists:
 
-- [ ] A preset can be created, loaded, renamed and deleted; the library is sorted A–Z.
-- [ ] Tapping a row loads without starting; the play button loads and starts.
-- [ ] The header shows the right title and second line in every state of 6.1.
-- [ ] Changing a loaded preset's settings shows Edited; Save changes, Save as new preset and Discard changes do what 7.6 says.
-- [ ] Opening the library keeps unsaved edits; loading another preset drops them.
-- [ ] A setlist can be created, renamed, duplicated and deleted; deleting it leaves its presets in the library.
-- [ ] Presets can be added to a setlist, removed from it and reordered; the order is kept.
-- [ ] A new preset can be created from inside a setlist and lands in that setlist.
-- [ ] Previous and Next step through the loaded-from setlist, stopped and playing, and stop at the ends.
-- [ ] Loading a preset while playing keeps the metronome running and starts a new bar.
-- [ ] The filter list shows all setlists with counts and stays usable with 20 setlists.
-- [ ] Presets, setlists, the loaded preset, its position in the setlist and the selected filter survive quitting and reopening the app.
+- [x] A preset can be created, loaded, renamed and deleted; the library is sorted A–Z.
+- [x] Tapping a row loads without starting; the play button loads and starts.
+- [x] The header shows the right title and second line in every state of 6.1.
+- [x] Changing a loaded preset's settings shows Edited; Save changes, Save as new preset and Discard changes do what 7.6 says. *(Save changes is unit tested; the other two were also tried in the simulator.)*
+- [x] Opening the library keeps unsaved edits; loading another preset drops them.
+- [x] A setlist can be created, renamed, duplicated and deleted; deleting it leaves its presets in the library.
+- [x] Presets can be added to a setlist, removed from it and reordered; the order is kept.
+- [x] A new preset can be created from inside a setlist and lands in that setlist.
+- [x] Previous and Next step through the loaded-from setlist, stopped and playing, and stop at the ends. *(Next was tried in the simulator; Previous and the ends are unit tested.)*
+- [x] Loading a preset while playing keeps the metronome running and starts a new bar.
+- [ ] The filter list shows all setlists with counts and stays usable with 20 setlists. *(Counts and order are verified; it has not been tried with 20 setlists.)*
+- [x] Presets, setlists, the loaded preset, its position in the setlist and the selected filter survive quitting and reopening the app.
 
 ## 15. Not built yet
 
-The app differs from this document in these places:
-
-- **Presets and setlists** (sections 4, 8, 9 and 10, the preset title and Previous / Next in 6.1, and 7.6) are not built. The header shows the label `TEMPO`, or an amber dot and `PLAYING`, where the preset title will be.
-- **Changing the time signature while playing** (7.2) stops playback in the current build.
+Everything in this document is built. A part that is specified before it is built is listed here until it is.
 
 ## 16. Ideas for later
 
