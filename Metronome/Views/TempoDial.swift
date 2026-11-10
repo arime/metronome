@@ -23,6 +23,16 @@ struct TempoDial: View {
         .frame(width: diameter, height: diameter)
         .contentShape(Circle().scale(1.1))
         .gesture(ringDrag)
+        .accessibilityElement()
+        .accessibilityLabel("Tempo")
+        .accessibilityValue("\(model.settings.bpm) beats per minute, \(model.tempoName)")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: model.nudgeBPM(by: 1)
+            case .decrement: model.nudgeBPM(by: -1)
+            @unknown default: break
+            }
+        }
         .onChange(of: model.lastBeat) { _, beat in
             guard beat != nil, !reduceMotion else { return }
             // The number jumps up on the beat and settles within half the beat interval.

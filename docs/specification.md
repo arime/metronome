@@ -206,17 +206,19 @@ Other haptics: a selection tick for each 1 BPM change from the ring or − / +, 
 
 ## 10. Acceptance checklist for the first TestFlight build
 
-- [ ] Tempo can be set by ring, − / + and tap tempo, when stopped and when playing, and never leaves 30…250.
-- [ ] The lit arc, knob, number and tempo name always agree.
-- [ ] All eight time signatures can be selected; the tile count matches the signature.
-- [ ] Changing the signature while playing stops playback and resets accents to beat 1. Reselecting the current signature, or dismissing the sheet, does neither.
-- [ ] Accents can be toggled when stopped and when playing; accented beats sound, look and feel different from normal beats.
-- [ ] Start always begins on beat 1. Stop is immediate.
-- [ ] The final accent and normal click sounds are in place (no placeholders).
-- [ ] Click, visual and haptic stay together at 30, 120 and 250 BPM.
-- [ ] No audible drift against a reference metronome over 10 minutes.
-- [ ] BPM, time signature and accents survive quitting and reopening the app.
-- [ ] Reduce Motion and VoiceOver behave as in section 9.
+Status on 2026-11-10, after the first implementation. Ticked lines were checked in the iPhone simulator, by unit tests, or both. Unticked lines carry a note on what is still missing.
+
+- [x] Tempo can be set by ring, − / + and tap tempo, when stopped and when playing, and never leaves 30…250. *(Ring and + used in the simulator; limits, tap tempo and stepping covered by unit tests. Holding − / + and the Tap tempo button were not pressed by hand.)*
+- [x] The lit arc, knob, number and tempo name always agree.
+- [x] All eight time signatures can be selected; the tile count matches the signature. *(4/4 and 12/8 seen in the simulator; the rest by unit tests.)*
+- [x] Changing the signature while playing stops playback and resets accents to beat 1. Reselecting the current signature, or dismissing the sheet, does neither.
+- [ ] Accents can be toggled when stopped and when playing; accented beats sound, look and feel different from normal beats. *(Toggling and the look are verified. Sound and haptics need a listener and a real iPhone.)*
+- [x] Start always begins on beat 1. Stop is immediate.
+- [ ] The final accent and normal click sounds are in place (no placeholders). *(Placeholders in use; final sounds not specified yet.)*
+- [ ] Click, visual and haptic stay together at 30, 120 and 250 BPM. *(Needs a real iPhone.)*
+- [ ] No audible drift against a reference metronome over 10 minutes. *(The timing maths is unit tested to the sample; the listening check needs a real iPhone.)*
+- [x] BPM, time signature and accents survive quitting and reopening the app.
+- [ ] Reduce Motion and VoiceOver behave as in section 9. *(Implemented; not yet tried with the settings switched on.)*
 
 ## 11. Decisions
 

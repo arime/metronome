@@ -3,6 +3,7 @@ import SwiftUI
 /// − / Tap tempo / +
 struct TempoControls: View {
     @Environment(MetronomeModel.self) private var model
+    @ScaledMetric(relativeTo: .subheadline) private var tapLabelSize = 15.0
 
     var body: some View {
         HStack(spacing: 16) {
@@ -15,8 +16,10 @@ struct TempoControls: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Theme.amber)
                     Text("Tap tempo")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: tapLabelSize, weight: .semibold))
                         .foregroundStyle(Theme.dialWhite)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
                 .padding(.horizontal, 28)
                 .frame(height: 56)
