@@ -125,8 +125,14 @@ The design is drawn for a 390 × 844 pt screen. On shorter screens the layout ad
 
 1. The dial shrinks, down to 240 pt.
 2. The gaps above and below the time signature row drop to 16 pt, and single-row accent tiles drop to 56 pt tall with a smaller number.
-3. The dial shrinks further, down to 200 pt.
-4. If it still does not fit (for example an iPhone SE with Display Zoom, 320 × 568 pt), everything above the Start / Stop button scrolls vertically. The button stays pinned at the bottom and is always visible.
+3. The dial shrinks further, as far as it needs to. The screen never scrolls.
+
+In practice only an iPhone SE with Display Zoom (320 × 568 pt) goes below 200 pt: its dial is about 150 pt, or about 108 pt in 9/8 and 12/8. An iPhone SE without Display Zoom gets about 249 pt, or 207 pt in 9/8 and 12/8.
+
+A small dial is simplified so that it stays legible:
+
+- Below 180 pt the tempo name is hidden; the centre shows the number and `BPM` only.
+- The knob scales with the dial, from 28 pt on the full-size dial down to about 17 pt at the smallest.
 
 At least 16 pt is always kept between the accent tiles and the Start / Stop button. Phones without a home indicator get a 16 pt margin below the button.
 

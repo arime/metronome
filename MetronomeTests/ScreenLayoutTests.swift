@@ -20,27 +20,29 @@ struct ScreenLayoutTests {
         layout.settingsTopGap == 16 && layout.sectionGap == 16 && layout.tileHeight == 56
     }
 
+    /// Everything on the screen, top to bottom, must fit in the usable height.
+    private func fits(_ layout: ScreenLayout, in height: CGFloat) -> Bool {
+        layout.fixedHeight + layout.dialDiameter + layout.bottomPadding <= height
+    }
+
     @Test func tallPhoneGetsTheFullDesign() {
         let layout = layout(width: 402, height: 778, hasBottomInset: true)
         #expect(layout.dialDiameter == 300)
         #expect(isRoomy(layout))
         #expect(layout.bottomPadding == 0)
         #expect(layout.fixedHeight == 418)
-        #expect(!layout.needsScrolling)
     }
 
     @Test func dialShrinksFirstDownTo240() {
         let layout = layout(height: 658, hasBottomInset: true)
         #expect(layout.dialDiameter == 240)
         #expect(isRoomy(layout))
-        #expect(!layout.needsScrolling)
     }
 
     @Test func gapsAndTilesShrinkOnceTheDialWouldGoBelow240() {
         let layout = layout(height: 657, hasBottomInset: true)
         #expect(isCompact(layout))
         #expect(layout.dialDiameter == 275)
-        #expect(!layout.needsScrolling)
     }
 
     @Test func iPhoneSEIsCompactAndFits() {
@@ -49,8 +51,7 @@ struct ScreenLayoutTests {
         #expect(layout.bottomPadding == 16)
         #expect(layout.fixedHeight == 382)
         #expect(layout.dialDiameter == 249)
-        #expect(!layout.needsScrolling)
-        #expect(layout.fixedHeight + layout.dialDiameter + layout.bottomPadding <= 647)
+        #expect(fits(layout, in: 647))
     }
 
     @Test func iPhoneSEWithTwelveBeatsStillFits() {
@@ -59,33 +60,33 @@ struct ScreenLayoutTests {
         #expect(layout.sectionGap == 16)
         #expect(layout.fixedHeight == 424)
         #expect(layout.dialDiameter == 207)
-        #expect(!layout.needsScrolling)
-        #expect(layout.fixedHeight + layout.dialDiameter + layout.bottomPadding <= 647)
+        #expect(fits(layout, in: 647))
     }
 
-    @Test func dialStopsAt200ExactlyWhenItJustFits() {
-        let layout = layout(height: 582, hasBottomInset: true)
-        #expect(isCompact(layout))
-        #expect(layout.dialDiameter == 200)
-        #expect(!layout.needsScrolling)
-    }
-
-    @Test func scrollsOnceTheSmallestLayoutIsTooTall() {
+    @Test func dialKeepsShrinkingBelow200InsteadOfOverflowing() {
         let layout = layout(height: 581, hasBottomInset: true)
         #expect(isCompact(layout))
-        #expect(layout.dialDiameter == 200)
-        #expect(layout.needsScrolling)
+        #expect(layout.dialDiameter == 199)
+        #expect(fits(layout, in: 581))
     }
 
-    @Test(arguments: [4, 12])
-    func displayZoomScrollsWithTheSmallestDial(beats: Int) {
-        let layout = layout(width: 320, height: 548, beats: beats)
-        #expect(layout.settingsTopGap == 16)
-        #expect(layout.sectionGap == 16)
-        #expect(layout.tileHeight == 56)
-        #expect(layout.dialDiameter == 200)
+    @Test func displayZoomFitsWithASmallDial() {
+        let layout = layout(width: 320, height: 548)
+        #expect(isCompact(layout))
         #expect(layout.bottomPadding == 16)
-        #expect(layout.needsScrolling)
+        #expect(layout.dialDiameter == 150)
+        #expect(fits(layout, in: 548))
+    }
+
+    @Test func displayZoomWithTwelveBeatsFitsWithTheSmallestDial() {
+        let layout = layout(width: 320, height: 548, beats: 12)
+        #expect(layout.fixedHeight == 424)
+        #expect(layout.dialDiameter == 108)
+        #expect(fits(layout, in: 548))
+    }
+
+    @Test func dialNeverCollapsesOnAnImpossiblyShortScreen() {
+        #expect(layout(height: 300).dialDiameter == 80)
     }
 
     @Test func sideMarginsNarrowBelow360() {

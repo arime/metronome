@@ -53,10 +53,13 @@ struct TempoDial: View {
                 .scaleEffect(numberScale)
             HStack(spacing: 8) {
                 SectionLabel(text: "BPM", color: Theme.amber)
-                Circle().fill(Theme.muted).frame(width: 3, height: 3)
-                Text(model.tempoName)
-                    .font(.system(size: 15).italic())
-                    .foregroundStyle(Theme.muted)
+                // On a small dial the tempo name does not fit inside the ring.
+                if DialGeometry.showsTempoName(dialDiameter: diameter) {
+                    Circle().fill(Theme.muted).frame(width: 3, height: 3)
+                    Text(model.tempoName)
+                        .font(.system(size: 15).italic())
+                        .foregroundStyle(Theme.muted)
+                }
             }
         }
     }
@@ -117,12 +120,17 @@ private struct DialRing: View {
             }
 
             let knobCentre = point(at: fraction, radius: Self.knobRadius)
-            let knob = Path(ellipseIn: CGRect(x: knobCentre.x - 14, y: knobCentre.y - 14, width: 28, height: 28))
+            let knobSize = DialGeometry.knobDiameter(dialDiameter: 300 * scale)
+            let knobScale = knobSize / 28
+            let knob = Path(ellipseIn: CGRect(
+                x: knobCentre.x - knobSize / 2, y: knobCentre.y - knobSize / 2,
+                width: knobSize, height: knobSize
+            ))
             var glow = context
-            glow.addFilter(.shadow(color: Theme.amber.opacity(0.6), radius: 9))
+            glow.addFilter(.shadow(color: Theme.amber.opacity(0.6), radius: 9 * knobScale))
             glow.fill(knob, with: .color(Theme.amber))
             context.fill(knob, with: .color(Theme.ink))
-            context.fill(knob.insetKnob(by: 5), with: .color(Theme.amber))
+            context.fill(knob.insetKnob(by: 5 * knobScale), with: .color(Theme.amber))
         }
         .padding(-Self.bleed)
     }

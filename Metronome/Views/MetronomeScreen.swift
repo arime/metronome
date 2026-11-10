@@ -13,44 +13,26 @@ struct MetronomeScreen: View {
                 beats: model.settings.timeSignature.beatsPerBar
             )
             VStack(spacing: 0) {
-                // Always a scroll view, so the controls keep their state when the layout
-                // changes; it only moves when the content cannot fit.
-                ScrollView {
-                    VStack(spacing: 0) {
-                        header
-                            .padding(.top, 8)
-                        TempoDial(diameter: layout.dialDiameter)
-                            .padding(.top, 12)
-                        TempoControls()
-                            .padding(.top, 4)
-                        VStack(alignment: .leading, spacing: layout.sectionGap) {
-                            TimeSignatureRow(sideMargin: layout.sideMargin)
-                            VStack(alignment: .leading, spacing: 14) {
-                                SectionLabel(text: "ACCENTS")
-                                AccentTiles(singleRowTileHeight: layout.tileHeight)
-                            }
-                        }
-                        .padding(.top, layout.settingsTopGap)
+                header
+                    .padding(.top, 8)
+                TempoDial(diameter: layout.dialDiameter)
+                    .padding(.top, 12)
+                TempoControls()
+                    .padding(.top, 4)
+                VStack(alignment: .leading, spacing: layout.sectionGap) {
+                    TimeSignatureRow(sideMargin: layout.sideMargin)
+                    VStack(alignment: .leading, spacing: 14) {
+                        SectionLabel(text: "ACCENTS")
+                        AccentTiles(singleRowTileHeight: layout.tileHeight)
                     }
-                    .padding(.horizontal, layout.sideMargin)
                 }
-                .scrollDisabled(!layout.needsScrolling)
-                .scrollBounceBehavior(.basedOnSize)
-                .scrollIndicators(.hidden)
-                // Glows and ripples reach past the content; only cut them off when scrolling.
-                .scrollClipDisabled(!layout.needsScrolling)
+                .padding(.top, layout.settingsTopGap)
+                Spacer(minLength: ScreenLayout.buttonTopGap)
                 StartStopButton()
-                    .padding(.horizontal, layout.sideMargin)
-                    .padding(.top, ScreenLayout.buttonTopGap)
                     .padding(.bottom, layout.bottomPadding)
             }
+            .padding(.horizontal, layout.sideMargin)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Scrolled content would otherwise show through behind the status bar.
-            .overlay(alignment: .top) {
-                Theme.ink
-                    .ignoresSafeArea(edges: .top)
-                    .frame(height: 0)
-            }
         }
         .background(Theme.ink.ignoresSafeArea())
         // Labels follow Dynamic Type up to the largest size that still fits the layout.
@@ -74,7 +56,7 @@ struct MetronomeScreen: View {
 
 /// Fits the fixed parts of the screen into the available space (specification 5.8).
 /// The dial shrinks first, down to 240 pt; then the gaps and tiles shrink; then the dial
-/// shrinks to 200 pt; and if that is still too tall, everything above the button scrolls.
+/// shrinks as far as it must. The screen never scrolls.
 struct ScreenLayout {
     let dialDiameter: CGFloat
     let sectionGap: CGFloat
@@ -84,8 +66,6 @@ struct ScreenLayout {
     let sideMargin: CGFloat
     /// Height of everything except the dial and the bottom padding.
     let fixedHeight: CGFloat
-    /// True when even the smallest layout is taller than the screen.
-    let needsScrolling: Bool
 
     /// The least space kept between the accent tiles and the Start button.
     static let buttonTopGap: CGFloat = 16
@@ -96,7 +76,8 @@ struct ScreenLayout {
     static let fullDial: CGFloat = 300
     /// The dial shrinks this far before the gaps and tiles give way.
     static let roomyMinimumDial: CGFloat = 240
-    static let minimumDial: CGFloat = 200
+    /// A safety floor only; no supported iPhone gets near it (the smallest is about 108 pt).
+    static let minimumDial: CGFloat = 80
 
     init(width: CGFloat, height: CGFloat, hasBottomInset: Bool, beats: Int) {
         sideMargin = width < Self.narrowWidth ? Self.narrowSideMargin : Theme.sideMargin
@@ -122,7 +103,6 @@ struct ScreenLayout {
             tileHeight = 76
             fixedHeight = roomy
             dialDiameter = min(Self.fullDial, available - roomy)
-            needsScrolling = false
         } else {
             sectionGap = 16
             settingsTopGap = 16
@@ -130,7 +110,6 @@ struct ScreenLayout {
             let compact = partsHeight(sectionGap: 16, settingsTopGap: 16, tileHeight: 56)
             fixedHeight = compact
             dialDiameter = min(Self.fullDial, max(Self.minimumDial, available - compact))
-            needsScrolling = available - compact < Self.minimumDial
         }
     }
 }
