@@ -1,0 +1,246 @@
+# Metronome v1 specification
+
+Status: design locked 2026-11-10. This is the first version to be implemented and released through TestFlight.
+
+Design source: Paper file "Snappy Metronome", page *v0.1 — locked*, boards *v0.1 · Metronome — Ready*, *v0.1 · Metronome — Playing*, *v0.1 · Metronome — Time signature picker* and *v0.1 · Motion — Beat cycle*.
+
+Points the design did not settle were decided on 2026-11-10 and are recorded in section 11. Ideas for later versions are in section 12.
+
+## 1. Summary
+
+A single-screen native iOS metronome. The user sets a tempo and a time signature, chooses which beats are accented, and presses Start. Each beat produces a click, a visual effect and a haptic tap on the same instant. Everything except the time signature can be changed while it plays.
+
+## 2. Scope
+
+In v1:
+
+- Tempo from 30 to 250 BPM, set by ring drag, − / + buttons or tap tempo.
+- Eight time signatures: 2/4, 3/4, 4/4, 5/4, 6/8, 7/8, 9/8, 12/8.
+- Per-beat accents; any combination of beats, including none.
+- Start / Stop with click sound, visual beat effects and haptics.
+- Settings remembered between launches.
+
+Not in v1:
+
+- Bar counter, subdivisions, sound selection, volume control, presets, set lists.
+- Playback with the screen locked or the app in the background (see 6.5 and section 12).
+- iPad layout, landscape, light mode, Apple Watch, widgets.
+- A settings screen, and the header settings button that would open it (see 5.1).
+
+## 3. Platform
+
+- iPhone only, portrait only, dark appearance only.
+- SwiftUI. Minimum iOS version: iOS 18.
+- Designed at 390 × 844 pt. Narrower and shorter phones scale the dial; see 5.7.
+- Typeface: the system font (SF Pro). The Paper boards use Inter and Inter Tight only as stand-ins because SF Pro is not available there. Weights and sizes in section 5 carry over.
+
+## 4. State
+
+| State | Type | Default | Persisted |
+|---|---|---|---|
+| `bpm` | integer, 30…250 | 120 | yes |
+| `timeSignature` | one of the eight in section 2 | 4/4 | yes |
+| `accents` | set of beat numbers, 1…beats per bar | {1} | yes |
+| `isPlaying` | boolean | false | no |
+| `currentBeat` | integer, 1…beats per bar; none when stopped | none | no |
+
+Beats per bar is the top number of the time signature (7/8 has seven beats). One beat is one click. BPM counts clicks per minute for every signature, including the /8 ones.
+
+The app always launches stopped.
+
+## 5. Screen
+
+There is one screen with two states, Ready (stopped) and Playing. The layout is identical in both, so nothing moves when Start is pressed. From top to bottom:
+
+### 5.1 Header
+
+- Left label: `TEMPO` when stopped. When playing: an amber dot followed by `PLAYING` in dial white.
+- Right: the design shows a 40 pt round settings button. It is left out of the v1 build, because v1 has no settings screen. The header keeps its height.
+
+### 5.2 Tempo dial
+
+- 300 pt gauge. 48 tick marks on a 270° arc that starts at the lower left (the 7:30 position), runs clockwise over the top and ends at the lower right (4:30), leaving a 90° gap at the bottom. Every fourth tick is longer and thicker.
+- Ticks from the start of the arc up to the current tempo are amber; the rest are unlit. Position along the arc is linear: `(bpm − 30) / 220`.
+- A 28 pt amber knob with a dark 5 pt border and an amber glow sits at the end of the lit arc.
+- Centre: the BPM number (112 pt, heavy, tight tracking, dial white). Below it: `BPM` in amber, a dot, and the tempo name in muted italic.
+
+Tempo names:
+
+| BPM | Name |
+|---|---|
+| 30–39 | Grave |
+| 40–59 | Largo |
+| 60–65 | Larghetto |
+| 66–75 | Adagio |
+| 76–107 | Andante |
+| 108–119 | Moderato |
+| 120–155 | Allegro |
+| 156–175 | Vivace |
+| 176–199 | Presto |
+| 200–250 | Prestissimo |
+
+### 5.3 Tempo controls
+
+A row of three: − (56 pt round), `Tap tempo` (outlined pill with a hand icon), + (56 pt round).
+
+### 5.4 Time signature row
+
+A 60 pt row: the label `Time signature`, the current value in amber (for example `4/4`), and a › chevron. Tapping it opens the picker (5.6). It looks and behaves the same when stopped and when playing.
+
+### 5.5 Accents
+
+The label `ACCENTS`, then one tile per beat in a single row with 10 pt gaps, each 76 pt tall with a 20 pt corner radius. Each tile shows a small mark above its beat number.
+
+| Tile state | Fill | Border | Number and mark |
+|---|---|---|---|
+| Not accented, idle | surface | none | muted number, small dot |
+| Accented, idle | dark amber tint | 1.5 pt amber | amber number, ^ mark |
+| Not accented, sounding | dial white | none | ink number, ink dot |
+| Accented, sounding | amber, with amber glow | none | ink number, ink ^ mark |
+
+"Sounding" applies only while playing, to the tile of `currentBeat`.
+
+Up to seven tiles fit in one row. For 9/8 and 12/8 the tiles wrap into two equal rows (5 + 4, and 6 + 6) and the tile height drops to 44 pt, with the mark omitted. This case is not drawn in the design.
+
+### 5.6 Time signature picker
+
+A bottom sheet over a dimmed screen: a grabber, the title `Time signature`, and a 4 × 2 grid of options. Each option shows the signature and a one-word hint:
+
+| 2/4 | 3/4 | 4/4 | 5/4 | 6/8 | 7/8 | 9/8 | 12/8 |
+|---|---|---|---|---|---|---|---|
+| March | Waltz | Common | Odd | Compound | Odd | Compound | Compound |
+
+The current signature is filled amber with a glow. Use the standard sheet presentation, sized to its content.
+
+### 5.7 Start / Stop button
+
+A 68 pt pill pinned to the bottom with 24 pt side margins.
+
+- Stopped: amber fill, ink play icon and `Start`, soft amber glow.
+- Playing: surface fill, 1.5 pt amber outline, amber stop icon and `Stop`, no glow.
+
+On screens shorter than the design, the dial scales down (minimum 240 pt) before anything else changes.
+
+### 5.8 Colours
+
+| Token | Value | Use |
+|---|---|---|
+| ink | `#0B0B0C` | background; text on amber and white |
+| surface | `#17171A` | rows, round buttons, idle tiles, sheet |
+| surface raised | `#222226` | picker options |
+| line | `#2A2A2E` | unlit ticks, outlines |
+| dial white | `#F3EEE6` | primary text; sounding unaccented tile |
+| muted | `#8A8780` | labels, secondary text |
+| muted dim | `#6B6963` | idle unaccented tile numbers |
+| amber | `#FFB224` | the single accent colour |
+| amber tint | `#1E1A12` | idle accented tile fill |
+
+## 6. Behaviour
+
+### 6.1 Tempo
+
+All three tempo controls work when stopped and when playing.
+
+- **Ring.** Dragging the knob or swiping on the ring sets the tempo. The knob follows the angle of the finger around the dial centre, mapped linearly over the 270° arc, rounded to whole BPM. Angles in the gap at the bottom clamp to the nearer end. Only touches that begin between 105 pt and 165 pt from the dial centre start a drag, so a touch on the number does nothing.
+- **− / +.** One tap changes the tempo by 1 BPM. Holding repeats: after 400 ms, 10 steps per second.
+- **Tap tempo.** From the second tap on, the tempo is set to the average of the last four intervals between taps (fewer if fewer exist). A pause longer than 2 seconds starts a new series.
+- All inputs clamp to 30…250.
+- While playing, a tempo change takes effect from the next beat. The beat that is already scheduled is not moved, and the bar position is kept.
+
+### 6.2 Time signature
+
+- Tapping the row opens the picker. Tapping an option selects it and closes the sheet.
+- Swiping the sheet down or tapping outside it closes it without changes.
+- When the selection is different from the current signature:
+  - playback stops, if it was running;
+  - accents reset to beat 1 only.
+- Choosing the signature that is already selected changes nothing and does not stop playback.
+
+### 6.3 Accents
+
+- Tapping a tile toggles that beat's accent. This works when stopped and when playing.
+- Any combination is allowed, including all beats and no beats.
+- While playing, a toggle changes the tile's idle appearance at once. The click, effect and haptic for that beat change the next time the beat is scheduled; a beat that is already sounding is not altered.
+
+### 6.4 Start and stop
+
+- Start begins playback on beat 1, with the first click immediately.
+- Stop silences playback at once, clears `currentBeat` and returns every tile to its idle appearance.
+- The screen does not dim or lock while playing.
+
+### 6.5 Interruptions
+
+- Playback stops when the app leaves the foreground, when the screen is locked, and on audio interruptions such as a phone call. It does not resume by itself.
+- The click plays even when the ring/silent switch is on silent, as a metronome is the app's whole purpose. It mixes with nothing: other audio is paused while the metronome plays.
+
+## 7. Audio and timing
+
+- Two short click sounds: an accent click (higher pitch, louder) and a normal click.
+- The final click sounds are required for the first TestFlight release. They are not specified yet; they will be specified last, after the rest of this document is settled. Until then, development builds may use any short placeholder pair.
+- Clicks are scheduled on the audio clock (for example `AVAudioEngine` with sample-time scheduling), a little ahead of time. They must not be driven by a UI timer.
+- Visual effects and haptics are triggered from the same schedule, so the three stay together.
+- Targets: each click within 2 ms of its ideal time, and no accumulated drift over 10 minutes at any tempo.
+
+## 8. Beat effects
+
+Each beat fires all of the following at the moment of its click.
+
+| Effect | Normal beat | Accented beat |
+|---|---|---|
+| Ripple | A ring leaves the dial edge, grows from 1.0× to 1.3× and fades to nothing over 600 ms, ease-out. 1 pt line. | Same, 2 pt line. |
+| Glow | An amber radial glow behind the BPM number flashes to 30 % opacity and decays over half the beat interval. | Same. |
+| Number pulse | The BPM number scales 1.0 → 1.04 and back within half the beat interval. | Same. |
+| Tile | The beat's tile switches to its sounding state at once. The previous tile fades back to idle over 150 ms. | Same. |
+| Haptic | Light impact, intensity 0.5. | Rigid impact, intensity 1.0. |
+
+At fast tempos several ripples are on screen at once; that is intended.
+
+Other haptics: a selection tick for each 1 BPM change from the ring or − / +, for each tap-tempo tap, and for each accent toggle. A medium impact on Start and Stop.
+
+## 9. Accessibility
+
+- **Reduce Motion:** ripples and the number pulse are disabled. Tile changes and the glow remain.
+- **VoiceOver:** the dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action. Beat changes during playback are not announced.
+- Every tappable control is at least 44 × 44 pt.
+- The large BPM number does not scale with Dynamic Type. Row labels and picker text do, up to the largest size that still fits.
+
+## 10. Acceptance checklist for the first TestFlight build
+
+- [ ] Tempo can be set by ring, − / + and tap tempo, when stopped and when playing, and never leaves 30…250.
+- [ ] The lit arc, knob, number and tempo name always agree.
+- [ ] All eight time signatures can be selected; the tile count matches the signature.
+- [ ] Changing the signature while playing stops playback and resets accents to beat 1. Reselecting the current signature, or dismissing the sheet, does neither.
+- [ ] Accents can be toggled when stopped and when playing; accented beats sound, look and feel different from normal beats.
+- [ ] Start always begins on beat 1. Stop is immediate.
+- [ ] The final accent and normal click sounds are in place (no placeholders).
+- [ ] Click, visual and haptic stay together at 30, 120 and 250 BPM.
+- [ ] No audible drift against a reference metronome over 10 minutes.
+- [ ] BPM, time signature and accents survive quitting and reopening the app.
+- [ ] Reduce Motion and VoiceOver behave as in section 9.
+
+## 11. Decisions
+
+Confirmed on 2026-11-10:
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | The header settings button has no screen behind it. | Left out of the v1 build; it returns when there are settings to show. |
+| 2 | How are 9 and 12 beat tiles laid out? | Two rows of shorter tiles, as in 5.5. |
+| 3 | Minimum iOS version. | iOS 18. |
+| 4 | Should it keep playing with the screen locked or the app in the background? | Not in v1; playback stops (6.5). Planned for later (section 12). |
+| 5 | Should the click ignore the silent switch? | Yes. |
+
+Still open before the first TestFlight release:
+
+| # | Item | Status |
+|---|---|---|
+| 1 | Click sounds (section 7). | To be specified last, after everything else. |
+| 2 | App name and bundle identifier. | To be provided. |
+
+## 12. Later versions
+
+Stored for further development. None of these are part of v1.
+
+- **Mute button.** A quick button that silences the click while the metronome keeps running, so the visual effects and haptics continue.
+- **Keep screen awake setting.** A setting that lets the user choose whether the app keeps the screen awake. In v1 the screen always stays awake while playing (6.4). This brings back the settings screen and the header settings button.
+- **Play while locked.** Playback continues when the user locks the screen. In v1 it stops (6.5).
