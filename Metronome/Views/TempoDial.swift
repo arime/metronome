@@ -14,7 +14,6 @@ struct TempoDial: View {
     var body: some View {
         ZStack {
             BeatGlow(lastBeat: model.lastBeat, bpm: model.settings.bpm, diameter: diameter)
-            RippleLayer(lastBeat: model.lastBeat, diameter: diameter)
             DialRing(fraction: Tempo.arcFraction(for: model.settings.bpm))
             readout
         }

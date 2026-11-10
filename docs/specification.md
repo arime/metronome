@@ -206,19 +206,18 @@ Each beat fires all of the following at the moment of its click.
 
 | Effect | Normal beat | Accented beat |
 |---|---|---|
-| Ripple | A ring leaves the dial edge, grows from 1.0× to 1.3× and fades to nothing over 600 ms, ease-out. 1 pt line. | Same, 2 pt line. |
 | Glow | An amber radial glow behind the BPM number flashes to 30 % opacity and decays over half the beat interval. | Same. |
 | Number pulse | The BPM number scales 1.0 → 1.04 and back within half the beat interval. | Same. |
 | Tile | The beat's tile switches to its sounding state at once. The previous tile fades back to idle over 150 ms. | Same. |
 | Haptic | Light impact, intensity 0.5. | Rigid impact, intensity 1.0. |
 
-At fast tempos several ripples are on screen at once; that is intended.
+The v0.1 design also drew rings rippling out from the dial on every beat. That effect was removed on 2026-11-10 after trying the app on a phone: it was too intrusive.
 
 Other haptics: a selection tick for each 1 BPM change from the ring or − / +, for each tap-tempo tap, and for each accent toggle. A medium impact on Start and Stop.
 
 ## 9. Accessibility
 
-- **Reduce Motion:** ripples and the number pulse are disabled. Tile changes and the glow remain.
+- **Reduce Motion:** the number pulse is disabled. Tile changes and the glow remain.
 - **VoiceOver:** the dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action. Beat changes during playback are not announced.
 - Every tappable control is at least 44 × 44 pt.
 - The large BPM number does not scale with Dynamic Type. Row labels and picker text do, up to the largest size that still fits.
