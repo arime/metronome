@@ -26,6 +26,8 @@ final class AudioClickEngine: ClickEngine {
     private var normalBuffer: AVAudioPCMBuffer?
 
     private var clock: BeatClock?
+    /// True between `start` and the moment the audio session is active.
+    private var isStarting = false
     private var settings = MetronomeSettings()
     private var timer: Timer?
     /// Changes on every start and stop; late callbacks from an old run compare and bail out.
@@ -37,25 +39,41 @@ final class AudioClickEngine: ClickEngine {
         engine.attach(player)
     }
 
+    /// Returns at once. The audio session is activated off the main thread (it can block,
+    /// worst on Bluetooth) and the first click is scheduled as soon as that is done.
+    /// A failure after this point is reported through `onStopped`.
     func start(with settings: MetronomeSettings) throws {
-        if clock != nil { stop() }
-
-        // Synchronous: no click may be scheduled before the session is active.
-        try session.activate()
-
-        do {
-            try startEngine()
-        } catch {
-            // Activating the session paused other apps' audio. Starting failed,
-            // so give the audio back before reporting the failure.
-            engine.stop()
-            session.deactivateNow()
-            throw error
-        }
-        player.play()
+        if clock != nil || isStarting { stop() }
 
         self.settings = settings
         runToken += 1
+        isStarting = true
+        let token = runToken
+        session.activate { [weak self] succeeded in
+            // Stopped, or started again, while the session was being activated.
+            guard let self, self.isStarting, self.runToken == token else { return }
+            self.isStarting = false
+            guard succeeded else {
+                self.onStopped?()
+                return
+            }
+            do {
+                try self.beginPlaying()
+            } catch {
+                // Activating the session paused other apps' audio. Starting failed,
+                // so give the audio back before reporting the failure.
+                self.engine.stop()
+                self.session.deactivate()
+                self.onStopped?()
+            }
+        }
+    }
+
+    /// Runs once the session is active: no click may be scheduled before that.
+    private func beginPlaying() throws {
+        try startEngine()
+        player.play()
+
         clock = BeatClock(sampleRate: sampleRate, startSampleTime: Int64(Self.startDelay * sampleRate))
         observeAudioChanges()
 
@@ -86,7 +104,7 @@ final class AudioClickEngine: ClickEngine {
     }
 
     func stop() {
-        guard clock != nil else { return }
+        guard clock != nil || isStarting else { return }
         tearDown()
     }
 
@@ -146,6 +164,7 @@ final class AudioClickEngine: ClickEngine {
     private func tearDown() {
         runToken += 1
         clock = nil
+        isStarting = false
         timer?.invalidate()
         timer = nil
         observers.forEach(NotificationCenter.default.removeObserver)
@@ -153,8 +172,8 @@ final class AudioClickEngine: ClickEngine {
         player.stop()
         engine.stop()
         // The sound is already off. Deactivating can block for a while (worst on
-        // Bluetooth), so it must not hold up the main thread.
-        session.deactivateLater()
+        // Bluetooth), so it happens off the main thread.
+        session.deactivate()
     }
 
     /// Playback ended from outside: stop cleanly and tell the model.
@@ -203,44 +222,49 @@ final class AudioClickEngine: ClickEngine {
     }
 }
 
-/// Activates and deactivates the shared audio session, one call at a time.
+/// Activates and deactivates the shared audio session off the main thread.
 ///
-/// Deactivation runs off the main thread, so it can still be waiting when the user
-/// starts again. The lock keeps the two apart and the count tells a waiting
-/// deactivation that a newer start has taken over the session.
+/// Both calls can block, so they run one at a time on a serial queue. Each request
+/// takes a number; when its turn comes it runs only if it is still the newest request.
+/// So after a quick Start then Stop (or Stop then Start) only the last one touches the
+/// session, and an older request can never undo a newer one.
 private final class AudioSessionGate: Sendable {
     private static let queue = DispatchQueue(label: "AudioSessionGate", qos: .userInitiated)
-    /// How many times the session has been activated.
-    private let activations = OSAllocatedUnfairLock(initialState: 0)
+    /// The number of the newest request.
+    private let newest = OSAllocatedUnfairLock(initialState: 0)
 
-    func activate() throws {
-        try activations.withLock { count in
+    /// Calls `completion` on the main actor with whether the session is now active.
+    /// A request that was overtaken by a newer one never calls it.
+    func activate(completion: @escaping @MainActor @Sendable (Bool) -> Void) {
+        let request = nextRequest()
+        Self.queue.async { [newest] in
+            guard newest.withLock({ $0 == request }) else { return }
             let session = AVAudioSession.sharedInstance()
-            // .playback: the click sounds even with the silent switch on.
-            try session.setCategory(.playback, mode: .default)
-            try session.setActive(true)
-            // Counted only on success: after a failure a waiting deactivation must still run.
-            count += 1
-        }
-    }
-
-    func deactivateNow() {
-        activations.withLock { _ in Self.deactivate() }
-    }
-
-    func deactivateLater() {
-        let stopped = activations.withLock { $0 }
-        Self.queue.async { [activations] in
-            activations.withLock { count in
-                // Started again since: the session now belongs to the new run.
-                guard count == stopped else { return }
-                Self.deactivate()
+            var succeeded = true
+            do {
+                // .playback: the click sounds even with the silent switch on.
+                try session.setCategory(.playback, mode: .default)
+                try session.setActive(true)
+            } catch {
+                succeeded = false
             }
+            Task { @MainActor in completion(succeeded) }
         }
     }
 
-    private static func deactivate() {
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    func deactivate() {
+        let request = nextRequest()
+        Self.queue.async { [newest] in
+            guard newest.withLock({ $0 == request }) else { return }
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
+    }
+
+    private func nextRequest() -> Int {
+        newest.withLock { number in
+            number += 1
+            return number
+        }
     }
 }
 
