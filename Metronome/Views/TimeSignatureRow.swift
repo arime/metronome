@@ -56,6 +56,8 @@ private struct TimeSignaturePicker: View {
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 4)
     @ScaledMetric(relativeTo: .title2) private var titleSize = 26.0
     @ScaledMetric(relativeTo: .caption) private var hintSize = 12.0
+    /// The sheet's height. Starts at the height for the default text size, then follows the content.
+    @State private var sheetHeight: CGFloat = 300
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -72,10 +74,18 @@ private struct TimeSignaturePicker: View {
             }
         }
         .padding(.horizontal, sideMargin)
+        // Room for the drag indicator above, and a margin below the grid.
         .padding(.top, 36)
+        .padding(.bottom, 30)
+        .fixedSize(horizontal: false, vertical: true)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.height.rounded(.up)
+        } action: { height in
+            sheetHeight = height
+        }
         .frame(maxHeight: .infinity, alignment: .top)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        .presentationDetents([.height(300)])
+        .presentationDetents([.height(sheetHeight)])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .presentationBackground(Theme.surface)
