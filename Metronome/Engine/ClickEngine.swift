@@ -15,6 +15,12 @@ protocol ClickEngine: AnyObject {
     /// Silences or restores the click at once, without stopping. Beats keep being
     /// reported through `onBeat`, and the setting stays across stop and start.
     func setMuted(_ muted: Bool)
+    /// Changes the click sound from the next beat that is not scheduled yet.
+    /// The setting stays across stop and start.
+    func setSound(_ sound: ClickSound)
+    /// Plays an accented and then a normal click of the sound. Only while stopped;
+    /// it plays even when muted, and a new preview cuts the previous one short.
+    func preview(_ sound: ClickSound)
     /// Silences at once and cancels scheduled clicks and pending `onBeat` calls.
     func stop()
 }

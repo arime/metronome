@@ -61,8 +61,8 @@ struct PresetTitle: View {
     }
 }
 
-/// A 40 pt round button in the header, as used for Previous and Next.
-struct HeaderRoundButton: View {
+/// A 56 pt round button beside Start / Stop, as used for Previous and Next.
+struct FooterRoundButton: View {
     let symbol: String
     let label: String
     var isEnabled = true
@@ -71,16 +71,33 @@ struct HeaderRoundButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(Theme.dialWhite)
-                .frame(width: 40, height: 40)
+                .frame(width: 56, height: 56)
                 .background(Theme.surface, in: Circle())
                 .opacity(isEnabled ? 1 : 0.35)
-                // Drawn at 40 pt; the touch area reaches 2 pt further for a 44 pt target.
-                .contentShape(Circle().inset(by: -2))
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
         .accessibilityLabel(label)
+    }
+}
+
+/// The gear at the far right of the header. Lighter than the round buttons, as it is used far less.
+struct SettingsButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "gearshape")
+                .font(.system(size: 19, weight: .medium))
+                .foregroundStyle(Theme.dialWhite)
+                .frame(width: 32, height: 40, alignment: .trailing)
+                // Drawn in a 32 pt slot; the touch area is 44 × 44 pt.
+                .contentShape(Rectangle().inset(by: -6))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Settings")
     }
 }

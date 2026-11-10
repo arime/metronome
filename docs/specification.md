@@ -484,20 +484,16 @@ Presets and setlists:
 
 Settings and click sounds:
 
-- [ ] The settings button opens the settings sheet when stopped and when playing; Done, swiping down and tapping outside close it. *(Not built.)*
-- [ ] Each of the seven sounds can be selected; the choice survives quitting and reopening the app, and a fresh install starts with Digital. *(Not built.)*
-- [ ] When stopped, tapping a sound plays an accented and a normal click; when playing, the new sound starts with the next scheduled beat. *(Not built.)*
-- [ ] Every sound meets the loudness, attack and length rules in 11.1. *(Not built. These can be unit tested on the generated buffers.)*
+- [x] The settings button opens the settings sheet when stopped and when playing; Done, swiping down and tapping outside close it. *(Done was tried in the simulator; swiping and tapping outside are the system's sheet behaviour and were not tried.)*
+- [x] Each of the seven sounds can be selected; the choice survives quitting and reopening the app, and a fresh install starts with Digital. *(Unit tested, and selecting while stopped and while playing was tried in the simulator.)*
+- [ ] When stopped, tapping a sound plays an accented and a normal click; when playing, the new sound starts with the next scheduled beat. *(The model's rules are unit tested and playing carries on when the sound changes; hearing the preview and the switch needs a listener.)*
+- [x] Every sound meets the loudness, attack and length rules in 11.1. *(Unit tested on the generated buffers at 48 and 44.1 kHz.)*
+- [x] Previous and Next sit beside Start / Stop only for a preset loaded from a setlist, and Next is dimmed at the last preset. *(Tried in the simulator.)*
 - [ ] All seven sounds are equally loud by ear, and accented beats are clearly different from normal ones, on the phone's speaker and on headphones. *(Needs a listener and a real iPhone.)*
 
 ## 15. Not built yet
 
-A part that is specified before it is built is listed here until it is.
-
-- The settings button in the header (6.1).
-- Previous and Next beside the Start / Stop button instead of in the header (6.7).
-- The settings sheet and the click sound choice (6.10, 7.8).
-- The six click sounds other than Digital, and the loudness rule for all seven (11.1). Today the app plays only the Digital sound, at the levels it had before the loudness rule.
+Everything in this document is built. A part that is specified before it is built is listed here until it is.
 
 ## 16. Ideas for later
 

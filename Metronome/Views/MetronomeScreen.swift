@@ -4,6 +4,7 @@ import SwiftUI
 struct MetronomeScreen: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isLibraryShown = false
+    @State private var isSettingsShown = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -29,7 +30,7 @@ struct MetronomeScreen: View {
                 }
                 .padding(.top, layout.settingsTopGap)
                 Spacer(minLength: ScreenLayout.buttonTopGap)
-                StartStopButton()
+                footer
                     .padding(.bottom, layout.bottomPadding)
             }
             .padding(.horizontal, layout.sideMargin)
@@ -43,20 +44,35 @@ struct MetronomeScreen: View {
     private var header: some View {
         HStack(spacing: 8) {
             PresetTitle { isLibraryShown = true }
-            if model.position != nil {
-                HeaderRoundButton(symbol: "chevron.left", label: "Previous preset", isEnabled: model.canGoPrevious) {
-                    model.goToPrevious()
-                }
-                HeaderRoundButton(symbol: "chevron.right", label: "Next preset", isEnabled: model.canGoNext) {
-                    model.goToNext()
-                }
-            }
             MuteButton()
+            SettingsButton { isSettingsShown = true }
         }
         .frame(height: 40)
         .sheet(isPresented: $isLibraryShown) {
             LibrarySheet()
                 .environment(model)
+        }
+        .sheet(isPresented: $isSettingsShown) {
+            SettingsSheet()
+                .environment(model)
+        }
+    }
+
+    /// Previous and Next sit beside Start only for a preset loaded from a setlist. The footer
+    /// changes with the setlist, never between Ready and Playing.
+    private var footer: some View {
+        HStack(spacing: 12) {
+            if model.position != nil {
+                FooterRoundButton(symbol: "chevron.left", label: "Previous preset", isEnabled: model.canGoPrevious) {
+                    model.goToPrevious()
+                }
+            }
+            StartStopButton()
+            if model.position != nil {
+                FooterRoundButton(symbol: "chevron.right", label: "Next preset", isEnabled: model.canGoNext) {
+                    model.goToNext()
+                }
+            }
         }
     }
 }

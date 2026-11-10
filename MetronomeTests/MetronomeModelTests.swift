@@ -25,6 +25,10 @@ final class FakeClickEngine: ClickEngine {
         lastUpdateStartedNewBar = startNewBar
     }
     func setMuted(_ muted: Bool) { self.muted = muted }
+    var sound: ClickSound?
+    var previews: [ClickSound] = []
+    func setSound(_ sound: ClickSound) { self.sound = sound }
+    func preview(_ sound: ClickSound) { previews.append(sound) }
     func stop() { stopCount += 1 }
 }
 
@@ -253,5 +257,55 @@ struct MetronomeModelTests {
         model.appDidLeaveForeground()
         #expect(model.isPlaying == false)
         #expect(engine.stopCount == 1)
+    }
+
+    // MARK: - Click sound
+
+    @Test func freshInstallStartsWithDigital() {
+        let model = makeModel()
+        #expect(model.clickSound == .digital)
+        #expect(engine.sound == .digital)
+    }
+
+    @Test func choosingASoundWhenStoppedSelectsAndPreviewsIt() {
+        let model = makeModel()
+        model.selectClickSound(.woodblock)
+        #expect(model.clickSound == .woodblock)
+        #expect(engine.sound == .woodblock)
+        #expect(engine.previews == [.woodblock])
+        #expect(haptics.selectionCount == 1)
+    }
+
+    @Test func tappingTheSelectedSoundPreviewsItAgain() {
+        let model = makeModel()
+        model.selectClickSound(.glass)
+        model.selectClickSound(.glass)
+        #expect(engine.previews == [.glass, .glass])
+    }
+
+    @Test func choosingASoundWhilePlayingChangesItWithoutAPreview() {
+        let model = makeModel()
+        model.togglePlayback()
+        model.selectClickSound(.tick)
+        #expect(engine.sound == .tick)
+        #expect(engine.previews.isEmpty)
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+    }
+
+    @Test func theChosenSoundSurvivesARelaunch() {
+        makeModel().selectClickSound(.classic)
+        let relaunched = makeModel()
+        #expect(relaunched.clickSound == .classic)
+        #expect(engine.sound == .classic)
+    }
+
+    @Test func presetsDoNotCarryTheSound() {
+        let model = makeModel()
+        model.selectClickSound(.mallet)
+        let preset = model.createPreset(name: "Song", settings: model.settings, addingTo: nil)!
+        model.selectClickSound(.digital)
+        model.loadPreset(preset.id, from: nil)
+        #expect(model.clickSound == .digital)
     }
 }

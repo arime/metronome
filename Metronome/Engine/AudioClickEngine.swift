@@ -24,6 +24,15 @@ final class AudioClickEngine: ClickEngine {
     private var sampleRate = 48_000.0
     private var accentBuffer: AVAudioPCMBuffer?
     private var normalBuffer: AVAudioPCMBuffer?
+    /// The format the buffers were built for; nil until the engine has started once.
+    private var format: AVAudioFormat?
+    private var sound = ClickSound.default
+    private var isMuted = false
+    /// True while a preview owns the engine; playback never runs at the same time.
+    private var isPreviewing = false
+    private var previewToken = 0
+    /// Time between the accented and the normal click of a preview.
+    private static let previewGap = 0.5
 
     private var clock: BeatClock?
     /// True between `start` and the moment the audio session is active.
@@ -46,6 +55,9 @@ final class AudioClickEngine: ClickEngine {
     /// A failure after this point is reported through `onStopped`.
     func start(with settings: MetronomeSettings) throws {
         if clock != nil || isStarting { stop() }
+        // Start wins over a preview. Its session deactivation is overtaken by the
+        // activation below, so the session stays active.
+        endPreview()
 
         self.settings = settings
         runToken += 1
@@ -94,11 +106,24 @@ final class AudioClickEngine: ClickEngine {
         guard sampleRate > 0,
               let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)
         else { throw AudioClickEngineError.noOutput }
-        accentBuffer = ClickSynth.click(accented: true, format: format)
-        normalBuffer = ClickSynth.click(accented: false, format: format)
+        self.format = format
+        buildBuffers()
 
         engine.connect(player, to: engine.mainMixerNode, format: format)
         try engine.start()
+    }
+
+    private func buildBuffers() {
+        guard let format else { return }
+        accentBuffer = ClickSynth.click(sound, accented: true, format: format)
+        normalBuffer = ClickSynth.click(sound, accented: false, format: format)
+    }
+
+    /// Beats that are already scheduled keep the old sound; the next one uses the new one.
+    func setSound(_ sound: ClickSound) {
+        guard sound != self.sound else { return }
+        self.sound = sound
+        buildBuffers()
     }
 
     func update(_ settings: MetronomeSettings, startNewBar: Bool) {
@@ -107,8 +132,63 @@ final class AudioClickEngine: ClickEngine {
     }
 
     func setMuted(_ muted: Bool) {
+        isMuted = muted
+        // A preview plays even when muted; the volume is restored when it ends.
+        guard !isPreviewing else { return }
         // The player's own volume, so clicks that are already scheduled go quiet too.
         player.volume = muted ? 0 : 1
+    }
+
+    // MARK: - Preview
+
+    func preview(_ sound: ClickSound) {
+        guard clock == nil, !isStarting else { return }
+        setSound(sound)
+        previewToken += 1
+        let token = previewToken
+        isPreviewing = true
+        if engine.isRunning {
+            playPreview(token: token)
+            return
+        }
+        session.activate { [weak self] succeeded in
+            guard let self, self.isPreviewing, self.previewToken == token else { return }
+            do {
+                guard succeeded else { throw AudioClickEngineError.noOutput }
+                try self.startEngine()
+                self.playPreview(token: token)
+            } catch {
+                self.endPreview()
+            }
+        }
+    }
+
+    /// Schedules the accented and the normal click from a fresh player timeline, which
+    /// also cuts a preview that is still sounding short.
+    private func playPreview(token: Int) {
+        player.stop()
+        player.volume = 1
+        player.play()
+        let first = Int64(Self.startDelay * sampleRate)
+        let second = first + Int64(Self.previewGap * sampleRate)
+        if let accentBuffer { player.scheduleBuffer(accentBuffer, at: AVAudioTime(sampleTime: first, atRate: sampleRate)) }
+        if let normalBuffer { player.scheduleBuffer(normalBuffer, at: AVAudioTime(sampleTime: second, atRate: sampleRate)) }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.startDelay + Self.previewGap + 0.3))
+            guard let self, self.isPreviewing, self.previewToken == token else { return }
+            self.endPreview()
+        }
+    }
+
+    /// Stops the preview and gives the phone's audio back to other apps.
+    private func endPreview() {
+        guard isPreviewing else { return }
+        isPreviewing = false
+        previewToken += 1
+        player.stop()
+        engine.stop()
+        player.volume = isMuted ? 0 : 1
+        session.deactivate()
     }
 
     func stop() {

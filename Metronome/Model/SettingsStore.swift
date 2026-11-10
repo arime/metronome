@@ -22,4 +22,16 @@ struct SettingsStore: @unchecked Sendable {
         guard let data = try? JSONEncoder().encode(settings) else { return }
         defaults.set(data, forKey: Self.key)
     }
+
+    /// Kept apart from the settings above because presets store those, not the sound.
+    private static let clickSoundKey = "metronome.clickSound.v1"
+
+    /// Digital when nothing, or an unknown sound, is stored.
+    func loadClickSound() -> ClickSound {
+        defaults.string(forKey: Self.clickSoundKey).flatMap(ClickSound.init(rawValue:)) ?? .default
+    }
+
+    func saveClickSound(_ sound: ClickSound) {
+        defaults.set(sound.rawValue, forKey: Self.clickSoundKey)
+    }
 }

@@ -19,6 +19,8 @@ final class MetronomeModel {
     private(set) var lastBeat: BeatEvent?
     /// True while the click is silenced. Not saved: the app always launches with sound on.
     private(set) var isMuted = false
+    /// Applies to the whole app and is remembered; presets do not store it.
+    private(set) var clickSound: ClickSound
 
     private(set) var library: Library
     private(set) var loadedPresetID: UUID?
@@ -42,6 +44,9 @@ final class MetronomeModel {
         self.libraryStore = libraryStore
         self.haptics = haptics
         settings = store.load()
+        let sound = store.loadClickSound()
+        clickSound = sound
+        engine.setSound(sound)
         let state = libraryStore.load()
         library = state.library
         loadedPresetID = state.loadedPresetID
@@ -101,6 +106,18 @@ final class MetronomeModel {
         isMuted.toggle()
         engine.setMuted(isMuted)
         haptics.selection()
+    }
+
+    /// Selects the sound at once. When stopped it also plays a preview, even of the
+    /// sound already selected; when playing, the metronome itself is the preview.
+    func selectClickSound(_ sound: ClickSound) {
+        haptics.selection()
+        if sound != clickSound {
+            clickSound = sound
+            store.saveClickSound(sound)
+            engine.setSound(sound)
+        }
+        if !isPlaying { engine.preview(sound) }
     }
 
     // MARK: - Tempo
