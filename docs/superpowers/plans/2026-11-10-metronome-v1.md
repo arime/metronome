@@ -8,7 +8,7 @@
 
 **Tech Stack:** Swift 6.2 (Swift 6 language mode), SwiftUI, Observation, AVFoundation, UIKit feedback generators, Swift Testing. Xcode 26. No third-party dependencies and no project generator: the Xcode project is hand-written using file-system-synchronized groups, so adding files never requires editing it.
 
-**Spec:** `docs/specification.md`. Design: Paper file "Snappy Metronome", page "v0.1 — locked".
+**Spec:** `docs/specification.md`. Design: Paper file "Snappy Metronome", page "v1.0".
 
 ## Global Constraints
 
@@ -415,7 +415,7 @@ Layout values are in spec section 5; exact sizes, radii and spacing not listed t
 - [ ] **Step 1:** Build `Theme` and the static Ready layout with the model wired in.
 - [ ] **Step 2:** Add the dial drag, − / + repeat, tap tempo, picker sheet, tile toggling and Start / Stop.
 - [ ] **Step 3:** Run `TEST`. Expected: all earlier tests still pass.
-- [ ] **Step 4:** Run in the iPhone 17 Pro simulator. Take a screenshot stopped and one playing; compare each against the Paper boards "v0.1 · Metronome — Ready" and "— Playing" side by side and fix differences in spacing, size and colour. Open the picker and compare against the picker board.
+- [ ] **Step 4:** Run in the iPhone 17 Pro simulator. Take a screenshot stopped and one playing; compare each against the Paper boards "v1.0 · Metronome — Ready" and "— Playing" side by side and fix differences in spacing, size and colour. Open the picker and compare against the picker board.
 - [ ] **Step 5:** In the simulator verify by hand: ring drag, − / + hold, tap tempo and accent toggling all work while playing; choosing a new signature stops playback and resets accents; reselecting the current one and swiping the sheet away do neither; Start then immediate Stop leaves silence; clicks are audible and accented beats sound different.
 - [ ] **Step 6:** Select 9/8 and 12/8 and screenshot the two-row tiles. Run on iPhone SE (3rd generation) and iPhone 17 Pro Max and screenshot; nothing may clip or overlap.
 - [ ] **Step 7:** Commit: "Add metronome screen and controls".

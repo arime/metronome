@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Colours and shared metrics from the v0.1 design.
+/// Colours and shared metrics from the v1.0 design.
 enum Theme {
     static let ink = Color(hex: 0x0B0B0C)
     static let surface = Color(hex: 0x17171A)
