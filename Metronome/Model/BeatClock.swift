@@ -27,11 +27,22 @@ struct BeatClock: Sendable {
     /// `bpm`, `beatsPerBar` and `accents` apply to the beats this call produces; beats
     /// already returned are never changed. A new tempo sets the interval that follows
     /// the last returned beat, so the bar position is kept.
-    mutating func beats(before horizon: Int64, bpm: Int, beatsPerBar: Int, accents: Set<Int>) -> [ScheduledBeat] {
+    ///
+    /// No beat is placed before `earliest` (the audio clock's "now"). When a big tempo
+    /// jump or a stalled caller would put the next beat in the past, that beat moves to
+    /// `earliest` and the following ones space out from there, so beats never bunch up.
+    mutating func beats(
+        before horizon: Int64,
+        notBefore earliest: Int64 = .min,
+        bpm: Int,
+        beatsPerBar: Int,
+        accents: Set<Int>
+    ) -> [ScheduledBeat] {
         let interval = 60 / Double(Tempo.clamp(bpm)) * sampleRate
         var result: [ScheduledBeat] = []
         while true {
-            let time = lastBeatTime.map { $0 + interval } ?? Double(startSampleTime)
+            let ideal = lastBeatTime.map { $0 + interval } ?? Double(startSampleTime)
+            let time = max(ideal, Double(earliest))
             let sampleTime = Int64(time.rounded())
             guard sampleTime < horizon else { break }
             let beat = lastBeat >= beatsPerBar ? 1 : lastBeat + 1

@@ -69,6 +69,18 @@ struct BeatClockTests {
         #expect(clock.beats(before: 96_001, bpm: 120, beatsPerBar: 3, accents: [1]) == [beat(1, true, 96_000)])
     }
 
+    @Test func bigTempoJumpNeverSchedulesBeatsInThePast() {
+        var clock = BeatClock(sampleRate: 48_000, startSampleTime: 0)
+        _ = clock.beats(before: 1, bpm: 30, beatsPerBar: 4, accents: [1])
+        // 1.9 s after the click at 30 BPM, the tempo jumps to 250 BPM.
+        // At 250 BPM the next beats would have been due at 0.24 s, 0.48 s, ... all in the past.
+        let now: Int64 = 91_200
+        let due = clock.beats(before: now + 7_200, notBefore: now, bpm: 250, beatsPerBar: 4, accents: [1])
+        #expect(due == [beat(2, false, now)])
+        let next = clock.beats(before: now + 12_000, notBefore: now + 100, bpm: 250, beatsPerBar: 4, accents: [1])
+        #expect(next == [beat(3, false, now + 11_520)])
+    }
+
     @Test func fastTempoDraggingNeverBunchesOrSkipsBeats() {
         var clock = BeatClock(sampleRate: 48_000, startSampleTime: 0)
         var all: [ScheduledBeat] = []
