@@ -258,7 +258,7 @@ Still open before the first TestFlight release:
 
 | # | Item | Status |
 |---|---|---|
-| 1 | App Store Connect record and the first upload. | Not done yet. |
+| 1 | Adding testers in TestFlight. | The App Store Connect record exists and version 1.0 (build 1) was uploaded on 2026-11-10. |
 
 Settled since:
 
