@@ -3,6 +3,8 @@ import SwiftUI
 /// Shows the current time signature; tapping it opens the picker sheet.
 struct TimeSignatureRow: View {
     @Environment(MetronomeModel.self) private var model
+    /// The screen's side margin, which the picker shares.
+    var sideMargin: CGFloat = Theme.sideMargin
     @State private var isPickerShown = false
     @ScaledMetric(relativeTo: .body) private var labelSize = 16.0
 
@@ -37,7 +39,7 @@ struct TimeSignatureRow: View {
         .accessibilityValue(model.settings.timeSignature.rawValue)
         .accessibilityAddTraits(.isButton)
         .sheet(isPresented: $isPickerShown) {
-            TimeSignaturePicker(selected: model.settings.timeSignature) { signature in
+            TimeSignaturePicker(selected: model.settings.timeSignature, sideMargin: sideMargin) { signature in
                 model.selectTimeSignature(signature)
                 isPickerShown = false
             }
@@ -48,6 +50,7 @@ struct TimeSignatureRow: View {
 /// The bottom sheet: a 4 × 2 grid of signatures.
 private struct TimeSignaturePicker: View {
     let selected: TimeSignature
+    let sideMargin: CGFloat
     let choose: (TimeSignature) -> Void
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 4)
@@ -68,7 +71,7 @@ private struct TimeSignaturePicker: View {
                 }
             }
         }
-        .padding(.horizontal, Theme.sideMargin)
+        .padding(.horizontal, sideMargin)
         .padding(.top, 36)
         .frame(maxHeight: .infinity, alignment: .top)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
