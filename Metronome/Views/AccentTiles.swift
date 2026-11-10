@@ -33,6 +33,7 @@ struct AccentTiles: View {
                             beat: beat,
                             isAccented: model.settings.accents.contains(beat),
                             isSounding: model.currentBeat == beat,
+                            soundsAccented: model.lastBeat?.isAccented ?? false,
                             showsMark: !isCompact,
                             height: isCompact ? Self.twoRowTileHeight : singleRowTileHeight
                         ) {
@@ -49,18 +50,27 @@ private struct BeatTile: View {
     let beat: Int
     let isAccented: Bool
     let isSounding: Bool
+    /// Whether the beat that is sounding right now was scheduled as accented.
+    let soundsAccented: Bool
     let showsMark: Bool
     let height: CGFloat
     let toggle: () -> Void
 
+    /// How the tile looks. While it sounds it follows the beat as it was scheduled, so
+    /// it always agrees with the click and the haptic; an accent toggled just before
+    /// the beat shows from the next time round. Idle tiles follow the setting.
+    private var looksAccented: Bool {
+        isSounding ? soundsAccented : isAccented
+    }
+
     private var fill: Color {
-        if isSounding { return isAccented ? Theme.amber : Theme.dialWhite }
-        return isAccented ? Theme.amberTint : Theme.surface
+        if isSounding { return looksAccented ? Theme.amber : Theme.dialWhite }
+        return looksAccented ? Theme.amberTint : Theme.surface
     }
 
     private var foreground: Color {
         if isSounding { return Theme.ink }
-        return isAccented ? Theme.amber : Theme.mutedDim
+        return looksAccented ? Theme.amber : Theme.mutedDim
     }
 
     /// Smaller on the two-row layout and on the shorter tiles used on small phones.
@@ -75,7 +85,7 @@ private struct BeatTile: View {
             VStack(spacing: 2) {
                 if showsMark { mark }
                 Text("\(beat)")
-                    .font(.system(size: numberSize, weight: isAccented ? .heavy : .semibold))
+                    .font(.system(size: numberSize, weight: looksAccented ? .heavy : .semibold))
                     .foregroundStyle(foreground)
             }
             .frame(maxWidth: .infinity)
@@ -83,9 +93,9 @@ private struct BeatTile: View {
             .background(fill, in: shape)
             .overlay(
                 shape.strokeBorder(Theme.amber, lineWidth: 1.5)
-                    .opacity(isAccented && !isSounding ? 1 : 0)
+                    .opacity(looksAccented && !isSounding ? 1 : 0)
             )
-            .shadow(color: isSounding && isAccented ? Theme.amber.opacity(0.55) : .clear, radius: 18)
+            .shadow(color: isSounding && looksAccented ? Theme.amber.opacity(0.55) : .clear, radius: 18)
             .contentShape(TileTouchArea())
             // Lights at once on its beat; fades back to idle over 150 ms afterwards.
             .animation(isSounding ? nil : .easeOut(duration: 0.15), value: isSounding)
@@ -98,7 +108,7 @@ private struct BeatTile: View {
 
     @ViewBuilder private var mark: some View {
         Group {
-            if isAccented {
+            if looksAccented {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 13, weight: .heavy))
                     .foregroundStyle(foreground)

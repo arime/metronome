@@ -7,8 +7,6 @@ struct BeatGlow: View {
     let bpm: Int
     let diameter: CGFloat
 
-    @State private var level = 0.0
-
     var body: some View {
         RadialGradient(
             stops: [
@@ -21,14 +19,16 @@ struct BeatGlow: View {
             endRadius: diameter / 2
         )
         .frame(width: diameter, height: diameter)
-        .opacity(level)
+        // Keyframes replayed on every beat: jump to full, then decay. Setting a value and
+        // animating it back in one update could be merged away before it was drawn.
+        .keyframeAnimator(initialValue: 0.0, trigger: lastBeat?.id) { view, level in
+            view.opacity(level)
+        } keyframes: { _ in
+            MoveKeyframe(1.0)
+            CubicKeyframe(0.0, duration: BeatPulse.decay(bpm: bpm))
+        }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-        .onChange(of: lastBeat) { _, beat in
-            guard beat != nil else { return }
-            level = 1
-            withAnimation(.easeOut(duration: BeatPulse.decay(bpm: bpm))) { level = 0 }
-        }
     }
 }
 
