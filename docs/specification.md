@@ -85,7 +85,7 @@ Reopening the app restores the settings, the loaded preset and its setlist, so t
 
 Data is stored on the device only.
 
-If the loaded preset is deleted, the metronome keeps its current settings and the header shows "nothing loaded". If it is removed from the loaded-from setlist, it stays loaded and the header falls back to `All presets`.
+If the loaded preset is deleted, the metronome keeps its current settings and the header shows "nothing loaded". If it is removed from the loaded-from setlist, it stays loaded and the header shows the name alone, as for a preset loaded from All presets.
 
 ## 6. Metronome screen
 
@@ -93,12 +93,12 @@ One screen with two states, Ready (stopped) and Playing. The layout is identical
 
 ### 6.1 Header
 
-**Preset title**, at the left, taking the space left by the buttons. Two lines; a long name is cut with an ellipsis. Line 1 is 20 pt heavy in dial white, followed by a small ˅. Line 2 is 13 pt in muted.
+**Preset title**, at the left, taking the space left by the buttons. One or two lines; a long name is cut with an ellipsis. Line 1 is 20 pt heavy in dial white, followed by a small ˅. Line 2 is 13 pt in muted. Without a line 2, line 1 is centred vertically in the header.
 
 | State | Line 1 | Line 2 |
 |---|---|---|
 | Nothing loaded | `Library` | `No preset loaded` |
-| Loaded from All presets | preset name | `All presets` |
+| Loaded from All presets | preset name | none |
 | Loaded from a setlist | preset name | setlist name · `3 of 8` |
 | Edited | preset name | `Edited` in amber, followed by · `3 of 8` when from a setlist |
 

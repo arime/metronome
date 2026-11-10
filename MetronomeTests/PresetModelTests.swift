@@ -52,7 +52,7 @@ struct PresetModelTests {
         #expect(model.settings == preset.settings)
         #expect(model.isPlaying == false)
         #expect(model.headerTitle == "Song")
-        #expect(model.headerSubtitle == "All presets")
+        #expect(model.headerSubtitle == nil)
         #expect(store.load() == preset.settings)
     }
 
@@ -128,7 +128,7 @@ struct PresetModelTests {
         #expect(model.loadedPreset?.id == made?.id)
         #expect(model.isEdited == false)
         #expect(model.position == nil)
-        #expect(model.headerSubtitle == "All presets")
+        #expect(model.headerSubtitle == nil)
         #expect(model.library.preset(id: presets[0].id)?.settings.bpm == 60)
     }
 
@@ -175,7 +175,7 @@ struct PresetModelTests {
         model.setPreset(presets[1].id, inSetlist: setlist, included: false)
         #expect(model.loadedPreset?.id == presets[1].id)
         #expect(model.position == nil)
-        #expect(model.headerSubtitle == "All presets")
+        #expect(model.headerSubtitle == nil)
     }
 
     @Test func aNewPresetCanGoStraightIntoASetlist() {

@@ -25,7 +25,7 @@ struct PresetTitle: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(model.headerTitle), \(model.headerSubtitle)")
+        .accessibilityLabel([model.headerTitle, model.headerSubtitle].compactMap { $0 }.joined(separator: ", "))
         .accessibilityHint(model.isEdited ? "Opens save options" : "Opens the library")
         .accessibilityAddTraits(.isButton)
         .sheet(isPresented: $isSaveAsShown) {
@@ -49,10 +49,12 @@ struct PresetTitle: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Theme.muted)
             }
-            Text(model.headerSubtitle)
-                .font(.system(size: 13, weight: model.isEdited ? .semibold : .medium))
-                .foregroundStyle(model.isEdited ? Theme.amber : Theme.muted)
-                .lineLimit(1)
+            if let subtitle = model.headerSubtitle {
+                Text(subtitle)
+                    .font(.system(size: 13, weight: model.isEdited ? .semibold : .medium))
+                    .foregroundStyle(model.isEdited ? Theme.amber : Theme.muted)
+                    .lineLimit(1)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())

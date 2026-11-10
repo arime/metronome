@@ -191,9 +191,10 @@ final class MetronomeModel {
         loadedPreset?.name ?? "Library"
     }
 
-    var headerSubtitle: String {
+    /// The header's second line; nil when the preset's name says it all.
+    var headerSubtitle: String? {
         guard loadedPreset != nil else { return "No preset loaded" }
-        guard let position else { return isEdited ? "Edited" : "All presets" }
+        guard let position else { return isEdited ? "Edited" : nil }
         let place = "\(position.index + 1) of \(position.count)"
         let source = isEdited ? "Edited" : (loadedFromSetlistID.flatMap(library.setlist(id:))?.name ?? "")
         return "\(source) · \(place)"
