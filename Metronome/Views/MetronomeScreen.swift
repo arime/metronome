@@ -48,9 +48,9 @@ struct MetronomeScreen: View {
                 SectionLabel(text: "TEMPO")
             }
             Spacer()
+            MuteButton()
         }
         .frame(height: 40)
-        .accessibilityElement(children: .combine)
     }
 }
 

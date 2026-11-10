@@ -29,7 +29,7 @@ Not in v1:
 - Bar counter, subdivisions, sound selection, a volume control inside the app (the phone's own volume controls set the click volume; see 6.5), presets, set lists.
 - Playback with the screen locked or the app in the background (see 6.5 and section 12).
 - iPad layout, landscape, light mode, Apple Watch, widgets.
-- A settings screen, and the header settings button that would open it (see 5.1).
+- A settings screen.
 
 ## 3. Platform
 
@@ -46,6 +46,7 @@ Not in v1:
 | `timeSignature` | one of the eight in section 2 | 4/4 | yes |
 | `accents` | set of beat numbers, 1…beats per bar | {1} | yes |
 | `isPlaying` | boolean | false | no |
+| `isMuted` | boolean | false | no |
 | `currentBeat` | integer, 1…beats per bar; none when stopped | none | no |
 
 Beats per bar is the top number of the time signature (7/8 has seven beats). One beat is one click. BPM counts clicks per minute for every signature, including the /8 ones.
@@ -59,7 +60,11 @@ There is one screen with two states, Ready (stopped) and Playing. The layout is 
 ### 5.1 Header
 
 - Left label: `TEMPO` when stopped. When playing: an amber dot followed by `PLAYING` in dial white.
-- Right: the design shows a 40 pt round settings button. It is left out of the v1 build, because v1 has no settings screen. The header keeps its height.
+- Right: a 40 pt round mute button (added 2026-11-10; it is not in build 1, the first TestFlight upload).
+  - Sound on: a dial-white speaker with sound waves on a surface fill.
+  - Muted: an amber crossed-out speaker on the amber tint fill with a 1.5 pt amber outline.
+  - Tapping it silences the click at once, or brings it back. The metronome keeps running: the glow, the number pulse, the tile lighting and the haptics carry on. It works when stopped and when playing.
+  - Mute is separate from the phone's volume (6.5). It is not remembered: the app always launches with sound on.
 
 ### 5.2 Tempo dial
 
@@ -218,12 +223,12 @@ Each beat fires all of the following at the moment of its click.
 
 An earlier draft of the design also drew rings rippling out from the dial on every beat. That effect was removed on 2026-11-10 after trying the app on a phone: it was too intrusive.
 
-Other haptics: a selection tick for each 1 BPM change from the ring or − / +, for each tap-tempo tap, and for each accent toggle. A medium impact on Start and Stop.
+Other haptics: a selection tick for each 1 BPM change from the ring or − / +, for each tap-tempo tap, for each accent toggle, and for each tap on the mute button. Beat haptics continue while muted. A medium impact on Start and Stop.
 
 ## 9. Accessibility
 
 - **Reduce Motion:** the number pulse is disabled. Tile changes and the glow remain.
-- **VoiceOver:** the dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action. Beat changes during playback are not announced.
+- **VoiceOver:** the dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action. The mute button reads as "Click sound, on" or "Click sound, muted". Beat changes during playback are not announced.
 - Every tappable control is at least 44 × 44 pt.
 - The large BPM number does not scale with Dynamic Type. Row labels and picker text do, up to the largest size that still fits.
 
@@ -243,6 +248,7 @@ Status on 2026-11-10, after the first implementation. Ticked lines were checked 
 - [x] BPM, time signature and accents survive quitting and reopening the app.
 - [ ] Reduce Motion and VoiceOver behave as in section 9. *(Implemented; not yet tried with the settings switched on.)*
 - [ ] The phone's volume buttons and the Control Center slider change the click volume. *(Expected from how the audio is set up; needs a real iPhone to confirm.)*
+- [x] The mute button silences the click at once and brings it back, while the visuals and haptics continue. *(State and visuals verified by unit tests and in the simulator; tried by the owner on 2026-11-10 and reported working.)*
 
 ## 11. Decisions
 
@@ -250,7 +256,7 @@ Confirmed on 2026-11-10:
 
 | # | Question | Decision |
 |---|---|---|
-| 1 | The header settings button has no screen behind it. | Left out of the v1 build; it returns when there are settings to show. |
+| 1 | The header settings button has no screen behind it. | Left out; its place in the header is now the mute button (5.1). |
 | 2 | How are 9 and 12 beat tiles laid out? | Two rows of shorter tiles, as in 5.5. |
 | 3 | Minimum iOS version. | iOS 18. |
 | 4 | Should it keep playing with the screen locked or the app in the background? | Not in v1; playback stops (6.5). Planned for later (section 12). |
@@ -275,6 +281,5 @@ Settled since:
 
 Stored for further development. None of these are part of v1.
 
-- **Mute button.** A quick button that silences the click while the metronome keeps running, so the visual effects and haptics continue.
-- **Keep screen awake setting.** A setting that lets the user choose whether the app keeps the screen awake. In v1 the screen always stays awake while playing (6.4). This brings back the settings screen and the header settings button.
+- **Keep screen awake setting.** A setting that lets the user choose whether the app keeps the screen awake. In v1 the screen always stays awake while playing (6.4). This needs a settings screen and a way to open it; the header's button slot is now taken by the mute button.
 - **Play while locked.** Playback continues when the user locks the screen. In v1 it stops (6.5).

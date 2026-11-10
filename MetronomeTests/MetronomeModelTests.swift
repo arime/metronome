@@ -16,7 +16,10 @@ private final class FakeClickEngine: ClickEngine {
         startCount += 1
     }
 
+    var muted = false
+
     func update(_ settings: MetronomeSettings) { lastUpdate = settings }
+    func setMuted(_ muted: Bool) { self.muted = muted }
     func stop() { stopCount += 1 }
 }
 
@@ -184,6 +187,45 @@ struct MetronomeModelTests {
         model.tapTempo(at: 1.5)
         #expect(model.settings.bpm == 80)
         #expect(haptics.selectionCount == 3)
+    }
+
+    @Test func startsWithSoundOn() {
+        let model = makeModel()
+        #expect(model.isMuted == false)
+        #expect(engine.muted == false)
+    }
+
+    @Test func muteSilencesTheEngineAndTogglesBack() {
+        let model = makeModel()
+        model.toggleMute()
+        #expect(model.isMuted)
+        #expect(engine.muted)
+        #expect(haptics.selectionCount == 1)
+        model.toggleMute()
+        #expect(model.isMuted == false)
+        #expect(engine.muted == false)
+    }
+
+    @Test func mutingWhilePlayingKeepsTheBeatGoing() {
+        let model = makeModel()
+        model.togglePlayback()
+        model.toggleMute()
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+        engine.onBeat?(beat(2, accented: true))
+        #expect(model.currentBeat == 2)
+        #expect(haptics.beats == [true])
+    }
+
+    @Test func muteSetBeforeStartStaysOnAcrossStartAndStop() {
+        let model = makeModel()
+        model.toggleMute()
+        model.togglePlayback()
+        #expect(model.isPlaying)
+        #expect(engine.muted)
+        model.togglePlayback()
+        #expect(model.isMuted)
+        #expect(engine.muted)
     }
 
     @Test func leavingTheForegroundStopsPlayback() {

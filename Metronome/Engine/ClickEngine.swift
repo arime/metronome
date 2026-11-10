@@ -11,6 +11,9 @@ protocol ClickEngine: AnyObject {
     func start(with settings: MetronomeSettings) throws
     /// Applies from the next beat that is not scheduled yet.
     func update(_ settings: MetronomeSettings)
+    /// Silences or restores the click at once, without stopping. Beats keep being
+    /// reported through `onBeat`, and the setting stays across stop and start.
+    func setMuted(_ muted: Bool)
     /// Silences at once and cancels scheduled clicks and pending `onBeat` calls.
     func stop()
 }

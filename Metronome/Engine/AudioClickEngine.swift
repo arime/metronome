@@ -103,6 +103,11 @@ final class AudioClickEngine: ClickEngine {
         self.settings = settings
     }
 
+    func setMuted(_ muted: Bool) {
+        // The player's own volume, so clicks that are already scheduled go quiet too.
+        player.volume = muted ? 0 : 1
+    }
+
     func stop() {
         guard clock != nil || isStarting else { return }
         tearDown()

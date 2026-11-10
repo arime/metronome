@@ -17,6 +17,8 @@ final class MetronomeModel {
     /// The beat that is sounding; nil when stopped.
     private(set) var currentBeat: Int?
     private(set) var lastBeat: BeatEvent?
+    /// True while the click is silenced. Not saved: the app always launches with sound on.
+    private(set) var isMuted = false
 
     var tempoName: String { Tempo.name(for: settings.bpm) }
 
@@ -77,6 +79,14 @@ final class MetronomeModel {
         currentBeat = beat.beat
         lastBeat = BeatEvent(id: beatCount, beat: beat.beat, isAccented: beat.isAccented)
         haptics.beat(accented: beat.isAccented)
+    }
+
+    /// Silences the click or brings it back. The metronome keeps running either way,
+    /// so the beat visuals and haptics carry on.
+    func toggleMute() {
+        isMuted.toggle()
+        engine.setMuted(isMuted)
+        haptics.selection()
     }
 
     // MARK: - Tempo
