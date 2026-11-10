@@ -5,7 +5,6 @@ struct TempoDial: View {
     @Environment(MetronomeModel.self) private var model
     let diameter: CGFloat
 
-    @State private var numberScale = 1.0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Everything is drawn for a 300 pt dial and scaled.
@@ -29,12 +28,6 @@ struct TempoDial: View {
             case .decrement: model.nudgeBPM(by: -1)
             @unknown default: break
             }
-        }
-        .onChange(of: model.lastBeat) { _, beat in
-            guard beat != nil, !reduceMotion else { return }
-            // The number jumps up on the beat and settles within half the beat interval.
-            numberScale = 1.04
-            withAnimation(.easeOut(duration: BeatPulse.decay(bpm: model.settings.bpm))) { numberScale = 1 }
         }
     }
 
@@ -65,7 +58,17 @@ struct TempoDial: View {
                 // scale factor clipped the right edge of the last digit.
                 .fixedSize()
                 .frame(height: 112 * scale)
-                .scaleEffect(numberScale)
+                // The number jumps up on the beat and settles within half the beat
+                // interval. With Reduce Motion on, the trigger never changes.
+                .keyframeAnimator(
+                    initialValue: 1.0,
+                    trigger: reduceMotion ? nil : model.lastBeat?.id
+                ) { view, scale in
+                    view.scaleEffect(scale)
+                } keyframes: { _ in
+                    MoveKeyframe(1.04)
+                    CubicKeyframe(1.0, duration: BeatPulse.decay(bpm: model.settings.bpm))
+                }
             HStack(spacing: 8) {
                 SectionLabel(text: "BPM", color: Theme.amber)
                 // On a small dial the tempo name does not fit inside the ring.
