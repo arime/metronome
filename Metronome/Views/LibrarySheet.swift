@@ -243,9 +243,8 @@ private struct PresetListView: View {
             Text(setlist == nil ? "No presets yet" : "No presets in this setlist")
                 .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(Theme.muted)
-            if setlist == nil {
-                PillButton(text: "New preset", symbol: "plus") { isNewPresetShown = true }
-            } else {
+            // The empty library needs no second button: New preset is in the header.
+            if setlist != nil {
                 PillButton(text: "Add presets", symbol: "plus", action: addPresets)
             }
         }

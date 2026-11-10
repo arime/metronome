@@ -297,7 +297,7 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 - **Swiping a row left** reveals **Rename** and **Delete**.
   - Rename asks for the new name in a small dialog.
   - Delete asks for confirmation and says how many setlists the preset is in.
-- Empty library: the text `No presets yet` and the New preset button.
+- Empty library: only the text `No presets yet`, centred. New presets are made with the button in the header.
 
 ### 8.3 A setlist
 
