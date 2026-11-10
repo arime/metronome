@@ -284,7 +284,9 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 ### 8.1 Header
 
 - **Title = filter selector.** It names what is shown, `All presets` or the setlist's name, with a ˅. Tapping it opens the filter list (9.1).
-- **New preset** button at the right: opens the New preset sheet (section 10).
+- One button at the right, depending on what is shown:
+  - All presets: **New preset**, which opens the New preset sheet (section 10).
+  - A setlist: **Edit**, with a pencil, which opens editing (9.2). Adding presets to the setlist happens there; only an empty setlist has a shortcut for it (8.3).
 
 ### 8.2 All presets
 
@@ -297,15 +299,15 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 - **Swiping a row left** reveals **Rename** and **Delete**.
   - Rename asks for the new name in a small dialog.
   - Delete asks for confirmation and says how many setlists the preset is in.
-- Empty library: only the text `No presets yet`, centred. New presets are made with the button in the header.
+- Empty library: only the text `No presets in the library yet`, centred. New presets are made with the button in the header.
 
 ### 8.3 A setlist
 
 - Only the setlist's presets, in the setlist's order, each with its position number at the left.
-- Above the list: the count, such as `8 PRESETS`, and an **Edit** link (9.2).
+- Above the list: the count, such as `8 PRESETS`.
 - Rows, tapping and the play button work as in 8.2. A preset loaded from this view has this setlist as its loaded-from setlist, so the header shows the position and Previous / Next.
 - Rows cannot be swiped here; removing and reordering happen in Edit.
-- Empty setlist: the text `No presets in this setlist` and an **Add presets** button.
+- Empty setlist: the text `No presets in this setlist`, centred, with an outlined **Add preset** button under it. The button opens 9.3 directly, as a shortcut for filling a new setlist without going through Edit.
 
 ## 9. Setlists
 
@@ -322,20 +324,20 @@ Opened from the library sheet's title. A list titled `Show`:
 
 ### 9.2 Editing a setlist
 
-Opened with Edit in a setlist view.
+Opened with Edit in a setlist view's header.
 
 - **Name field** at the top. An empty name is not accepted; the previous name is kept.
 - **Done** closes editing. Every change below takes effect at once; there is no cancel.
 - Each row has a red remove button at the left and a drag handle at the right.
   - Remove takes the preset out of this setlist immediately, without confirmation. The preset stays in the library.
   - Dragging the handle moves the row; the new order is the setlist's order.
-- **Add presets** row after the last preset: opens 9.3.
+- **Add preset** row after the last preset: opens 9.3.
 - **Duplicate setlist:** creates a setlist named `<name> copy` with the same presets in the same order, selects it and stays in Edit on the copy. The presets are shared, not copied.
 - **Delete setlist:** asks for confirmation, deletes the setlist and shows All presets. The presets stay in the library.
 
 ### 9.3 Adding presets to a setlist
 
-A list titled `Add to <setlist>`, with Done.
+Opened with Add preset, in Edit or in an empty setlist. A list titled `Add to <setlist>`, with Done, which goes back to where the list was opened from.
 
 - First row: **New preset**, which opens the New preset sheet (section 10) with "Add to <setlist>" switched on.
 - Then every preset in the library, A–Z, with a tick when it is in the setlist.
@@ -349,7 +351,7 @@ A short sheet with:
 - **Tempo:** − and + around the value. One tap changes it by 1 BPM; holding repeats, as on the metronome screen.
 - **Time signature row:** opens the same picker as the metronome screen. Changing it resets the accents to beat 1.
 - **Accent tiles:** one per beat, tap to toggle.
-- **Add to <setlist>** switch: shown only when the sheet was opened from a setlist view or from 9.3, and on by default there.
+- **Add to <setlist>** switch: shown only when the sheet was opened from 9.3, and on by default there.
 - **Save preset.**
 
 All three settings start from the metronome's current values, so the quickest way to make a preset is to set the metronome first.

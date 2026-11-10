@@ -151,7 +151,7 @@ struct SetlistEditor: View {
                     model.reorderSetlist(setlistID, to: order)
                 }
                 Group {
-                    ActionRow(text: "Add presets", symbol: "plus", action: addPresets)
+                    ActionRow(text: "Add preset", symbol: "plus", action: addPresets)
                     ActionRow(text: "Duplicate setlist", symbol: "plus.square.on.square") {
                         model.duplicateSetlist(setlistID)
                     }

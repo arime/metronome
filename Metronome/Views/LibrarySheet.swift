@@ -13,6 +13,8 @@ struct LibrarySheet: View {
     @State private var mode = Mode.presets
     /// True right after "New setlist", so the name field is ready for typing.
     @State private var isNewSetlist = false
+    /// Where Done on the add screen goes back to: the screen it was opened from.
+    @State private var addingReturnsTo = Mode.editing
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,7 +23,7 @@ struct LibrarySheet: View {
                 PresetListView(
                     showFilters: { mode = .filters },
                     edit: { isNewSetlist = false; mode = .editing },
-                    addPresets: { mode = .adding },
+                    addPresets: { addingReturnsTo = .presets; mode = .adding },
                     close: { dismiss() }
                 )
             case .filters:
@@ -33,7 +35,7 @@ struct LibrarySheet: View {
                 if let id = model.selectedSetlistID {
                     SetlistEditor(
                         setlistID: id, focusName: isNewSetlist,
-                        addPresets: { isNewSetlist = false; mode = .adding },
+                        addPresets: { isNewSetlist = false; addingReturnsTo = .editing; mode = .adding },
                         done: { mode = .presets }
                     )
                     // A duplicate takes the editor's place, with its own name.
@@ -41,7 +43,7 @@ struct LibrarySheet: View {
                 }
             case .adding:
                 if let id = model.selectedSetlistID {
-                    AddPresetsView(setlistID: id) { mode = .editing }
+                    AddPresetsView(setlistID: id) { mode = addingReturnsTo }
                 }
             }
         }
@@ -158,19 +160,19 @@ private struct PresetListView: View {
                 .buttonStyle(.plain)
                 .accessibilityHint("Chooses all presets or a setlist")
             } trailing: {
-                PillButton(text: "New preset", symbol: "plus") { isNewPresetShown = true }
+                // The library's one button creates a preset. A setlist's opens Edit,
+                // where presets are added, removed and reordered.
+                if setlist == nil {
+                    PillButton(text: "New preset", symbol: "plus") { isNewPresetShown = true }
+                } else {
+                    PillButton(text: "Edit", symbol: "pencil", action: edit)
+                }
             }
             if setlist != nil {
-                HStack {
-                    SectionLabel(text: presets.count == 1 ? "1 PRESET" : "\(presets.count) PRESETS")
-                    Spacer()
-                    Button("Edit", action: edit)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Theme.amber)
-                        .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 6)
+                SectionLabel(text: presets.count == 1 ? "1 PRESET" : "\(presets.count) PRESETS")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
             }
             if presets.isEmpty {
                 emptyState
@@ -240,12 +242,13 @@ private struct PresetListView: View {
 
     private var emptyState: some View {
         VStack(spacing: 16) {
-            Text(setlist == nil ? "No presets yet" : "No presets in this setlist")
+            Text(setlist == nil ? "No presets in the library yet" : "No presets in this setlist")
                 .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(Theme.muted)
             // The empty library needs no second button: New preset is in the header.
+            // An empty setlist gets a shortcut for filling it, past Edit.
             if setlist != nil {
-                PillButton(text: "Add presets", symbol: "plus", action: addPresets)
+                PillButton(text: "Add preset", symbol: "plus", look: .outlined, action: addPresets)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
