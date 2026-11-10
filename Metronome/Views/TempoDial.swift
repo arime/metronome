@@ -38,17 +38,22 @@ struct TempoDial: View {
         }
     }
 
+    /// Three-digit tempos are drawn a little smaller so they stay clear of the knob.
+    private var numberSize: CGFloat {
+        112 * scale * (model.settings.bpm >= 100 ? 0.88 : 1)
+    }
+
     private var readout: some View {
         VStack(spacing: 6 * scale) {
             Text("\(model.settings.bpm)")
-                .font(.system(size: 112 * scale, weight: .heavy))
-                .tracking(-5.6 * scale)
+                .font(.system(size: numberSize, weight: .heavy))
+                .tracking(-0.05 * numberSize)
                 .monospacedDigit()
                 .foregroundStyle(Theme.dialWhite)
-                // Wide numbers such as 200 shrink a little so they stay clear of the knob.
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(width: 208 * scale, height: 112 * scale)
+                // Laid out at its natural width. Squeezing it into a fixed width with a
+                // scale factor clipped the right edge of the last digit.
+                .fixedSize()
+                .frame(height: 112 * scale)
                 .scaleEffect(numberScale)
             HStack(spacing: 8) {
                 SectionLabel(text: "BPM", color: Theme.amber)
