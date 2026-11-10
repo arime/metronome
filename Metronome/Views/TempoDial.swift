@@ -43,11 +43,22 @@ struct TempoDial: View {
         112 * scale * (model.settings.bpm >= 100 ? 0.88 : 1)
     }
 
+    /// The digits are set tighter than normal, but only between digits. Tightening after
+    /// the last digit as well (as the tracking modifier does) makes the text narrower than
+    /// its ink, and the right edge of the last digit gets clipped.
+    private var numberText: AttributedString {
+        var text = AttributedString("\(model.settings.bpm)")
+        text.kern = -0.05 * numberSize
+        if let last = text.characters.indices.last {
+            text[last...].kern = 0
+        }
+        return text
+    }
+
     private var readout: some View {
         VStack(spacing: 6 * scale) {
-            Text("\(model.settings.bpm)")
+            Text(numberText)
                 .font(.system(size: numberSize, weight: .heavy))
-                .tracking(-0.05 * numberSize)
                 .monospacedDigit()
                 .foregroundStyle(Theme.dialWhite)
                 // Laid out at its natural width. Squeezing it into a fixed width with a
