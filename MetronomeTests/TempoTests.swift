@@ -48,6 +48,21 @@ struct DialGeometryTests {
         #expect(DialGeometry.arcFraction(dx: 0.1, dy: 1) == 1)
     }
 
+    @Test func tempoNameIsHiddenOnASmallDial() {
+        #expect(DialGeometry.showsTempoName(dialDiameter: 300))
+        #expect(DialGeometry.showsTempoName(dialDiameter: 180))
+        #expect(!DialGeometry.showsTempoName(dialDiameter: 179))
+        #expect(!DialGeometry.showsTempoName(dialDiameter: 108))
+    }
+
+    @Test func knobScalesWithTheDialButStaysGrabbable() {
+        #expect(DialGeometry.knobDiameter(dialDiameter: 300) == 28)
+        #expect(isClose(DialGeometry.knobDiameter(dialDiameter: 240), 22.4))
+        #expect(isClose(DialGeometry.knobDiameter(dialDiameter: 150), 16.8))
+        #expect(isClose(DialGeometry.knobDiameter(dialDiameter: 108), 16.8))
+        #expect(DialGeometry.knobDiameter(dialDiameter: 400) == 28)
+    }
+
     @Test func onlyTheRingBandStartsADrag() {
         #expect(DialGeometry.startsDrag(dx: 0, dy: -104, dialDiameter: 300) == false)
         #expect(DialGeometry.startsDrag(dx: 0, dy: -105, dialDiameter: 300) == true)

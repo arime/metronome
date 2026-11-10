@@ -53,6 +53,19 @@ enum DialGeometry {
         return relative < gapMiddle ? 1 : 0
     }
 
+    /// Below this dial size the tempo name no longer fits inside the ring.
+    static let tempoNameMinimumDiameter = 180.0
+
+    static func showsTempoName(dialDiameter: Double) -> Bool {
+        dialDiameter >= tempoNameMinimumDiameter
+    }
+
+    /// The knob is 28 pt on the full 300 pt dial and scales down with it,
+    /// but never below 0.6 of that, so it stays easy to see and grab.
+    static func knobDiameter(dialDiameter: Double) -> Double {
+        28 * min(1, max(0.6, dialDiameter / 300))
+    }
+
     /// True when the touch starts on the ring: between 0.35 and 0.55 dial diameters
     /// from the centre (105 pt and 165 pt on the 300 pt dial).
     static func startsDrag(dx: Double, dy: Double, dialDiameter: Double) -> Bool {
