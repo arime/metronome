@@ -2,7 +2,7 @@
 
 This is the single specification for the app. It describes how version 1.0 is meant to work and is kept up to date as decisions change. Parts that are specified here but not built yet are listed in section 15.
 
-Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Presets & setlists (draft)* holds the library and setlist boards.
+Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Presets & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the header with the settings button and the settings sheet; its other boards are alternatives that were not chosen.
 
 ## 1. Summary
 
@@ -20,13 +20,13 @@ Included:
 - Start / Stop with click sound, visual beat effects and haptics.
 - A mute button that silences the click while the metronome keeps running.
 - A preset library and setlists.
+- A settings sheet with a choice of seven click sounds.
 - Everything remembered between launches.
 
 Not included:
 
-- Bar counter, subdivisions, sound selection, a volume control inside the app (the phone's own volume controls set the click volume; see 7.7).
+- Bar counter, subdivisions, a volume control inside the app (the phone's own volume controls set the click volume; see 7.7).
 - Playback with the screen locked or the app in the background.
-- A settings screen.
 - Search, folders or tags, notes on presets, per-preset sounds, sync between devices, import, export and sharing.
 - iPad layout, landscape, light mode, Apple Watch, widgets.
 
@@ -67,6 +67,7 @@ Kept between launches:
 | Loaded preset | the preset in the metronome, if any | none |
 | Loaded-from setlist | the setlist the preset was loaded from, if any | none |
 | Selected filter | what the library sheet shows: All presets or a setlist | All presets |
+| Click sound | one of the seven sounds in 11.1 | Digital |
 
 Not kept:
 
@@ -106,10 +107,14 @@ While playing, an amber dot sits before line 1.
 
 **Previous and Next**, two 40 pt round buttons, shown only when the preset was loaded from a setlist (see 7.6).
 
-**Mute button**, 40 pt round, at the far right:
+**Mute button**, 40 pt round, after Previous and Next:
 
 - Sound on: a dial-white speaker with sound waves on a surface fill.
 - Muted: an amber crossed-out speaker on the amber tint fill with a 1.5 pt amber outline.
+
+**Settings button**, at the far right: a 20 pt dial-white gear with no fill, in a 32 pt wide slot aligned to the right margin. It is lighter than the round buttons because it is used far less often. Its touch area is 44 × 44 pt. It opens the settings sheet (6.10).
+
+With all four buttons shown, the title gets about 150 pt.
 
 ### 6.2 Tempo dial
 
@@ -209,6 +214,20 @@ When accent tiles are narrower than 44 pt (seven beats in a row), each tile's to
 | amber tint | `#1E1A12` | idle accented tile fill, muted button fill |
 | red | `#E5484D` | remove and delete actions only |
 
+### 6.10 Settings sheet
+
+A bottom sheet over a dimmed screen, sized to its content, styled like the New preset sheet: a grabber, the title `Settings` (26 pt heavy, dial white) and `Done` in amber at the right.
+
+**Click sound** is one surface-raised card with 16 pt corners:
+
+- A header line: `CLICK SOUND` (13 pt, semibold, capitals, wide letter spacing, muted) and, at the right, `Tap to hear it` (13 pt, muted dim).
+- One 44 pt row per sound, in this order: Digital, Soft beep, Woodblock, Mallet, Glass, Tick, Classic. Each row shows only the name (16 pt, dial white). Thin line-coloured dividers separate the rows and start at the text edge.
+- The selected sound's name is amber and semibold, with an amber tick at the right. The tick has a fixed slot, so names line up in every row.
+
+Below the card: `Use your phone's volume buttons to set how loud the click is.` (13 pt, muted).
+
+New settings are added as further rows or cards in the same sheet.
+
 ## 7. Metronome behaviour
 
 ### 7.1 Tempo
@@ -276,6 +295,14 @@ All three tempo controls work when stopped and when playing.
 - Playback stops if the audio output goes away, for example when headphones are unplugged. The screen never shows Playing while nothing can sound.
 - The click plays even when the ring/silent switch is on silent, as a metronome is the app's whole purpose. Other audio is paused while the metronome plays.
 - The click volume is set with the phone's regular volume controls: the side buttons and the Control Center slider. The click is ordinary media audio and the app never overrides the system volume. If "Change with Buttons" is on in the phone's sound settings, the side buttons adjust the ringer while nothing is playing; that is system behaviour.
+
+### 7.8 Settings and click sound
+
+- The settings button opens the settings sheet, when stopped and when playing. `Done`, swiping the sheet down or tapping outside it closes it.
+- Tapping a sound selects it at once, with a selection haptic. There is no confirm step; closing the sheet keeps the choice.
+- **When stopped**, tapping a sound, including the one already selected, also plays a preview: an accented click and then a normal click, 0.5 s apart. The preview plays even when muted, because the user asked to hear it. A new tap during a preview cuts it short and starts the new one.
+- **When playing**, there is no preview; the metronome itself is the preview. The new sound is used from the next beat that is scheduled. A beat that is already scheduled keeps the old sound, as with accent toggles (7.3).
+- The choice applies to the whole app and is remembered between launches. Presets do not store a sound.
 
 ## 8. Library sheet
 
@@ -360,13 +387,33 @@ Changing values in the sheet does not affect the metronome, playing or stopped. 
 
 ## 11. Audio and timing
 
-- Two short generated click sounds: a 30 ms sine burst with a fast decay, at 1760 Hz and full level for accented beats, and at 1175 Hz and 0.6 of that level for the others.
+- Seven click sounds, all generated in code when playback starts, at the output's own sample rate. Each sound has an accented and a normal variant (table below).
 - Clicks are scheduled on the audio clock, a little ahead of time. They are never driven by a UI timer.
 - A beat is never scheduled in the past. After a large tempo jump the next beat sounds straight away and the following ones space out from it, so beats never bunch up.
 - Visual effects and haptics are triggered from the same schedule, so the three stay together.
 - Starting playback must not block the screen: the phone's audio is taken over in the background and the first click follows as soon as that is done.
 - If starting fails, the app returns to the stopped state and gives the phone's audio back to other apps.
 - Targets: each click within 2 ms of its ideal time, and no accumulated drift over 10 minutes at any tempo.
+
+### 11.1 Click sounds
+
+"Decay" is the time constant of an exponential fade. Levels in brackets are relative to the sound's first component. The noise in Woodblock, Tick and Classic comes from a fixed seed, so a sound is identical every time.
+
+| Sound | How it is made | Accented | Normal |
+|---|---|---|---|
+| Digital | A sine burst that starts at its peak, 5 ms decay, 30 ms long. | 1760 Hz | 1175 Hz |
+| Soft beep | A sine with a 1 ms fade-in. | 1568 Hz, 22 ms decay, 90 ms long | 1047 Hz, 18 ms decay, 80 ms long |
+| Woodblock | Sines at f (14 ms decay), 2.65 f (0.45, 6 ms) and 4.1 f (0.15, 3 ms), plus a noise strike (0.8 ms decay) band-passed at 3 f (0.6). 70 ms long. | f = 1180 Hz | f = 880 Hz |
+| Mallet | Sines at f (45 ms decay), 4 f (0.30, 12 ms) and 9.9 f (0.06, 4 ms), 0.7 ms fade-in. 140 ms long. | f = 1047 Hz | f = 784 Hz |
+| Glass | An FM bell: carrier f, modulator 3.5 f, modulation index 2.2 with 12 ms decay, amplitude decay 38 ms, 0.6 ms fade-in. 140 ms long. | f = 1760 Hz | f = 1319 Hz |
+| Tick | Noise, high-passed at 6 kHz, plus the same noise through a band-pass (Q 4, 0.8). 60 ms long. | 8 ms decay, band-pass at 5.2 kHz | 5 ms decay, band-pass at 7.5 kHz |
+| Classic | A noise burst (2.5 ms decay, 50 ms long) through band-passes at 2.4 kHz (Q 6) and 950 Hz (Q 8, 0.7), plus a high-passed layer at 4 kHz (0.25). | Both band-passes 1.2 × higher | As described |
+
+Rules for every sound:
+
+- **Loudness.** The normal variants of all seven sounds are equally loud, measured as RMS over their first 20 ms. Each accented variant is 4 dB louder than its normal variant. The loudest peak of any sound stays below full scale.
+- **Attack.** The click must be heard at its scheduled time: every sound reaches half of its peak within 1 ms of its start.
+- **Length.** No sound is longer than 150 ms, so each one ends well before the next beat at 250 BPM (240 ms). The last 3 ms fade to silence.
 
 ## 12. Beat effects
 
@@ -390,6 +437,8 @@ Other haptics: a selection tick for each 1 BPM change from the ring or − / +, 
   - The dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM.
   - Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action.
   - The mute button reads as "Click sound, on" or "Click sound, muted".
+  - The settings button reads as "Settings".
+  - A sound row reads as its name, with "selected" for the current one, and says that tapping plays a preview.
   - The header title reads the preset name and its second line, and says that it opens the library.
   - A preset row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its play button reads "Load and start".
   - In setlist editing, rows can be moved up and down with VoiceOver actions as well as by dragging.
@@ -431,14 +480,25 @@ Presets and setlists:
 - [ ] The filter list shows all setlists with counts and stays usable with 20 setlists. *(Counts and order are verified; it has not been tried with 20 setlists.)*
 - [x] Presets, setlists, the loaded preset, its position in the setlist and the selected filter survive quitting and reopening the app.
 
+Settings and click sounds:
+
+- [ ] The settings button opens the settings sheet when stopped and when playing; Done, swiping down and tapping outside close it. *(Not built.)*
+- [ ] Each of the seven sounds can be selected; the choice survives quitting and reopening the app, and a fresh install starts with Digital. *(Not built.)*
+- [ ] When stopped, tapping a sound plays an accented and a normal click; when playing, the new sound starts with the next scheduled beat. *(Not built.)*
+- [ ] Every sound meets the loudness, attack and length rules in 11.1. *(Not built. These can be unit tested on the generated buffers.)*
+- [ ] All seven sounds are equally loud by ear, and accented beats are clearly different from normal ones, on the phone's speaker and on headphones. *(Needs a listener and a real iPhone.)*
+
 ## 15. Not built yet
 
-Everything in this document is built. A part that is specified before it is built is listed here until it is.
+A part that is specified before it is built is listed here until it is.
+
+- The settings button in the header (6.1).
+- The settings sheet and the click sound choice (6.10, 7.8).
+- The six click sounds other than Digital, and the loudness rule for all seven (11.1). Today the app plays only the Digital sound, at the levels it had before the loudness rule.
 
 ## 16. Ideas for later
 
 Not part of version 1.0.
 
-- **Keep screen awake setting.** Let the user choose whether the app keeps the screen awake; today it always does while playing. This needs a settings screen and a way to open it.
+- **Keep screen awake setting.** Let the user choose whether the app keeps the screen awake; today it always does while playing. It would be a row in the settings sheet (6.10).
 - **Play while locked.** Playback continues when the user locks the screen.
-- **Designed click sounds** in place of the generated ones.
