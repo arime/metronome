@@ -197,7 +197,7 @@ All three tempo controls work when stopped and when playing.
 ## 7. Audio and timing
 
 - Two short click sounds: an accent click (higher pitch, louder) and a normal click.
-- The final click sounds are required for the first TestFlight release. They are not specified yet; they will be specified last, after the rest of this document is settled. Until then, development builds may use any short placeholder pair.
+- The first TestFlight release uses the generated clicks (decided 2026-11-10): a 30 ms sine burst with a fast decay, 1760 Hz at full level for accented beats and 1175 Hz at 0.6 for the others. Designed or recorded sounds can replace them in a later version.
 - Clicks are scheduled on the audio clock (for example `AVAudioEngine` with sample-time scheduling), a little ahead of time. They must not be driven by a UI timer.
 - Visual effects and haptics are triggered from the same schedule, so the three stay together.
 - Targets: each click within 2 ms of its ideal time, and no accumulated drift over 10 minutes at any tempo.
@@ -234,7 +234,7 @@ Status on 2026-11-10, after the first implementation. Ticked lines were checked 
 - [x] Changing the signature while playing stops playback and resets accents to beat 1. Reselecting the current signature, or dismissing the sheet, does neither.
 - [ ] Accents can be toggled when stopped and when playing; accented beats sound, look and feel different from normal beats. *(Toggling and the look are verified. Sound and haptics need a listener and a real iPhone.)*
 - [x] Start always begins on beat 1. Stop is immediate.
-- [ ] The final accent and normal click sounds are in place (no placeholders). *(Placeholders in use; final sounds not specified yet.)*
+- [x] The accent and normal click sounds are in place. *(The generated clicks, accepted for the first TestFlight release.)*
 - [ ] Click, visual and haptic stay together at 30, 120 and 250 BPM. *(Needs a real iPhone.)*
 - [ ] No audible drift against a reference metronome over 10 minutes. *(The timing maths is unit tested to the sample; the listening check needs a real iPhone.)*
 - [x] BPM, time signature and accents survive quitting and reopening the app.
@@ -256,14 +256,15 @@ Still open before the first TestFlight release:
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Click sounds (section 7). | To be specified last, after everything else. |
-| 2 | App name. | To be provided. The app shows as "Metronome" for now. |
+| 1 | App name. | To be provided. The app shows as "Metronome" for now. |
 
 Settled since:
 
 | Item | Decision |
 |---|---|
 | Bundle identifier | `com.metsahalme.metronome`, set on 2026-11-10. |
+| Click sounds | The generated clicks are used for the first TestFlight release (section 7), decided on 2026-11-10. |
+| App icon | "Downbeat", in use for now. |
 
 ## 12. Later versions
 
