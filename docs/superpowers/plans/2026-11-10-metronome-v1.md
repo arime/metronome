@@ -17,7 +17,7 @@
 - Tempo is an integer in 30…250. Default 120.
 - Time signatures: 2/4, 3/4, 4/4, 5/4, 6/8, 7/8, 9/8, 12/8. Beats per bar is the top number. One beat is one click.
 - Accents: any subset of beats, including empty. Default {1}.
-- Colours exactly as spec section 5.8. Amber `#FFB224` is the only accent colour.
+- Colours exactly as spec section 5.9. Amber `#FFB224` is the only accent colour.
 - The header settings button is not built.
 - Clicks are scheduled on the audio clock, never from a UI timer.
 - Click sounds in this plan are generated placeholders. Final sounds are a later, separate piece of work.
@@ -399,7 +399,7 @@ Every settings change is saved to the store and, while playing, passed to `engin
 
 **Interfaces:**
 - Consumes: `MetronomeModel`, `Tempo`, `DialGeometry`, `TimeSignature`.
-- Produces: `enum Theme` with the nine colours of spec 5.8 as `Color` constants named `ink, surface, surfaceRaised, line, dialWhite, muted, mutedDim, amber, amberTint`; `struct MetronomeScreen: View` taking the model from the environment.
+- Produces: `enum Theme` with the nine colours of spec 5.9 as `Color` constants named `ink, surface, surfaceRaised, line, dialWhite, muted, mutedDim, amber, amberTint`; `struct MetronomeScreen: View` taking the model from the environment.
 
 Layout values are in spec section 5; exact sizes, radii and spacing not listed there are read from the Paper boards with `get_computed_styles`, never from screenshots. Decisions the spec leaves to this plan:
 
