@@ -48,7 +48,10 @@ struct TempoDial: View {
                 .tracking(-5.6 * scale)
                 .monospacedDigit()
                 .foregroundStyle(Theme.dialWhite)
-                .frame(height: 112 * scale)
+                // Wide numbers such as 200 shrink a little so they stay clear of the knob.
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(width: 208 * scale, height: 112 * scale)
                 .scaleEffect(numberScale)
             HStack(spacing: 8) {
                 SectionLabel(text: "BPM", color: Theme.amber)

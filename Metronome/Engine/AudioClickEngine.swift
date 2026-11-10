@@ -15,6 +15,8 @@ final class AudioClickEngine: ClickEngine {
     private static let tickInterval = 0.025
     /// Delay before the first click, so it is never scheduled in the past.
     private static let startDelay = 0.050
+    /// A beat is never handed to the player closer to "now" than this.
+    private static let schedulingMargin = 0.005
 
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
@@ -79,10 +81,16 @@ final class AudioClickEngine: ClickEngine {
 
     private func scheduleDueBeats() {
         guard var clock else { return }
+        // The engine can die without telling us (for example a media services reset).
+        guard engine.isRunning else {
+            stoppedExternally()
+            return
+        }
         let now = currentSampleTime()
         let horizon = now + Int64(Self.lookahead * sampleRate)
         let beats = clock.beats(
             before: horizon,
+            notBefore: now + Int64(Self.schedulingMargin * sampleRate),
             bpm: settings.bpm,
             beatsPerBar: settings.timeSignature.beatsPerBar,
             accents: settings.accents
@@ -155,6 +163,17 @@ final class AudioClickEngine: ClickEngine {
 
         observers.append(center.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                // The engine stops itself when the change is real. If it is still
+                // running (the format merely settled after start), keep playing.
+                guard let self, !self.engine.isRunning else { return }
+                self.stoppedExternally()
+            }
+        })
+
+        observers.append(center.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification, object: session, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.stoppedExternally() }
         })
