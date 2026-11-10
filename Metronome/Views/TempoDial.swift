@@ -7,18 +7,28 @@ struct TempoDial: View {
 
     /// nil until a touch has been classified; then whether it started on the ring.
     @State private var dragIsOnRing: Bool?
+    @State private var numberScale = 1.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Everything is drawn for a 300 pt dial and scaled.
     private var scale: CGFloat { diameter / 300 }
 
     var body: some View {
         ZStack {
+            BeatGlow(lastBeat: model.lastBeat, bpm: model.settings.bpm, diameter: diameter)
+            RippleLayer(lastBeat: model.lastBeat, diameter: diameter)
             DialRing(fraction: Tempo.arcFraction(for: model.settings.bpm))
             readout
         }
         .frame(width: diameter, height: diameter)
         .contentShape(Circle().scale(1.1))
         .gesture(ringDrag)
+        .onChange(of: model.lastBeat) { _, beat in
+            guard beat != nil, !reduceMotion else { return }
+            // The number jumps up on the beat and settles within half the beat interval.
+            numberScale = 1.04
+            withAnimation(.easeOut(duration: BeatPulse.decay(bpm: model.settings.bpm))) { numberScale = 1 }
+        }
     }
 
     private var readout: some View {
@@ -29,6 +39,7 @@ struct TempoDial: View {
                 .monospacedDigit()
                 .foregroundStyle(Theme.dialWhite)
                 .frame(height: 112 * scale)
+                .scaleEffect(numberScale)
             HStack(spacing: 8) {
                 SectionLabel(text: "BPM", color: Theme.amber)
                 Circle().fill(Theme.muted).frame(width: 3, height: 3)

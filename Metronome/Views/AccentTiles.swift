@@ -85,6 +85,8 @@ private struct BeatTile: View {
             )
             .shadow(color: isSounding && isAccented ? Theme.amber.opacity(0.55) : .clear, radius: 18)
             .contentShape(shape)
+            // Lights at once on its beat; fades back to idle over 150 ms afterwards.
+            .animation(isSounding ? nil : .easeOut(duration: 0.15), value: isSounding)
         }
         .buttonStyle(.plain)
     }
