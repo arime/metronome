@@ -31,7 +31,7 @@ Not in v1:
 
 - iPhone only, portrait only, dark appearance only.
 - SwiftUI. Minimum iOS version: iOS 18.
-- Designed at 390 × 844 pt. Narrower and shorter phones scale the dial; see 5.7.
+- Designed at 390 × 844 pt. Smaller phones adapt the layout; see 5.8.
 - Typeface: the system font (SF Pro). The Paper boards use Inter and Inter Tight only as stand-ins because SF Pro is not available there. Weights and sizes in section 5 carry over.
 
 ## 4. State
@@ -119,9 +119,22 @@ A 68 pt pill pinned to the bottom with 24 pt side margins.
 - Stopped: amber fill, ink play icon and `Start`, soft amber glow.
 - Playing: surface fill, 1.5 pt amber outline, amber stop icon and `Stop`, no glow.
 
-On screens shorter than the design, the dial scales down (minimum 240 pt) before anything else changes.
+### 5.8 Small screens
 
-### 5.8 Colours
+The design is drawn for a 390 × 844 pt screen. On shorter screens the layout adapts in this order and stops as soon as everything fits:
+
+1. The dial shrinks, down to 240 pt.
+2. The gaps above and below the time signature row drop to 16 pt, and single-row accent tiles drop to 56 pt tall with a smaller number.
+3. The dial shrinks further, down to 200 pt.
+4. If it still does not fit (for example an iPhone SE with Display Zoom, 320 × 568 pt), everything above the Start / Stop button scrolls vertically. The button stays pinned at the bottom and is always visible.
+
+At least 16 pt is always kept between the accent tiles and the Start / Stop button. Phones without a home indicator get a 16 pt margin below the button.
+
+On screens narrower than 360 pt the side margins drop from 24 pt to 16 pt.
+
+When accent tiles are narrower than 44 pt (seven beats in a row), each tile's touch area extends into the gaps on either side so that it is at least 44 pt wide. The tile is drawn at its normal size.
+
+### 5.9 Colours
 
 | Token | Value | Use |
 |---|---|---|
