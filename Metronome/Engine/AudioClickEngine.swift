@@ -43,15 +43,15 @@ final class AudioClickEngine: ClickEngine {
         try session.setCategory(.playback, mode: .default)
         try session.setActive(true)
 
-        sampleRate = engine.outputNode.outputFormat(forBus: 0).sampleRate
-        guard sampleRate > 0,
-              let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)
-        else { throw AudioClickEngineError.noOutput }
-        accentBuffer = ClickSynth.click(accented: true, format: format)
-        normalBuffer = ClickSynth.click(accented: false, format: format)
-
-        engine.connect(player, to: engine.mainMixerNode, format: format)
-        try engine.start()
+        do {
+            try startEngine()
+        } catch {
+            // Activating the session paused other apps' audio. Starting failed,
+            // so give the audio back before reporting the failure.
+            engine.stop()
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            throw error
+        }
         player.play()
 
         self.settings = settings
@@ -66,6 +66,19 @@ final class AudioClickEngine: ClickEngine {
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
         scheduleDueBeats()
+    }
+
+    /// Builds the click buffers for the current output format and starts the engine.
+    private func startEngine() throws {
+        sampleRate = engine.outputNode.outputFormat(forBus: 0).sampleRate
+        guard sampleRate > 0,
+              let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)
+        else { throw AudioClickEngineError.noOutput }
+        accentBuffer = ClickSynth.click(accented: true, format: format)
+        normalBuffer = ClickSynth.click(accented: false, format: format)
+
+        engine.connect(player, to: engine.mainMixerNode, format: format)
+        try engine.start()
     }
 
     func update(_ settings: MetronomeSettings) {
