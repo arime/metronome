@@ -2,7 +2,7 @@
 
 This is the single specification for the app. It describes how version 1.0 is meant to work and is kept up to date as decisions change. Parts that are specified here but not built yet are listed in section 15.
 
-Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Presets & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the header with the settings button and the settings sheet; its other boards are alternatives that were not chosen.
+Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Presets & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its other boards are alternatives that were not chosen.
 
 ## 1. Summary
 
@@ -105,16 +105,14 @@ One screen with two states, Ready (stopped) and Playing. The layout is identical
 
 While playing, an amber dot sits before line 1.
 
-**Previous and Next**, two 40 pt round buttons, shown only when the preset was loaded from a setlist (see 7.6).
-
-**Mute button**, 40 pt round, after Previous and Next:
+**Mute button**, 40 pt round:
 
 - Sound on: a dial-white speaker with sound waves on a surface fill.
 - Muted: an amber crossed-out speaker on the amber tint fill with a 1.5 pt amber outline.
 
 **Settings button**, at the far right: a 20 pt dial-white gear with no fill, in a 32 pt wide slot aligned to the right margin. It is lighter than the round buttons because it is used far less often. Its touch area is 44 × 44 pt. It opens the settings sheet (6.10).
 
-With all four buttons shown, the title gets about 150 pt.
+The header has only these two buttons, so the title always gets about 240 pt. Previous and Next sit beside the Start / Stop button (6.7).
 
 ### 6.2 Tempo dial
 
@@ -177,6 +175,10 @@ A 68 pt pill pinned to the bottom with 24 pt side margins.
 
 - Stopped: amber fill, ink play icon and `Start`, soft amber glow.
 - Playing: surface fill, 1.5 pt amber outline, amber stop icon and `Stop`, no glow.
+
+**Previous and Next** are shown only when the preset was loaded from a setlist (see 7.6). They are 56 pt round buttons on a surface fill with a dial-white ‹ and › (20 pt), one on each side of the pill, 12 pt from it and centred on it. The pill takes the width that is left, about 206 pt. Putting them here keeps song changes under the thumb, next to Start.
+
+The footer changes only when the loaded preset's setlist changes, never between Ready and Playing, so nothing moves when Start is pressed.
 
 ### 6.8 Small screens
 
@@ -493,6 +495,7 @@ Settings and click sounds:
 A part that is specified before it is built is listed here until it is.
 
 - The settings button in the header (6.1).
+- Previous and Next beside the Start / Stop button instead of in the header (6.7).
 - The settings sheet and the click sound choice (6.10, 7.8).
 - The six click sounds other than Digital, and the loudness rule for all seven (11.1). Today the app plays only the Digital sound, at the levels it had before the loudness rule.
 
