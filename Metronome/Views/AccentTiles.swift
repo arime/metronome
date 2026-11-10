@@ -89,6 +89,9 @@ private struct BeatTile: View {
             .animation(isSounding ? nil : .easeOut(duration: 0.15), value: isSounding)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Beat \(beat)")
+        .accessibilityValue(isAccented ? "accented" : "not accented")
+        .accessibilityHint("Toggles the accent")
     }
 
     @ViewBuilder private var mark: some View {

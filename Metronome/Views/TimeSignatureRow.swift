@@ -4,6 +4,7 @@ import SwiftUI
 struct TimeSignatureRow: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isPickerShown = false
+    @ScaledMetric(relativeTo: .body) private var labelSize = 16.0
 
     var body: some View {
         Button {
@@ -11,8 +12,10 @@ struct TimeSignatureRow: View {
         } label: {
             HStack(spacing: 12) {
                 Text("Time signature")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: labelSize, weight: .medium))
                     .foregroundStyle(Theme.dialWhite)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 Spacer(minLength: 0)
                 Text(model.settings.timeSignature.rawValue)
                     .font(.system(size: 24, weight: .heavy))
@@ -29,6 +32,10 @@ struct TimeSignatureRow: View {
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Time signature")
+        .accessibilityValue(model.settings.timeSignature.rawValue)
+        .accessibilityAddTraits(.isButton)
         .sheet(isPresented: $isPickerShown) {
             TimeSignaturePicker(selected: model.settings.timeSignature) { signature in
                 model.selectTimeSignature(signature)
@@ -44,11 +51,15 @@ private struct TimeSignaturePicker: View {
     let choose: (TimeSignature) -> Void
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 4)
+    @ScaledMetric(relativeTo: .title2) private var titleSize = 26.0
+    @ScaledMetric(relativeTo: .caption) private var hintSize = 12.0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             Text("Time signature")
-                .font(.system(size: 26, weight: .heavy))
+                .font(.system(size: titleSize, weight: .heavy))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .tracking(-0.52)
                 .foregroundStyle(Theme.dialWhite)
             LazyVGrid(columns: columns, spacing: 10) {
@@ -60,6 +71,7 @@ private struct TimeSignaturePicker: View {
         .padding(.horizontal, Theme.sideMargin)
         .padding(.top, 36)
         .frame(maxHeight: .infinity, alignment: .top)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .presentationDetents([.height(300)])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
@@ -76,7 +88,7 @@ private struct TimeSignaturePicker: View {
                     .font(.system(size: 26, weight: isSelected ? .heavy : .bold))
                     .foregroundStyle(isSelected ? Theme.ink : Theme.dialWhite)
                 Text(signature.hint)
-                    .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: hintSize, weight: isSelected ? .semibold : .regular))
                     .foregroundStyle(isSelected ? Theme.amberShade : Theme.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)

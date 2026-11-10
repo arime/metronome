@@ -34,6 +34,8 @@ struct MetronomeScreen: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.ink.ignoresSafeArea())
+        // Labels follow Dynamic Type up to the largest size that still fits the layout.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
     private var header: some View {
