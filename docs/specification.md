@@ -2,7 +2,9 @@
 
 Status: design locked 2026-11-10. This is the first version to be implemented and released through TestFlight.
 
-Design source: Paper file "Snappy Metronome", page *v0.1 — locked*, boards *v0.1 · Metronome — Ready*, *v0.1 · Metronome — Playing*, *v0.1 · Metronome — Time signature picker* and *v0.1 · Motion — Beat cycle*.
+Design source: Paper file "Snappy Metronome", page *v1.0*, boards *v1.0 · Metronome — Ready*, *v1.0 · Metronome — Playing*, *v1.0 · Metronome — Time signature picker*, *v1.0 · Motion — Beat cycle* and *v1.0 · App icon — Downbeat (1024, chosen)*. The page was first locked as v0.1 and renamed v1.0 on 2026-11-10; the same page holds the icon alternatives that were not chosen.
+
+App icon: "Downbeat", one large amber dot followed by three small dial-white dots on ink. It is in the app as a single 1024 × 1024 image, in use for now.
 
 Points the design did not settle were decided on 2026-11-10 and are recorded in section 11. Ideas for later versions are in section 12.
 
@@ -211,7 +213,7 @@ Each beat fires all of the following at the moment of its click.
 | Tile | The beat's tile switches to its sounding state at once. The previous tile fades back to idle over 150 ms. | Same. |
 | Haptic | Light impact, intensity 0.5. | Rigid impact, intensity 1.0. |
 
-The v0.1 design also drew rings rippling out from the dial on every beat. That effect was removed on 2026-11-10 after trying the app on a phone: it was too intrusive.
+The design's first version (v0.1) also drew rings rippling out from the dial on every beat. That effect was removed on 2026-11-10 after trying the app on a phone: it was too intrusive.
 
 Other haptics: a selection tick for each 1 BPM change from the ring or − / +, for each tap-tempo tap, and for each accent toggle. A medium impact on Start and Stop.
 
