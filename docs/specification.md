@@ -256,12 +256,13 @@ Still open before the first TestFlight release:
 
 | # | Item | Status |
 |---|---|---|
-| 1 | App name. | To be provided. The app shows as "Metronome" for now. |
+| 1 | App Store Connect record and the first upload. | Not done yet. |
 
 Settled since:
 
 | Item | Decision |
 |---|---|
+| App name | "Snappy Metronome" on the App Store, decided on 2026-11-10. Under the icon on the home screen the app shows as "Metronome", because the full name is too long to fit there. |
 | Bundle identifier | `com.metsahalme.metronome`, set on 2026-11-10. |
 | Click sounds | The generated clicks are used for the first TestFlight release (section 7), decided on 2026-11-10. |
 | App icon | "Downbeat", in use for now. |
