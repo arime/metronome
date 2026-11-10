@@ -26,7 +26,7 @@ In v1:
 
 Not in v1:
 
-- Bar counter, subdivisions, sound selection, volume control, presets, set lists.
+- Bar counter, subdivisions, sound selection, a volume control inside the app (the phone's own volume controls set the click volume; see 6.5), presets, set lists.
 - Playback with the screen locked or the app in the background (see 6.5 and section 12).
 - iPad layout, landscape, light mode, Apple Watch, widgets.
 - A settings screen, and the header settings button that would open it (see 5.1).
@@ -195,6 +195,7 @@ All three tempo controls work when stopped and when playing.
 
 - Playback stops when the app leaves the foreground, when the screen is locked, and on audio interruptions such as a phone call. It does not resume by itself.
 - The click plays even when the ring/silent switch is on silent, as a metronome is the app's whole purpose. It mixes with nothing: other audio is paused while the metronome plays.
+- The click volume is set with the phone's regular volume controls: the side buttons and the Control Center slider. The click is ordinary media audio and the app never overrides the system volume. (Requirement added 2026-11-10. If "Change with Buttons" is on in the phone's sound settings, the side buttons adjust the ringer while nothing is playing; that is system behaviour.)
 
 ## 7. Audio and timing
 
@@ -241,6 +242,7 @@ Status on 2026-11-10, after the first implementation. Ticked lines were checked 
 - [ ] No audible drift against a reference metronome over 10 minutes. *(The timing maths is unit tested to the sample; the listening check needs a real iPhone.)*
 - [x] BPM, time signature and accents survive quitting and reopening the app.
 - [ ] Reduce Motion and VoiceOver behave as in section 9. *(Implemented; not yet tried with the settings switched on.)*
+- [ ] The phone's volume buttons and the Control Center slider change the click volume. *(Expected from how the audio is set up; needs a real iPhone to confirm.)*
 
 ## 11. Decisions
 
