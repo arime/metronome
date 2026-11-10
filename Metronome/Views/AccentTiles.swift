@@ -7,6 +7,8 @@ struct AccentTiles: View {
     let singleRowTileHeight: CGFloat
 
     nonisolated static let rowGap: CGFloat = 10
+    /// The gap between neighbouring tiles in a row.
+    nonisolated static let tileGap: CGFloat = 10
     nonisolated static let twoRowTileHeight: CGFloat = 44
 
     /// Up to seven beats fit in one row; 9 wraps 5 + 4 and 12 wraps 6 + 6.
@@ -25,7 +27,7 @@ struct AccentTiles: View {
         let isCompact = rows.count > 1
         VStack(spacing: Self.rowGap) {
             ForEach(rows, id: \.self) { row in
-                HStack(spacing: 10) {
+                HStack(spacing: Self.tileGap) {
                     ForEach(row, id: \.self) { beat in
                         BeatTile(
                             beat: beat,
@@ -84,7 +86,7 @@ private struct BeatTile: View {
                     .opacity(isAccented && !isSounding ? 1 : 0)
             )
             .shadow(color: isSounding && isAccented ? Theme.amber.opacity(0.55) : .clear, radius: 18)
-            .contentShape(shape)
+            .contentShape(TileTouchArea())
             // Lights at once on its beat; fades back to idle over 150 ms afterwards.
             .animation(isSounding ? nil : .easeOut(duration: 0.15), value: isSounding)
         }
@@ -107,5 +109,17 @@ private struct BeatTile: View {
             }
         }
         .frame(width: 18, height: 18)
+    }
+}
+
+/// A tile's touch area. Tiles narrower than the 44 pt minimum reach into the gaps on
+/// either side, by at most half a gap so that neighbouring areas never overlap.
+private struct TileTouchArea: Shape {
+    static let minimumWidth: CGFloat = 44
+
+    func path(in rect: CGRect) -> Path {
+        let missing = max(0, Self.minimumWidth - rect.width)
+        let reach = min(AccentTiles.tileGap / 2, missing / 2)
+        return Path(rect.insetBy(dx: -reach, dy: 0))
     }
 }
