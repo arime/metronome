@@ -34,9 +34,10 @@ struct MetronomeApp: App {
                     if phase == .background { model.appDidLeaveForeground() }
                     if phase == .active { model.appDidBecomeActive() }
                 }
-                .onChange(of: model.isPlaying) { _, isPlaying in
-                    // Keep the screen awake while the metronome runs.
-                    UIApplication.shared.isIdleTimerDisabled = isPlaying
+                .onChange(of: model.screenStaysAwake, initial: true) { _, staysAwake in
+                    // Keep the screen awake while the metronome runs, or always with the setting on.
+                    // iOS applies this only while the app is in the foreground.
+                    UIApplication.shared.isIdleTimerDisabled = staysAwake
                 }
         }
     }

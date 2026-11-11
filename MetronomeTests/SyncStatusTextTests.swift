@@ -18,7 +18,7 @@ import Testing
         let result = text(nil)
         #expect(result.row == nil)
         #expect(result.footer == SyncStatusText.generalFooter)
-        #expect(result.footer == "Keeps your presets and setlists the same on every device signed in to your iCloud account. Click sound and haptics stay separate on each device.")
+        #expect(result.footer == "Keeps your presets and setlists the same on every device signed in to your iCloud account. Your settings stay separate on each device.")
     }
 
     @Test func syncingIsMutedWithAMutedDimDot() {

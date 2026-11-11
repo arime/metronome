@@ -46,4 +46,16 @@ struct SettingsStore: @unchecked Sendable {
     func saveHapticsEnabled(_ enabled: Bool) {
         defaults.set(enabled, forKey: Self.hapticsEnabledKey)
     }
+
+    /// Kept apart from the settings for the same reason as the sound.
+    private static let keepScreenAwakeKey = "metronome.keepScreenAwake.v1"
+
+    /// Off when nothing is stored.
+    func loadKeepScreenAwake() -> Bool {
+        defaults.bool(forKey: Self.keepScreenAwakeKey)
+    }
+
+    func saveKeepScreenAwake(_ enabled: Bool) {
+        defaults.set(enabled, forKey: Self.keepScreenAwakeKey)
+    }
 }

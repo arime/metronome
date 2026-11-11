@@ -355,4 +355,48 @@ struct MetronomeModelTests {
         makeModel().setHapticsEnabled(false)
         #expect(makeModel().hapticsEnabled == false)
     }
+
+    // MARK: - Keep screen awake switch
+
+    @Test func freshInstallHasKeepScreenAwakeOff() {
+        let model = makeModel()
+        #expect(model.keepScreenAwake == false)
+        #expect(model.screenStaysAwake == false)
+    }
+
+    @Test func screenStaysAwakeOnlyWhilePlayingWhenTheSwitchIsOff() {
+        let model = makeModel()
+        model.togglePlayback()
+        #expect(model.screenStaysAwake)
+        model.togglePlayback()
+        #expect(model.screenStaysAwake == false)
+    }
+
+    @Test func screenStaysAwakeWhenStoppedWithTheSwitchOn() {
+        let model = makeModel()
+        model.setKeepScreenAwake(true)
+        #expect(model.screenStaysAwake)
+        model.togglePlayback()
+        model.togglePlayback()
+        #expect(model.screenStaysAwake)
+        model.setKeepScreenAwake(false)
+        #expect(model.screenStaysAwake == false)
+    }
+
+    @Test func keepScreenAwakeSwitchPlaysNoHapticAndKeepsPlaybackRunning() {
+        let model = makeModel()
+        model.togglePlayback()
+        let before = haptics.selectionCount
+        model.setKeepScreenAwake(true)
+        model.setKeepScreenAwake(false)
+        #expect(haptics.selectionCount == before)
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+        #expect(model.screenStaysAwake)
+    }
+
+    @Test func theKeepScreenAwakeSwitchSurvivesARelaunch() {
+        makeModel().setKeepScreenAwake(true)
+        #expect(makeModel().keepScreenAwake)
+    }
 }

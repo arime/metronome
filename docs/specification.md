@@ -71,6 +71,7 @@ Kept between launches:
 | Selected filter | what the library sheet shows: All presets or a setlist | All presets |
 | Click sound | one of the seven sounds in 11.1 | Digital |
 | Haptics | on or off, for the whole app | on |
+| Keep screen awake | on or off, for this device | off |
 | iCloud sync | on or off, for this device | off |
 
 Not kept:
@@ -296,7 +297,14 @@ Below the card: `Use your phone's volume buttons to set how loud the click is.` 
 
 Below the card: `A tap on every beat, and a tick when you change a setting.` (13 pt, muted).
 
-**iCloud** is a third surface-raised card with 16 pt corners, below that line:
+**Screen** is a third surface-raised card with 16 pt corners, below that line:
+
+- The same header line style: `SCREEN`, with nothing at the right.
+- One 44 pt row: `Keep screen awake` (16 pt, dial white) and, at the right, a standard iOS switch tinted amber when on.
+
+Below the card: `Keeps the screen on while the app is open, even when stopped. The screen always stays on while playing.` (13 pt, muted).
+
+**iCloud** is a fourth surface-raised card with 16 pt corners, below that line:
 
 - The same header line style: `ICLOUD`, with nothing at the right.
 - One 44 pt row: `Sync presets and setlists` (16 pt, dial white) and, at the right, a standard iOS switch tinted amber when on.
@@ -312,7 +320,7 @@ Below the card: `A tap on every beat, and a tick when you change a setting.` (13
 
 Below the card, one line (13 pt, muted) that depends on the state:
 
-- Off, syncing or up to date: `Keeps your presets and setlists the same on every device signed in to your iCloud account. Click sound and haptics stay separate on each device.`
+- Off, syncing or up to date: `Keeps your presets and setlists the same on every device signed in to your iCloud account. Your settings stay separate on each device.`
 - Not signed in: `Sign in to iCloud in the Settings app to sync. Until then your presets and setlists stay on this iPhone.`
 - iCloud full: `Delete presets or setlists you no longer need to make room. Until then some changes stay on this iPhone.`
 - Newer format: `Another of your devices has a newer version of the app. Until this one is updated, your presets and setlists stay on this iPhone.`
@@ -351,7 +359,7 @@ All three tempo controls work when stopped and when playing.
 
 - Start begins playback on beat 1, with the first click straight away.
 - Stop silences playback at once, clears the current beat and returns every tile to its idle appearance.
-- The screen does not dim or lock while playing.
+- The screen does not dim or lock while playing. With Keep screen awake on (7.8), it does not dim or lock while stopped either.
 
 ### 7.5 Mute
 
@@ -404,6 +412,14 @@ All three tempo controls work when stopped and when playing.
 - It works when stopped and when playing. While playing, the change applies from the next beat.
 - It applies to the whole app and is remembered between launches. Presets do not store it. Mute (7.5) does not affect it.
 - If haptics are turned off in the phone's own settings (System Haptics), the app has no haptics whatever the switch says; that is system behaviour.
+
+**Keep screen awake switch:**
+
+- When on, the screen does not dim or auto-lock while the app is open, whether playing or stopped, so between songs the user can start the next one without unlocking the phone.
+- When off, the screen stays on only while playing (7.4), and dims and locks as usual while stopped.
+- The change applies at once, when stopped and when playing. Like the iCloud switch, it plays no haptic.
+- It does not keep the app open: the side button still locks the phone and switching apps still leaves it, and playback stops as in 7.7.
+- It is off on a fresh install, is remembered between launches, and stays on this device; presets do not store it and iCloud does not sync it.
 
 ### 7.9 iCloud sync
 
@@ -577,6 +593,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The settings button reads as "Settings".
   - A sound row reads as its name, with "selected" for the current one, and says that tapping plays a preview.
   - The haptics switch reads as "Haptic feedback, on" or "Haptic feedback, off".
+  - The screen switch reads as "Keep screen awake, on" or "Keep screen awake, off".
   - The sync switch reads as "Sync presets and setlists, on" or "Sync presets and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
   - The header title reads the preset name and its second line, and says that it opens the library.
   - A preset row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its play button reads "Load and start".
@@ -628,6 +645,7 @@ Settings and click sounds:
 - [x] Every sound meets the loudness, attack and length rules in 11.1. *(Unit tested on the generated buffers at 48 and 44.1 kHz.)*
 - [x] Previous and Next sit beside Start / Stop only for a preset loaded from a setlist, and Next is dimmed at the last preset. *(Tried in the simulator.)*
 - [ ] The Haptics switch turns every haptic off and back on, stopped and playing; it survives quitting and reopening the app, and a fresh install starts with it on. *(The rules are unit tested and the switch was tried in the simulator; feeling the haptics stop needs a real iPhone.)*
+- [ ] With Keep screen awake on, the screen does not dim or lock while the app is open and stopped; with it off, it does so only while playing. The switch survives quitting and reopening the app, and a fresh install starts with it off. *(The rules are unit tested. In the simulator the switch was tried on and off, stopped and playing, and across a relaunch, reading the app's idle-timer flag each time. The simulator never auto-locks, so the screen actually staying on needs a real iPhone.)*
 - [ ] All seven sounds are equally loud by ear, and accented beats are clearly different from normal ones, on the phone's speaker and on headphones. *(Needs a listener and a real iPhone.)*
 
 iCloud sync:
@@ -654,5 +672,4 @@ Not part of version 1.0.
 
 - **Dynamic Type in rows and sheets.** Labels and text in rows and sheets scale with the phone's text size, up to the first accessibility size. The large BPM number stays fixed.
 - **Making room when iCloud is full.** When iCloud reports that it is full, the oldest delete markers are removed to make room, not only when the item count is over the limit (5.1).
-- **Keep screen awake setting.** Let the user choose whether the app keeps the screen awake; today it always does while playing. It would be a row in the settings sheet (6.10).
 - **Play while locked.** Playback continues when the user locks the screen.

@@ -20,7 +20,7 @@ struct SyncStatusText: Equatable {
     let row: Row?
     let footer: String
 
-    static let generalFooter = "Keeps your presets and setlists the same on every device signed in to your iCloud account. Click sound and haptics stay separate on each device."
+    static let generalFooter = "Keeps your presets and setlists the same on every device signed in to your iCloud account. Your settings stay separate on each device."
 
     /// "Today" is decided with `calendar`; the time and date follow the phone's own formats.
     init(status: SyncStatus?, now: Date, calendar: Calendar) {

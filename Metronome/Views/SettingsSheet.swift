@@ -44,6 +44,10 @@ struct SettingsSheet: View {
                         footnote("A tap on every beat, and a tick when you change a setting.")
                     }
                     VStack(alignment: .leading, spacing: 10) {
+                        screenCard
+                        footnote("Keeps the screen on while the app is open, even when stopped. The screen always stays on while playing.")
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
                         iCloudCard
                         footnote(syncText.footer)
                     }
@@ -103,6 +107,15 @@ struct SettingsSheet: View {
             toggleRow("Haptic feedback", isOn: Binding(
                 get: { model.hapticsEnabled },
                 set: { model.setHapticsEnabled($0) }
+            ))
+        }
+    }
+
+    private var screenCard: some View {
+        card(label: "SCREEN") {
+            toggleRow("Keep screen awake", isOn: Binding(
+                get: { model.keepScreenAwake },
+                set: { model.setKeepScreenAwake($0) }
             ))
         }
     }

@@ -23,6 +23,10 @@ final class MetronomeModel {
     private(set) var clickSound: ClickSound
     /// When false the app plays no haptics at all. Applies to the whole app and is remembered.
     private(set) var hapticsEnabled: Bool
+    /// When true the screen stays on while the app is open, even when stopped. Remembered on this device.
+    private(set) var keepScreenAwake: Bool
+    /// Whether the screen should be kept from dimming and locking right now.
+    var screenStaysAwake: Bool { isPlaying || keepScreenAwake }
 
     private(set) var library: Library
     private(set) var loadedPresetID: UUID?
@@ -59,6 +63,7 @@ final class MetronomeModel {
         self.hapticsPlayer = haptics
         settings = store.load()
         hapticsEnabled = store.loadHapticsEnabled()
+        keepScreenAwake = store.loadKeepScreenAwake()
         let sound = store.loadClickSound()
         clickSound = sound
         engine.setSound(sound)
@@ -147,6 +152,13 @@ final class MetronomeModel {
         hapticsEnabled = enabled
         store.saveHapticsEnabled(enabled)
         haptics?.selection()
+    }
+
+    /// Like the sync switch, it plays no haptic.
+    func setKeepScreenAwake(_ enabled: Bool) {
+        guard enabled != keepScreenAwake else { return }
+        keepScreenAwake = enabled
+        store.saveKeepScreenAwake(enabled)
     }
 
     // MARK: - Tempo
