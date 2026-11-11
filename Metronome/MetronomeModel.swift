@@ -264,7 +264,7 @@ final class MetronomeModel {
     /// Writes the current settings into the loaded preset.
     func saveChanges() {
         guard let id = loadedPresetID else { return }
-        library.updatePreset(id, settings: settings)
+        library.updatePreset(id, settings: settings, now: Date())
         persistLibrary()
     }
 
@@ -277,7 +277,7 @@ final class MetronomeModel {
     /// Creates a preset and makes it the loaded one. It is in no setlist.
     @discardableResult
     func saveAsNewPreset(name: String, settings newSettings: MetronomeSettings) -> Preset? {
-        guard let preset = library.addPreset(name: name, settings: newSettings) else { return nil }
+        guard let preset = library.addPreset(name: name, settings: newSettings, now: Date()) else { return nil }
         loadedPresetID = preset.id
         loadedFromSetlistID = nil
         apply(preset.settings)
@@ -290,20 +290,21 @@ final class MetronomeModel {
     /// Creates a preset without loading it, optionally at the end of a setlist.
     @discardableResult
     func createPreset(name: String, settings newSettings: MetronomeSettings, addingTo setlistID: UUID?) -> Preset? {
-        guard let preset = library.addPreset(name: name, settings: newSettings) else { return nil }
-        if let setlistID { library.add(preset.id, toSetlist: setlistID) }
+        let now = Date()
+        guard let preset = library.addPreset(name: name, settings: newSettings, now: now) else { return nil }
+        if let setlistID { library.add(preset.id, toSetlist: setlistID, now: now) }
         persistLibrary()
         return preset
     }
 
     func renamePreset(_ id: UUID, to name: String) {
-        library.renamePreset(id, to: name)
+        library.renamePreset(id, to: name, now: Date())
         persistLibrary()
     }
 
     /// The metronome keeps its settings if the deleted preset was the loaded one.
     func deletePreset(_ id: UUID) {
-        library.deletePreset(id)
+        library.deletePreset(id, now: Date())
         if loadedPresetID == id {
             loadedPresetID = nil
             loadedFromSetlistID = nil
@@ -330,13 +331,13 @@ final class MetronomeModel {
     }
 
     func renameSetlist(_ id: UUID, to name: String) {
-        library.renameSetlist(id, to: name)
+        library.renameSetlist(id, to: name, now: Date())
         persistLibrary()
     }
 
     /// The presets stay in the library, and a preset loaded from the setlist stays loaded.
     func deleteSetlist(_ id: UUID) {
-        library.deleteSetlist(id)
+        library.deleteSetlist(id, now: Date())
         if selectedSetlistID == id { selectedSetlistID = nil }
         if loadedFromSetlistID == id { loadedFromSetlistID = nil }
         persistLibrary()
@@ -354,9 +355,9 @@ final class MetronomeModel {
     /// Adds the preset at the end of the setlist, or takes it out. It always stays in the library.
     func setPreset(_ presetID: UUID, inSetlist setlistID: UUID, included: Bool) {
         if included {
-            library.add(presetID, toSetlist: setlistID)
+            library.add(presetID, toSetlist: setlistID, now: Date())
         } else {
-            library.remove(presetID, fromSetlist: setlistID)
+            library.remove(presetID, fromSetlist: setlistID, now: Date())
             if loadedPresetID == presetID, loadedFromSetlistID == setlistID {
                 loadedFromSetlistID = nil
             }
@@ -365,7 +366,7 @@ final class MetronomeModel {
     }
 
     func reorderSetlist(_ id: UUID, to order: [UUID]) {
-        library.reorder(setlist: id, to: order)
+        library.reorder(setlist: id, to: order, now: Date())
         persistLibrary()
     }
 

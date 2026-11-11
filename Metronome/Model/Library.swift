@@ -15,16 +15,39 @@ struct Setlist: Codable, Equatable, Identifiable, Sendable {
     var lastUsed: Date
 }
 
-/// Every preset and setlist, and the rules that keep them consistent.
+/// Every preset and setlist, kept as records that say when each part last changed,
+/// so a copy from another device can be combined with this one.
 struct Library: Codable, Equatable, Sendable {
     static let maxNameLength = 60
     static let defaultSetlistName = "New setlist"
 
-    /// In order of creation.
-    private(set) var presets: [Preset] = []
-    private(set) var setlists: [Setlist] = []
+    /// Every preset record by id, deleted ones included, so a delete marker can be passed on.
+    private(set) var presetRecords: [UUID: PresetRecord] = [:]
+    private(set) var setlistRecords: [UUID: SetlistRecord] = [:]
 
     init() {}
+
+    /// A library made before sync: every part at SyncClock.legacy, creation times and
+    /// membership `added` times at legacy + index seconds, in the given order.
+    init(legacyPresets: [Preset], legacySetlists: [Setlist]) {
+        for (index, preset) in legacyPresets.enumerated() {
+            let created = SyncClock.legacy.addingTimeInterval(Double(index))
+            presetRecords[preset.id] = PresetRecord(
+                id: preset.id, name: preset.name, settings: preset.settings, created: created, now: SyncClock.legacy
+            )
+        }
+        for setlist in legacySetlists {
+            var record = SetlistRecord(
+                id: setlist.id, name: setlist.name, presetIDs: setlist.presetIDs, now: SyncClock.legacy
+            )
+            var seen = Set<UUID>()
+            for (index, presetID) in setlist.presetIDs.enumerated() where seen.insert(presetID).inserted {
+                record.members[presetID.uuidString]?.added = SyncClock.legacy.addingTimeInterval(Double(index))
+            }
+            record.lastUsed = setlist.lastUsed
+            setlistRecords[setlist.id] = record
+        }
+    }
 
     /// A name with the spaces at its ends removed and cut to the limit; nil when nothing is left.
     static func cleanName(_ raw: String) -> String? {
@@ -35,12 +58,43 @@ struct Library: Codable, Equatable, Sendable {
 
     // MARK: - Reading
 
+    /// Alive presets by `created`, then uuidString.
+    var presets: [Preset] {
+        presetRecords.values
+            .filter { $0.preset != nil }
+            .sorted { ($0.created, $0.id.uuidString) < ($1.created, $1.id.uuidString) }
+            .compactMap(\.preset)
+    }
+
+    /// Alive setlists by uuidString, each with the visible presetIDs.
+    var setlists: [Setlist] {
+        let alive = alivePresetIDs
+        return setlistRecords.values
+            .filter { $0.deleted == nil }
+            .sorted { $0.id.uuidString < $1.id.uuidString }
+            .map { setlist(from: $0, alive: alive) }
+    }
+
+    private var alivePresetIDs: Set<UUID> {
+        Set(presetRecords.values.filter { $0.preset != nil }.map(\.id))
+    }
+
+    private func setlist(from record: SetlistRecord, alive: Set<UUID>) -> Setlist {
+        Setlist(
+            id: record.id,
+            name: record.name ?? Self.defaultSetlistName,
+            presetIDs: record.presetIDs(alive: alive),
+            lastUsed: record.lastUsed
+        )
+    }
+
     func preset(id: UUID) -> Preset? {
-        presets.first { $0.id == id }
+        presetRecords[id]?.preset
     }
 
     func setlist(id: UUID) -> Setlist? {
-        setlists.first { $0.id == id }
+        guard let record = setlistRecords[id], record.deleted == nil else { return nil }
+        return setlist(from: record, alive: alivePresetIDs)
     }
 
     /// A–Z ignoring case; presets with the same name keep their order of creation.
@@ -69,103 +123,162 @@ struct Library: Codable, Equatable, Sendable {
 
     // MARK: - Presets
 
+    /// Its creation time is later than every other preset's, so creation order survives equal clock readings.
     @discardableResult
-    mutating func addPreset(name: String, settings: MetronomeSettings) -> Preset? {
+    mutating func addPreset(name: String, settings: MetronomeSettings, now: Date) -> Preset? {
         guard let name = Self.cleanName(name) else { return nil }
-        let preset = Preset(id: UUID(), name: name, settings: settings.sanitized())
-        presets.append(preset)
-        return preset
+        let created = SyncClock.stamp(now, after: presetRecords.values.map(\.created).max())
+        let record = PresetRecord(id: UUID(), name: name, settings: settings.sanitized(), created: created, now: now)
+        presetRecords[record.id] = record
+        return record.preset
     }
 
     /// An empty name is not accepted; the old one is kept.
-    mutating func renamePreset(_ id: UUID, to name: String) {
-        guard let name = Self.cleanName(name), let index = presets.firstIndex(where: { $0.id == id }) else { return }
-        presets[index].name = name
+    mutating func renamePreset(_ id: UUID, to name: String, now: Date) {
+        guard let name = Self.cleanName(name), preset(id: id) != nil else { return }
+        presetRecords[id]?.setName(name, now: now)
     }
 
-    mutating func updatePreset(_ id: UUID, settings: MetronomeSettings) {
-        guard let index = presets.firstIndex(where: { $0.id == id }) else { return }
-        presets[index].settings = settings.sanitized()
+    mutating func updatePreset(_ id: UUID, settings: MetronomeSettings, now: Date) {
+        guard preset(id: id) != nil else { return }
+        presetRecords[id]?.setSettings(settings.sanitized(), now: now)
     }
 
-    /// Removes the preset from the library and from every setlist.
-    mutating func deletePreset(_ id: UUID) {
-        presets.removeAll { $0.id == id }
-        for index in setlists.indices {
-            setlists[index].presetIDs.removeAll { $0 == id }
-        }
+    /// Leaves a marker. Setlists are not edited: the preset is hidden from them,
+    /// and returns to them if it comes back.
+    mutating func deletePreset(_ id: UUID, now: Date) {
+        guard preset(id: id) != nil else { return }
+        presetRecords[id]?.delete(now: now)
     }
 
     // MARK: - Setlists
 
     @discardableResult
     mutating func addSetlist(name: String, now: Date) -> Setlist {
-        let setlist = Setlist(
-            id: UUID(), name: Self.cleanName(name) ?? Self.defaultSetlistName, presetIDs: [], lastUsed: now
+        let record = SetlistRecord(
+            id: UUID(), name: Self.cleanName(name) ?? Self.defaultSetlistName, presetIDs: [], now: now
         )
-        setlists.append(setlist)
-        return setlist
+        setlistRecords[record.id] = record
+        return setlist(from: record, alive: alivePresetIDs)
     }
 
     /// An empty name is not accepted; the old one is kept.
-    mutating func renameSetlist(_ id: UUID, to name: String) {
-        guard let name = Self.cleanName(name), let index = setlists.firstIndex(where: { $0.id == id }) else { return }
-        setlists[index].name = name
+    mutating func renameSetlist(_ id: UUID, to name: String, now: Date) {
+        guard let name = Self.cleanName(name), setlist(id: id) != nil else { return }
+        setlistRecords[id]?.setName(name, now: now)
     }
 
-    /// The presets stay in the library.
-    mutating func deleteSetlist(_ id: UUID) {
-        setlists.removeAll { $0.id == id }
+    /// Leaves a marker. The presets stay in the library.
+    mutating func deleteSetlist(_ id: UUID, now: Date) {
+        guard setlist(id: id) != nil else { return }
+        setlistRecords[id]?.delete(now: now)
     }
 
-    /// A copy with the same presets in the same order. The presets are shared, not copied.
+    /// A copy with the same visible presets in the same order. The presets are shared, not copied.
     @discardableResult
     mutating func duplicateSetlist(_ id: UUID, now: Date) -> Setlist? {
         guard let original = setlist(id: id) else { return nil }
         let name = Self.cleanName(original.name + " copy") ?? original.name
-        let copy = Setlist(id: UUID(), name: name, presetIDs: original.presetIDs, lastUsed: now)
-        setlists.append(copy)
-        return copy
+        let record = SetlistRecord(id: UUID(), name: name, presetIDs: original.presetIDs, now: now)
+        setlistRecords[record.id] = record
+        return setlist(from: record, alive: alivePresetIDs)
     }
 
     /// Adds the preset at the end. A preset is in a setlist only once.
-    mutating func add(_ presetID: UUID, toSetlist id: UUID) {
-        guard preset(id: presetID) != nil, let index = setlists.firstIndex(where: { $0.id == id }),
-              !setlists[index].presetIDs.contains(presetID)
-        else { return }
-        setlists[index].presetIDs.append(presetID)
+    mutating func add(_ presetID: UUID, toSetlist id: UUID, now: Date) {
+        guard preset(id: presetID) != nil, setlist(id: id) != nil else { return }
+        setlistRecords[id]?.add(presetID, now: now)
     }
 
     /// The preset stays in the library.
-    mutating func remove(_ presetID: UUID, fromSetlist id: UUID) {
-        guard let index = setlists.firstIndex(where: { $0.id == id }) else { return }
-        setlists[index].presetIDs.removeAll { $0 == presetID }
+    mutating func remove(_ presetID: UUID, fromSetlist id: UUID, now: Date) {
+        guard setlist(id: id) != nil else { return }
+        setlistRecords[id]?.remove(presetID, now: now)
     }
 
-    /// Accepts only a rearrangement of the presets the setlist already has.
-    mutating func reorder(setlist id: UUID, to order: [UUID]) {
-        guard let index = setlists.firstIndex(where: { $0.id == id }),
-              order.count == setlists[index].presetIDs.count,
-              Set(order) == Set(setlists[index].presetIDs)
+    /// Accepts only a rearrangement of the presets the setlist shows, and stores that whole order.
+    mutating func reorder(setlist id: UUID, to order: [UUID], now: Date) {
+        guard let current = setlist(id: id)?.presetIDs,
+              order.count == current.count,
+              Set(order) == Set(current)
         else { return }
-        setlists[index].presetIDs = order
+        setlistRecords[id]?.reorder(to: order, now: now)
     }
 
     mutating func touchSetlist(_ id: UUID, now: Date) {
-        guard let index = setlists.firstIndex(where: { $0.id == id }) else { return }
-        setlists[index].lastUsed = now
+        guard setlist(id: id) != nil else { return }
+        setlistRecords[id]?.touch(now: now)
     }
 
-    /// Drops references to presets that no longer exist, and repeated entries.
+    /// References to missing presets are already left out when a setlist is read, so there is nothing to drop.
     func sanitized() -> Library {
-        var copy = self
-        let known = Set(presets.map(\.id))
-        for index in copy.setlists.indices {
-            var seen = Set<UUID>()
-            copy.setlists[index].presetIDs = copy.setlists[index].presetIDs.filter {
-                known.contains($0) && seen.insert($0).inserted
-            }
+        self
+    }
+
+    // MARK: - Combining
+
+    /// Records from elsewhere combined into this library. Records it does not have yet are added,
+    /// deleted ones too, so the marker can be passed on.
+    mutating func merge(presets incoming: [PresetRecord], setlists incomingSetlists: [SetlistRecord]) {
+        for record in incoming {
+            presetRecords[record.id] = presetRecords[record.id].map { $0.merged(with: record) } ?? record
         }
-        return copy
+        for record in incomingSetlists {
+            setlistRecords[record.id] = setlistRecords[record.id].map { $0.merged(with: record) } ?? record
+        }
+    }
+
+    /// Presets, setlists and markers together.
+    var itemCount: Int {
+        presetRecords.count + setlistRecords.count
+    }
+
+    /// Removes the records of deleted items whose marker is older than the cutoff; returns the ids removed.
+    mutating func purgeMarkers(before cutoff: Date) -> [UUID] {
+        removeMarkers(markers.filter { $0.time < cutoff })
+    }
+
+    /// Removes the records of the oldest deleted items, at most `count`; returns the ids removed.
+    mutating func dropOldestMarkers(_ count: Int) -> [UUID] {
+        removeMarkers(Array(markers.prefix(max(count, 0))))
+    }
+
+    /// Deleted items, oldest marker first, then by uuidString.
+    private var markers: [(id: UUID, time: Date)] {
+        let presetMarkers = presetRecords.values.compactMap { record in
+            record.deleted.map { (id: record.id, time: $0) }
+        }
+        let setlistMarkers = setlistRecords.values.compactMap { record in
+            record.deleted.map { (id: record.id, time: $0) }
+        }
+        return (presetMarkers + setlistMarkers).sorted { ($0.time, $0.id.uuidString) < ($1.time, $1.id.uuidString) }
+    }
+
+    private mutating func removeMarkers(_ removed: [(id: UUID, time: Date)]) -> [UUID] {
+        for marker in removed {
+            presetRecords[marker.id] = nil
+            setlistRecords[marker.id] = nil
+        }
+        return removed.map(\.id)
+    }
+
+    // MARK: - Codable
+
+    private enum CodingKeys: String, CodingKey {
+        case presets, setlists
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let presets = try container.decode([PresetRecord].self, forKey: .presets)
+        let setlists = try container.decode([SetlistRecord].self, forKey: .setlists)
+        merge(presets: presets, setlists: setlists)
+    }
+
+    /// Each list sorted by uuidString, so the same library always encodes the same way.
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(presetRecords.values.sorted { $0.id.uuidString < $1.id.uuidString }, forKey: .presets)
+        try container.encode(setlistRecords.values.sorted { $0.id.uuidString < $1.id.uuidString }, forKey: .setlists)
     }
 }
