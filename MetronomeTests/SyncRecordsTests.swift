@@ -109,4 +109,49 @@ struct SyncRecordsTests {
         #expect(one == two)
         #expect(one.merged(with: one) == one)
     }
+
+    @Test func combiningThreePresetCopiesIsAssociativeAroundADeletion() {
+        let id = UUID()
+        var x = PresetRecord(id: id, name: "Song", settings: settings(100), created: t(0), now: t(0))
+        x.parts = [:]
+        x.deleted = t(10)
+        var y = PresetRecord(id: id, name: "Y", settings: settings(100), created: t(0), now: t(0))
+        y.parts = [PresetRecord.nameKey: Part(time: t(8), value: .string("Y"))]
+        var z = PresetRecord(id: id, name: "Z", settings: settings(100), created: t(0), now: t(0))
+        z.parts[PresetRecord.nameKey] = Part(time: t(5), value: .string("Z"))
+        z.parts[PresetRecord.tempoKey] = Part(time: t(12), value: .number(130))
+        let left = x.merged(with: y).merged(with: z)
+        let right = x.merged(with: y.merged(with: z))
+        #expect(left == right)
+        #expect(left.deleted == nil)
+        #expect(left.parts[PresetRecord.nameKey]?.value == .string("Y"))
+    }
+
+    @Test func combiningThreeSetlistCopiesIsAssociativeAroundADeletion() {
+        let p = [UUID(), UUID()]
+        let base = SetlistRecord(id: UUID(), name: "Gig", presetIDs: p, now: t(0))
+        var x = base; x.delete(now: t(10))
+        var y = base; y.remove(p[0], now: t(8))
+        var z = base; z.remove(p[1], now: t(5)); z.add(UUID(), now: t(12))
+        let left = x.merged(with: y).merged(with: z)
+        let right = x.merged(with: y.merged(with: z))
+        #expect(left == right)
+        #expect(left.deleted == nil)
+        #expect(left.members[p[0].uuidString]?.isIn == false)
+    }
+
+    @Test func aDeletedRecordKeepsItsParts() {
+        var record = PresetRecord(id: UUID(), name: "Song", settings: settings(100), created: t(0), now: t(0))
+        record.delete(now: t(10))
+        #expect(!record.parts.isEmpty)
+        #expect(record.preset == nil)
+    }
+
+    @Test func anEditOnADeletedRecordBringsItBack() {
+        var record = PresetRecord(id: UUID(), name: "Song", settings: settings(100), created: t(0), now: t(0))
+        record.delete(now: t(10))
+        record.setName("Back", now: t(20))
+        #expect(record.deleted == nil)
+        #expect(record.preset?.name == "Back")
+    }
 }

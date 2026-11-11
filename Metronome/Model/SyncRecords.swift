@@ -145,12 +145,17 @@ struct PresetRecord: Codable, Equatable, Sendable, Identifiable {
     private mutating func set(_ key: String, to value: JSONValue, now: Date) {
         guard parts[key]?.value != value else { return }
         parts[key] = Part(time: SyncClock.stamp(now, after: parts[key]?.time), value: value)
+        dropMarkerIfEdited()
     }
 
-    /// Leaves only id, created and the marker.
+    /// Only sets the marker; the parts stay, so combining with other copies stays associative.
     mutating func delete(now: Date) {
         deleted = SyncClock.stamp(now, after: lastChange)
-        parts = [:]
+    }
+
+    /// An edit later than the marker brings the preset back.
+    private mutating func dropMarkerIfEdited() {
+        if let marker = deleted, marker <= lastChange { deleted = nil }
     }
 
     func merged(with other: PresetRecord) -> PresetRecord {
@@ -158,13 +163,7 @@ struct PresetRecord: Codable, Equatable, Sendable, Identifiable {
         result.created = min(created, other.created)
         result.parts = Part.merge(parts, other.parts)
         result.deleted = [deleted, other.deleted].compactMap { $0 }.max()
-        if let marker = result.deleted {
-            if marker <= result.lastChange {
-                result.deleted = nil
-            } else {
-                result.parts = [:]
-            }
-        }
+        result.dropMarkerIfEdited()
         return result
     }
 }
@@ -250,6 +249,7 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
         guard members[key]?.isIn != true else { return }
         let time = SyncClock.stamp(now, after: members[key]?.time)
         members[key] = Membership(time: time, isIn: true, added: time)
+        dropMarkerIfEdited()
     }
 
     mutating func remove(_ presetID: UUID, now: Date) {
@@ -258,6 +258,7 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
         member.time = SyncClock.stamp(now, after: member.time)
         member.isIn = false
         members[key] = member
+        dropMarkerIfEdited()
     }
 
     mutating func reorder(to order: [UUID], now: Date) {
@@ -267,6 +268,12 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
     private mutating func setPart(_ key: String, to value: JSONValue, now: Date) {
         guard parts[key]?.value != value else { return }
         parts[key] = Part(time: SyncClock.stamp(now, after: parts[key]?.time), value: value)
+        dropMarkerIfEdited()
+    }
+
+    /// An edit later than the marker brings the setlist back.
+    private mutating func dropMarkerIfEdited() {
+        if let marker = deleted, marker <= lastChange { deleted = nil }
     }
 
     /// lastUsed becomes the later of itself and now.
@@ -274,11 +281,9 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
         lastUsed = max(lastUsed, now)
     }
 
-    /// Leaves only id, lastUsed and the marker.
+    /// Only sets the marker; the parts and members stay, so combining stays associative.
     mutating func delete(now: Date) {
         deleted = SyncClock.stamp(now, after: lastChange)
-        parts = [:]
-        members = [:]
     }
 
     func merged(with other: SetlistRecord) -> SetlistRecord {
@@ -287,14 +292,7 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
         result.members = members.merging(other.members) { $0.merged(with: $1) }
         result.lastUsed = max(lastUsed, other.lastUsed)
         result.deleted = [deleted, other.deleted].compactMap { $0 }.max()
-        if let marker = result.deleted {
-            if marker <= result.lastChange {
-                result.deleted = nil
-            } else {
-                result.parts = [:]
-                result.members = [:]
-            }
-        }
+        result.dropMarkerIfEdited()
         return result
     }
 }
