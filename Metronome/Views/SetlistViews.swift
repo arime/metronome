@@ -176,6 +176,10 @@ struct SetlistEditor: View {
             // An empty name is not accepted; the setlist keeps the one it had.
             model.renameSetlist(setlistID, to: newName)
         }
+        .onChange(of: setlist == nil) { _, isGone in
+            // Deleted here or on another device: close, as Done does.
+            if isGone { done() }
+        }
         .alert("Delete “\(setlist?.name ?? "")”?", isPresented: $isDeleteShown) {
             Button("Delete", role: .destructive) { model.deleteSetlist(setlistID) }
             Button("Cancel", role: .cancel) {}

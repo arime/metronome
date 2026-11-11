@@ -13,6 +13,8 @@ enum Theme {
     static let amberTint = Color(hex: 0x1E1A12)
     /// Remove and delete actions only.
     static let red = Color(hex: 0xE5484D)
+    /// The sync status dot when up to date, and nothing else.
+    static let green = Color(hex: 0x4CC38A)
 
     /// The small dot on an idle, unaccented tile.
     static let tileDot = Color(hex: 0x3A3A3F)
