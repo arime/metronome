@@ -110,6 +110,53 @@ struct LibrarySyncTests {
         #expect(sync.status == .upToDate(lastSynced: t(3)))
     }
 
+    @Test func aRecordWithAnUnknownLargeIntegerIsNotRewritten() {
+        let sync = device()
+        var library = Library()
+        let preset = library.addPreset(name: "Song", settings: settings(100), now: t(1))!
+        library = sync.exchange(library, now: t(2))
+        let key = "p.\(preset.id.uuidString)"
+        let written = String(decoding: cloud.data(forKey: key)!, as: UTF8.self)
+        let planted = Data(written.replacingOccurrences(
+            of: "\"parts\":{",
+            with: "\"parts\":{\"future\":{\"time\":0,\"value\":9007199254740993},"
+        ).utf8)
+        #expect(String(decoding: planted, as: UTF8.self).contains("9007199254740993"))
+        cloud.plant(planted, forKey: key)
+        cloud.forgetWrites()
+
+        _ = sync.exchange(library, now: t(3))
+
+        #expect(cloud.data(forKey: key) == planted)
+        #expect(cloud.writes == 0)
+    }
+
+    @Test func aRecordWithOtherKeyOrderOrSpacingIsNotRewritten() {
+        let sync = device()
+        var library = Library()
+        let preset = library.addPreset(name: "Song", settings: settings(100), now: t(1))!
+        let list = library.addSetlist(name: "Gig", now: t(1))
+        library.add(preset.id, toSetlist: list.id, now: t(2))
+        library = sync.exchange(library, now: t(3))
+        var planted: [String: Data] = [:]
+        for key in ["p.\(preset.id.uuidString)", "s.\(list.id.uuidString)"] {
+            let object = try! JSONSerialization.jsonObject(with: cloud.data(forKey: key)!)
+            let data = try! JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted])
+            #expect(data != cloud.data(forKey: key))
+            cloud.plant(data, forKey: key)
+            planted[key] = data
+        }
+        cloud.forgetWrites()
+
+        let again = sync.exchange(library, now: t(4))
+
+        #expect(again == library)
+        for (key, data) in planted {
+            #expect(cloud.data(forKey: key) == data)
+        }
+        #expect(cloud.writes == 0)
+    }
+
     @Test func anItemMissingFromICloudIsPutBack() {
         let sync = deviceWithoutEntry()
         var library = Library()

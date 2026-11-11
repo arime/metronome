@@ -295,8 +295,10 @@ final class LibrarySync {
             writeDeviceEntry(now: now)
         }
 
+        let heldPresets = cloudRecords(PresetRecord.self, prefix: Self.presetPrefix)
+        let heldSetlists = cloudRecords(SetlistRecord.self, prefix: Self.setlistPrefix)
         var result = library
-        result.merge(presets: cloudPresets(), setlists: cloudSetlists())
+        result.merge(presets: Array(heldPresets.values), setlists: Array(heldSetlists.values))
         var changed = result != library
 
         let purged = result.purgeMarkers(before: now.addingTimeInterval(-Self.markerLifetime))
@@ -309,12 +311,20 @@ final class LibrarySync {
         }
         let fits = result.itemCount + deviceEntries + 1 <= Self.maxItems
 
+        // A record is written only when iCloud lacks it, cannot read it or holds a different one,
+        // never because its bytes differ: a part this version does not know may not encode back
+        // to the same bytes, and it is to be left as it is.
         var encoded: [String: Data] = [:]
+        var differing: Set<String> = []
         for (id, record) in result.presetRecords {
-            encoded[Self.presetPrefix + id.uuidString] = try? encoder.encode(record)
+            let key = Self.presetPrefix + id.uuidString
+            encoded[key] = try? encoder.encode(record)
+            if heldPresets[key] != record { differing.insert(key) }
         }
         for (id, record) in result.setlistRecords {
-            encoded[Self.setlistPrefix + id.uuidString] = try? encoder.encode(record)
+            let key = Self.setlistPrefix + id.uuidString
+            encoded[key] = try? encoder.encode(record)
+            if heldSetlists[key] != record { differing.insert(key) }
         }
         let size = Size(items: result.itemCount, bytes: encoded.values.reduce(0) { $0 + $1.count })
 
@@ -323,9 +333,8 @@ final class LibrarySync {
         }
         let restricted = !fits || quotaFull
 
-        for (key, data) in encoded {
-            let held = cloud.data(forKey: key)
-            guard held != data, !restricted || held != nil else { continue }
+        for (key, data) in encoded where differing.contains(key) {
+            guard !restricted || cloud.data(forKey: key) != nil else { continue }
             cloud.set(data, forKey: key)
             changed = true
         }
@@ -354,16 +363,14 @@ final class LibrarySync {
             .flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
     }
 
-    private func cloudPresets() -> [PresetRecord] {
-        cloud.keys.filter { $0.hasPrefix(Self.presetPrefix) }.compactMap { key in
-            cloud.data(forKey: key).flatMap { try? JSONDecoder().decode(PresetRecord.self, from: $0) }
+    /// Every record under the prefix that can be read, by key, decoded once for both combining
+    /// and deciding what to write back. A value that cannot be read is left out.
+    private func cloudRecords<Record: Decodable>(_ type: Record.Type, prefix: String) -> [String: Record] {
+        var records: [String: Record] = [:]
+        for key in cloud.keys where key.hasPrefix(prefix) {
+            records[key] = cloud.data(forKey: key).flatMap { try? JSONDecoder().decode(Record.self, from: $0) }
         }
-    }
-
-    private func cloudSetlists() -> [SetlistRecord] {
-        cloud.keys.filter { $0.hasPrefix(Self.setlistPrefix) }.compactMap { key in
-            cloud.data(forKey: key).flatMap { try? JSONDecoder().decode(SetlistRecord.self, from: $0) }
-        }
+        return records
     }
 
     /// The returned ids do not say whether they were presets or setlists, so both keys go.
