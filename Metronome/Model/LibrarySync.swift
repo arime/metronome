@@ -275,6 +275,10 @@ final class LibrarySync {
             found = .notSignedIn
             return library
         }
+        // Another device may have emptied iCloud; without its entry this device looks gone.
+        if let key = deviceEntryKey, cloud.data(forKey: key) == nil {
+            writeDeviceEntry(now: now)
+        }
 
         var result = library
         result.merge(presets: cloudPresets(), setlists: cloudSetlists())

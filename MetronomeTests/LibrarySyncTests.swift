@@ -119,7 +119,7 @@ struct LibrarySyncTests {
         let before = Dictionary(uniqueKeysWithValues: cloud.keys.map { ($0, cloud.data(forKey: $0)) })
 
         for key in cloud.keys { cloud.remove(key) }
-        let again = sync.exchange(library, now: t(3))
+        let again = sync.exchange(library, now: t(2))
 
         #expect(again == library)
         #expect(Dictionary(uniqueKeysWithValues: cloud.keys.map { ($0, cloud.data(forKey: $0)) }) == before)
@@ -140,7 +140,7 @@ struct LibrarySyncTests {
     }
 
     @Test func theOldestMarkersGoFirstWhenTheLibraryDoesNotFit() {
-        let sync = deviceWithoutEntry()
+        let sync = device()
         var library = Library()
         var deleted: [UUID] = []
         for index in 0..<1010 {
@@ -153,10 +153,10 @@ struct LibrarySyncTests {
 
         library = sync.exchange(library, now: t(5_000))
 
-        #expect(library.itemCount == 999)
-        #expect(deleted.prefix(11).allSatisfy { library.presetRecords[$0] == nil })
-        #expect(deleted.suffix(9).allSatisfy { library.presetRecords[$0]?.deleted != nil })
-        #expect(keys(withPrefix: "p.").count == 999)
+        #expect(library.itemCount == 998)
+        #expect(deleted.prefix(12).allSatisfy { library.presetRecords[$0] == nil })
+        #expect(deleted.suffix(8).allSatisfy { library.presetRecords[$0]?.deleted != nil })
+        #expect(keys(withPrefix: "p.").count == 998)
         #expect(sync.status == .upToDate(lastSynced: t(5_000)))
     }
 
@@ -393,6 +393,24 @@ struct LibrarySyncTests {
         #expect(cloud.data(forKey: "format") != nil)
         #expect(snapshot().filter { $0.key.hasPrefix("p.") || $0.key.hasPrefix("s.") }
             == before.filter { $0.key.hasPrefix("p.") || $0.key.hasPrefix("s.") })
+    }
+
+    @Test func aSyncingDevicePutsItsEntryBackWhenICloudWasEmptied() {
+        let defaultsA = freshDefaults(), defaultsB = freshDefaults()
+        let a = device(defaultsA), b = device(defaultsB)
+        var library = Library()
+        library.addPreset(name: "Song", settings: settings(100), now: t(1))
+        library = a.exchange(library, now: t(2))
+
+        b.turnOff(now: t(10))
+        for key in cloud.keys { cloud.remove(key) }
+        library = a.exchange(library, now: t(11))
+
+        #expect(cloud.data(forKey: entryKey(defaultsA)) != nil)
+        #expect(keys(withPrefix: "p.").count == 1)
+        let before = snapshot()
+        b.appOpened(now: t(12))
+        #expect(snapshot() == before)
     }
 
     @Test func twoDevicesSwitchedOffTogetherAreCleanedUpOnTheNextOpen() {
