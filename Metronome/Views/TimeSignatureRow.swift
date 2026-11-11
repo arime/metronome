@@ -44,6 +44,11 @@ struct TimeSignatureRow: View {
                 isPickerShown = false
             }
         }
+        #if DEBUG
+        .onAppear {
+            if ScreenshotScene.current == .timeSignature { isPickerShown = true }
+        }
+        #endif
     }
 }
 

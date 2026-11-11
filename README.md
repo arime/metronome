@@ -6,6 +6,10 @@
 
 <p align="center">A precise, no-fuss metronome for iPhone.</p>
 
+<p align="center">
+  <img src="screenshots/1-playing.png" width="300" alt="The metronome playing a 7/8 preset at 168 BPM">
+</p>
+
 Set a tempo and a time signature, choose which beats are accented, and press Start. Every beat is a click, a flash on screen and a tap you can feel, all on the same instant. Everything can be changed while it plays.
 
 ## Features
@@ -31,11 +35,18 @@ Set a tempo and a time signature, choose which beats are accented, and press Sta
 The app is written in SwiftUI with Swift 6 and has no third-party dependencies. It needs Xcode 26 and runs on iOS 18 or later, on iPhone only.
 
 ```sh
-scripts/build.sh   # build for the iPhone simulator
-scripts/test.sh    # run the unit tests on the iPhone 17 Pro simulator
+scripts/build.sh         # build for the iPhone simulator
+scripts/test.sh          # run the unit tests on the iPhone 17 Pro simulator
+scripts/screenshots.sh   # take the App Store screenshots
 ```
 
-Both scripts print a short summary. The full logs go to `build/build.log` and `build/test.log`.
+The scripts print a short summary. The full logs go to `build/build.log`, `build/test.log` and `build/screenshots.log`.
+
+### Screenshots
+
+`scripts/screenshots.sh` makes the App Store screenshots in `screenshots/`, at the 6.9" size that App Store Connect requires. Run it before a release when the screens have changed, and commit the result.
+
+It launches a Debug build once per scene with sample presets, no sound and a clean status bar, on a simulator of its own called "Metronome screenshots". The scenes, and the sample presets, are in [ScreenshotScene.swift](Metronome/Screenshots/ScreenshotScene.swift); that code is left out of Release builds. To add a screenshot, add a case there, open its screen when the app launches with that scene, and add the case's name to the list in the script.
 
 ### Where things are
 
@@ -44,7 +55,9 @@ Both scripts print a short summary. The full logs go to `build/build.log` and `b
 | `Metronome/Engine` | Audio scheduling, click synthesis, haptics and the iCloud store |
 | `Metronome/Model` | Tempo, time signatures, the beat clock, presets, setlists and sync |
 | `Metronome/Views` | The SwiftUI screens and sheets |
+| `Metronome/Screenshots` | The screenshot scenes, in Debug builds only |
 | `MetronomeTests` | Unit tests |
+| `screenshots` | The App Store screenshots |
 | `site` | The support and privacy pages, published to GitHub Pages |
 
 ### How it works

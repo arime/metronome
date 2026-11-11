@@ -4,9 +4,17 @@ import SwiftUI
 struct MetronomeApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: MetronomeModel
-    private let cloud: UbiquitousCloudStore
+    /// nil only in a screenshot scene, which has no iCloud.
+    private let cloud: UbiquitousCloudStore?
 
     init() {
+        #if DEBUG
+        if let scene = ScreenshotScene.current {
+            cloud = nil
+            _model = State(initialValue: scene.makeModel())
+            return
+        }
+        #endif
         let cloud = UbiquitousCloudStore()
         self.cloud = cloud
         _model = State(initialValue: MetronomeModel(
