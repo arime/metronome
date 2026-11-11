@@ -29,6 +29,11 @@ final class FakeCloudStore: CloudStore {
         writes += 1
     }
 
+    /// Starts the count again, so a test can ignore what setting up wrote.
+    func forgetWrites() {
+        writes = 0
+    }
+
     func start() {
         started = true
     }
