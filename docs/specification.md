@@ -113,7 +113,7 @@ Sync is optional and off by default; the switch and what the user sees are in 6.
 - A preset or setlist that exists in only one copy is added to the other.
 - For each part, the newer one wins. When two times are equal, a fixed rule picks one, the same on every device.
 - A setlist's membership is decided per preset: the newer of "in" and "out" wins. So a preset added on one device and another removed on a second device are both kept.
-- A setlist's order is taken whole from the copy with the newer order. Presets that are in the setlist but not in that order go to the end, in the order they were added.
+- A setlist's order is taken whole from the copy with the newer order. Presets that are in the setlist but not in that order go to the end, in the order they were added. A preset that is removed from a setlist and added again goes to the end, like any newly added preset.
 - The later last-used time wins.
 - A delete marker wins only when it is newer than every part of the item. Otherwise the item stays and the marker is dropped, so an edit made after a deletion brings the item back. For a setlist the parts are the name, the membership and the order; the last-used time does not count.
 - A deleted preset is hidden from its setlists, but its membership is kept, so a preset that comes back is in its setlists again.
@@ -125,7 +125,7 @@ Examples: a preset renamed on one device and given a new tempo on another ends u
 
 - A new property is a new part with its own change time. A part that is missing counts as its default value, never changed, so the first device to set it wins.
 - A version that finds a part it does not know keeps it untouched, on the device and in iCloud, and writes it back unchanged. Combining works per part without knowing what the part means, so the newer of two unknown parts still wins. The same goes for items of a kind it does not know: it leaves them alone, except that the clean-up below removes them with everything else.
-- The data in iCloud carries a format number, starting at 1. A later version raises it only for a change that older versions would misread. A version that finds a higher number than it knows stops sending and receiving, keeps its library on the device, and says so in the status line (6.10). It does not take part in the clean-up below.
+- The data in iCloud carries a format number, starting at 1. A later version raises it only for a change that older versions would misread. A format number that cannot be read counts as higher than the app knows. A version that finds a higher number than it knows stops sending and receiving, keeps its library on the device, and says so in the status line (6.10). It does not take part in the clean-up below.
 
 **Delete markers** are kept for one year and then removed from the device and from iCloud. A device that has been away longer than that can bring a deleted item back.
 
@@ -136,14 +136,15 @@ Examples: a preset renamed on one device and given a new tempo on another ends u
 - Switching sync off removes the device's entry. If no other live entry is left, the device also removes the presets, setlists, delete markers and stale entries from iCloud. The library on the device stays.
 - A device that has had sync on and now has it off checks the device entries each time the app is opened. If no live entry is left and the app still has data in iCloud, it removes that data. This catches two devices switched off close together, and a device that left without switching off.
 - The clean-up is best effort and happens without asking. Data stays in iCloud when the app is deleted from every device while sync is on, or when the phone changes iCloud account before sync is switched off. It reaches iCloud when the device is next online.
-- If a device that is still syncing finds iCloud emptied, it puts its library back, by the rule that missing is not deleted.
+- If a device that is still syncing finds iCloud emptied, it puts its library back, by the rule that missing is not deleted. The same goes for a syncing device that finds its own entry missing: it puts the entry back together with its library.
+- The clean-up only ever runs on the iCloud account the device has synced with.
 
 **iCloud account.**
 
 - Not signed in to iCloud, or iCloud unavailable to the app: sync stays switched on and waits; the status line says so (6.10).
 - Signed in to a different iCloud account than the one sync was switched on with: sync switches itself off, so a library is never mixed into another account unasked. The user can switch it on again.
 
-The account is told apart by the identity iOS gives the app for the signed-in iCloud account. Reading it with only the key-value storage entitlement has to be confirmed first. If it cannot be read, the app falls back on the account-change notice that key-value storage itself sends, and switches sync off when it arrives.
+The account is told apart by the identity iOS gives the app for the signed-in iCloud account. When iCloud reports an account change, sync switches off only if the account is now a different one, carries on if it is the same one, and waits if the phone is signed out. Reading that identity on a signed-in device is still to be confirmed (see section 14).
 
 **Libraries made before sync existed.** Every part of their presets and setlists gets one fixed early change time, the same on every device and earlier than any real change, so that any real edit or deletion wins over an untouched old copy. This matters when two phones hold the same presets because one was set up from the other's backup. Creation times start from that fixed time and keep the current order.
 
@@ -625,22 +626,21 @@ Settings and click sounds:
 
 iCloud sync:
 
-- [ ] The iCloud card looks as in 6.10 in every state, and the settings sheet scrolls when it is taller than the screen. *(Not built yet.)*
-- [ ] Sync is off on a fresh install, and the switch survives quitting and reopening the app. *(Not built yet.)*
-- [ ] Switching sync on for a second device brings the first device's presets and setlists next to its own, and later changes on either device reach the other. *(Not built yet. Needs two devices on one iCloud account.)*
-- [ ] Copies are combined as in 5.1: per part of a preset, per preset in a setlist, order, an edit after a deletion, and an item missing from iCloud. *(Not built yet. To be unit tested.)*
-- [ ] When changes arrive, the metronome keeps its settings, a changed loaded preset shows Edited, and open lists update in place. *(Not built yet.)*
-- [ ] Switching sync off leaves the library on the device and the other devices untouched; switching it on again combines what changed meanwhile. *(Not built yet.)*
-- [ ] The last device to switch sync off empties iCloud, and a syncing device that finds iCloud emptied puts its library back. *(Not built yet.)*
-- [ ] The status line shows not signed in, iCloud full and newer format as in 6.10. *(Not built yet.)*
-- [ ] A part or item the app does not know survives combining and being written back, and a higher format number stops syncing without changing iCloud. *(Not built yet. To be unit tested.)*
-- [ ] A library made before sync existed is kept in full when the app is updated. *(Not built yet.)*
+- [ ] The iCloud card looks as in 6.10 in every state, and the settings sheet scrolls when it is taller than the screen. *(The off state and Not signed in to iCloud were tried in the simulator, and the sheet scrolls under the fixed title on an iPhone 17 Pro and an iPhone SE. The simulator is not signed in to iCloud, so Syncing…, Up to date, iCloud storage is full and Update the app to keep syncing were not seen on screen.)*
+- [x] Sync is off on a fresh install, and the switch survives quitting and reopening the app. *(Unit tested.)*
+- [ ] Switching sync on for a second device brings the first device's presets and setlists next to its own, and later changes on either device reach the other. *(Needs two devices on one iCloud account. Only a stand-in for iCloud has been used.)*
+- [x] Copies are combined as in 5.1: per part of a preset, per preset in a setlist, order, an edit after a deletion, and an item missing from iCloud. *(Unit tested against an in-memory stand-in for iCloud.)*
+- [ ] When changes arrive, the metronome keeps its settings, a changed loaded preset shows Edited, and open lists update in place. *(The metronome keeping its settings, Edited, a deleted loaded preset, setlist or filter being cleared, and no haptic are unit tested. Open lists updating in place, and the setlist editor closing when its setlist is deleted elsewhere, need a change arriving from a second device.)*
+- [x] Switching sync off leaves the library on the device and the other devices untouched; switching it on again combines what changed meanwhile. *(Unit tested against an in-memory stand-in for iCloud.)*
+- [x] The last device to switch sync off empties iCloud, and a syncing device that finds iCloud emptied puts its library back. *(Unit tested against an in-memory stand-in for iCloud; the clean-up reaching real iCloud has not been seen.)*
+- [ ] The status line shows not signed in, iCloud full and newer format as in 6.10. *(Every status text and the line below the card are unit tested, and Not signed in to iCloud was seen in the simulator. iCloud storage is full and Update the app to keep syncing were not seen on screen.)*
+- [x] A part or item the app does not know survives combining and being written back, and a higher format number stops syncing without changing iCloud. *(Unit tested.)*
+- [x] A library made before sync existed is kept in full when the app is updated. *(Unit tested.)*
+- [ ] The app can tell a signed-in device from a signed-out one, and one iCloud account from another. *(Needs a device signed in to iCloud.)*
 
 ## 15. Not built yet
 
-A part that is specified before it is built is listed here until it is.
-
-- **iCloud sync:** everything in 5.1 and 7.9, the iCloud card and the scrolling of the settings sheet in 6.10, the green colour in 6.9, and the sync lines in section 13.
+Everything in this document is built. A part that is specified before it is built is listed here until it is.
 
 ## 16. Ideas for later
 
