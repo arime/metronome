@@ -129,7 +129,7 @@ Examples: a preset renamed on one device and given a new tempo on another ends u
 
 **Delete markers** are kept for one year and then removed from the device and from iCloud. A device that has been away longer than that can bring a deleted item back.
 
-**Limits.** iCloud key-value storage holds 1 MB and 1,024 items per app, so presets, setlists, delete markers and device entries together have room for about a thousand items. When iCloud reports that it is full, the status line says so (6.10) and the library keeps working on the device. Delete markers count towards the limit, so when iCloud is full the oldest markers are removed first to make room, even if they are less than a year old.
+**Limits.** iCloud key-value storage holds 1 MB and 1,024 items per app, so presets, setlists, delete markers and device entries together have room for about a thousand items. When iCloud reports that it is full, the status line says so (6.10) and the library keeps working on the device. Delete markers count towards the limit, so when the items would go over 1,024 the oldest markers are removed first to make room, even if they are less than a year old.
 
 **Devices and clean-up.** While sync is on, the device keeps an entry in iCloud with a random identifier and the date it last synced, refreshed at most once a day. An entry is live when its date is less than six months old.
 
@@ -583,7 +583,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - In setlist editing, rows can be moved up and down with VoiceOver actions as well as by dragging.
   - Beat changes during playback are not announced.
 - Every tappable control is at least 44 × 44 pt.
-- The large BPM number does not scale with Dynamic Type. Labels and text in rows and sheets do, up to the first accessibility size.
+- Text does not scale with Dynamic Type; see section 16.
 
 ## 14. Acceptance checklist
 
@@ -646,14 +646,13 @@ iCloud sync:
 
 ## 15. Not built yet
 
-Two parts of this document are not built yet. A part that is specified before it is built is listed here until it is.
-
-- **Dynamic Type in rows and sheets.** Text in rows and sheets, in the settings sheet and elsewhere, does not yet scale with Dynamic Type as section 13 says.
-- **Making room when iCloud is full.** When iCloud reports that it is full, delete markers are removed only when the item count is over the limit, not on iCloud's own notice (5.1).
+Everything in this document is built. A part that is specified before it is built is listed here until it is.
 
 ## 16. Ideas for later
 
 Not part of version 1.0.
 
+- **Dynamic Type in rows and sheets.** Labels and text in rows and sheets scale with the phone's text size, up to the first accessibility size. The large BPM number stays fixed.
+- **Making room when iCloud is full.** When iCloud reports that it is full, the oldest delete markers are removed to make room, not only when the item count is over the limit (5.1).
 - **Keep screen awake setting.** Let the user choose whether the app keeps the screen awake; today it always does while playing. It would be a row in the settings sheet (6.10).
 - **Play while locked.** Playback continues when the user locks the screen.
