@@ -87,12 +87,16 @@ final class LibrarySync {
             if let account = cloud.account {
                 defaults.set(account, forKey: Self.accountKey)
                 if !cloudFormatIsNewer { writeDeviceEntry(now: now) }
+            } else {
+                // The first exchange after signing in remembers the account it sees.
+                defaults.removeObject(forKey: Self.accountKey)
             }
             found = nil
             syncing = true
             syncingTask?.cancel()
             syncingTask = Task { [weak self, syncingDelay] in
                 do { try await Task.sleep(for: syncingDelay) } catch { return }
+                guard !Task.isCancelled else { return }
                 self?.finishSyncing()
             }
         }
@@ -113,7 +117,7 @@ final class LibrarySync {
     /// the account is not the one sync was switched on with, or when iCloud's format is newer.
     func turnOff(now: Date) {
         guard isOn else { return }
-        if cloud.account != nil, accountMatches, !cloudFormatIsNewer {
+        if accountIsRemembered, !cloudFormatIsNewer {
             if let key = deviceEntryKey, cloud.data(forKey: key) != nil {
                 cloud.remove(key)
             }
@@ -133,8 +137,7 @@ final class LibrarySync {
                 writeDeviceEntry(now: now)
             }
         } else {
-            guard defaults.bool(forKey: Self.everOnKey), let account = cloud.account,
-                  account == rememberedAccount, !cloudFormatIsNewer,
+            guard defaults.bool(forKey: Self.everOnKey), accountIsRemembered, !cloudFormatIsNewer,
                   !hasLiveDeviceEntry(now: now), !cloud.keys.isEmpty else { return }
             removeEverything()
         }
@@ -183,9 +186,10 @@ final class LibrarySync {
         defaults.data(forKey: Self.accountKey)
     }
 
-    /// True when no account is remembered yet or the signed-in one is the remembered one.
-    private var accountMatches: Bool {
-        guard let remembered = rememberedAccount, let current = cloud.account else { return true }
+    /// True only when an account is signed in and it is the one this device has synced with, so
+    /// that nothing is cleaned up in an account this device never used.
+    private var accountIsRemembered: Bool {
+        guard let remembered = rememberedAccount, let current = cloud.account else { return false }
         return remembered == current
     }
 
@@ -230,8 +234,10 @@ final class LibrarySync {
         for key in cloud.keys { cloud.remove(key) }
     }
 
+    /// A format that is there but cannot be read counts as newer; an absent one does not.
     private var cloudFormatIsNewer: Bool {
-        cloudFormat.map { $0 > Self.format } ?? false
+        guard cloud.data(forKey: Self.formatKey) != nil else { return false }
+        return cloudFormat.map { $0 > Self.format } ?? true
     }
 
     // MARK: - Changes from iCloud
@@ -251,7 +257,16 @@ final class LibrarySync {
             onCloudChange?()
         case .accountChanged:
             guard isOn else { return }
-            switchOffHere()
+            var signedIn = false
+            update {
+                if turnOffIfAccountDiffers() { return }
+                if cloud.account == nil {
+                    found = .notSignedIn
+                } else {
+                    signedIn = true
+                }
+            }
+            if signedIn { onCloudChange?() }
         }
     }
 

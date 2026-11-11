@@ -194,13 +194,91 @@ struct LibrarySyncTests {
         #expect(sync.status == .upToDate(lastSynced: nil))
     }
 
-    @Test func anAccountChangeNoticeSwitchesSyncOffWithoutTouchingICloud() {
+    @Test func anAccountChangeNoticeWithADifferentAccountSwitchesSyncOffWithoutTouchingICloud() {
         let sync = device()
         cloud.plant(Data("1".utf8), forKey: "format")
         let before = snapshot()
+        cloud.account = Data([2])
+
         cloud.send(.accountChanged)
+
         #expect(!sync.isOn)
         #expect(sync.status == nil)
+        #expect(snapshot() == before)
+        #expect(cloud.writes == 0)
+    }
+
+    @Test func anAccountChangeNoticeWithNoAccountKeepsSyncOnAndWaiting() {
+        let sync = device()
+        var announced = 0
+        sync.onStatusChange = { announced += 1 }
+        cloud.account = nil
+
+        cloud.send(.accountChanged)
+
+        #expect(sync.isOn)
+        #expect(sync.status == .notSignedIn)
+        #expect(announced == 1)
+    }
+
+    @Test func anAccountChangeNoticeWithTheSameAccountBackAsksForAnExchange() {
+        let sync = device()
+        var calls = 0
+        sync.onCloudChange = { calls += 1 }
+
+        cloud.send(.accountChanged)
+
+        #expect(sync.isOn)
+        #expect(calls == 1)
+    }
+
+    @Test func switchingOnSignedOutForgetsAnOldAccount() {
+        let defaults = freshDefaults()
+        defaults.set(Data([1]), forKey: "metronome.sync.account")
+        let sync = makeSync(defaults)
+        cloud.account = nil
+        sync.turnOn(now: t0)
+        cloud.account = Data([2])
+        var library = Library()
+        library.addPreset(name: "Song", settings: settings(100), now: t(1))
+
+        _ = sync.exchange(library, now: t(2))
+
+        #expect(sync.isOn)
+        #expect(keys(withPrefix: "p.").count == 1)
+    }
+
+    @Test func aFormatThatCannotBeReadCountsAsNewer() {
+        let sync = device()
+        var library = Library()
+        library.addPreset(name: "Song", settings: settings(100), now: t(1))
+        _ = sync.exchange(library, now: t(2))
+        cloud.plant(Data([0xFF, 0xFE]), forKey: "format")
+        let before = snapshot()
+        let writes = cloud.writes
+
+        let result = sync.exchange(library, now: t(3))
+        #expect(sync.status == .needsUpdate)
+        #expect(result == library)
+        sync.turnOff(now: t(4))
+        sync.appOpened(now: t(5))
+
+        #expect(snapshot() == before)
+        #expect(cloud.writes == writes)
+    }
+
+    @Test func aDeviceThatNeverSawItsAccountDoesNotCleanUpOnIt() {
+        let sync = makeSync(freshDefaults())
+        cloud.account = nil
+        sync.turnOn(now: t0)
+        cloud.account = Data([1])
+        cloud.plant(Data("1".utf8), forKey: "format")
+        cloud.plant(Data("{}".utf8), forKey: "p.\(UUID().uuidString)")
+        let before = snapshot()
+
+        sync.turnOff(now: t(1))
+        sync.appOpened(now: t(2))
+
         #expect(snapshot() == before)
         #expect(cloud.writes == 0)
     }
