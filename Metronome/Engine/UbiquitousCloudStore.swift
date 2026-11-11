@@ -3,12 +3,17 @@ import Foundation
 /// The real iCloud key-value storage, a thin layer over NSUbiquitousKeyValueStore.
 @MainActor
 final class UbiquitousCloudStore: CloudStore {
+    private static let accountArchiveKey = "metronome.sync.accountArchive"
+
     private let store = NSUbiquitousKeyValueStore.default
+    private let defaults: UserDefaults
     private var observer: NSObjectProtocol?
 
     var onChange: (@MainActor (CloudChange) -> Void)?
 
-    init() {}
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
 
     var keys: [String] { Array(store.dictionaryRepresentation.keys) }
 
@@ -20,19 +25,44 @@ final class UbiquitousCloudStore: CloudStore {
 
     /// The current account token, read fresh each time so a switch of account shows up.
     ///
-    /// Nil only when there is no token, which means signed out. A token that cannot be archived
-    /// must never read as signed out, so the last step is a fixed marker: the device then counts
-    /// as signed in with an identity that cannot change, and sync relies on the account-change
-    /// notice alone.
+    /// The archived token last returned is remembered, and while the signed-in token is equal to
+    /// it those same bytes are returned again. So the value stays the same for one account by
+    /// construction, on every read and launch, even if archiving one token twice gave different
+    /// bytes; only a different token gives a different value.
+    ///
+    /// Nil only when there is no token, which means signed out; that leaves the remembered value
+    /// as it is. A token that cannot be archived must never read as signed out, so the last step
+    /// is a fixed marker: the device then counts as signed in with an identity that cannot
+    /// change, and sync relies on the account-change notice alone.
     var account: Data? {
         guard let token = FileManager.default.ubiquityIdentityToken else { return nil }
+        if let remembered = defaults.data(forKey: Self.accountArchiveKey),
+           let previous = Self.unarchived(remembered), token.isEqual(previous) {
+            return remembered
+        }
+        guard let data = Self.archived(token) else { return Data("signed-in".utf8) }
+        defaults.set(data, forKey: Self.accountArchiveKey)
+        return data
+    }
+
+    /// Secure archiving first, then non-secure; nil when neither works.
+    private static func archived(_ token: any NSCoding & NSCopying & NSObjectProtocol) -> Data? {
         if let data = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true) {
             return data
         }
-        if let data = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: false) {
-            return data
+        return try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: false)
+    }
+
+    /// The remembered token, allowing any NSObject-based class; non-secure when secure
+    /// unarchiving fails, as the token may have been archived that way.
+    private static func unarchived(_ data: Data) -> Any? {
+        if let object = try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSObject.self], from: data) {
+            return object
         }
-        return Data("signed-in".utf8)
+        guard let unarchiver = try? NSKeyedUnarchiver(forReadingFrom: data) else { return nil }
+        unarchiver.requiresSecureCoding = false
+        defer { unarchiver.finishDecoding() }
+        return unarchiver.decodeObject(forKey: NSKeyedArchiveRootObjectKey)
     }
 
     func start() {
