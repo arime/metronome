@@ -20,7 +20,7 @@ Included:
 - Start / Stop with click sound, visual beat effects and haptics.
 - A mute button that silences the click while the metronome keeps running.
 - A preset library and setlists.
-- A settings sheet with a choice of seven click sounds.
+- A settings sheet with a choice of seven click sounds and a switch that turns all haptics off.
 - Everything remembered between launches.
 
 Not included:
@@ -68,6 +68,7 @@ Kept between launches:
 | Loaded-from setlist | the setlist the preset was loaded from, if any | none |
 | Selected filter | what the library sheet shows: All presets or a setlist | All presets |
 | Click sound | one of the seven sounds in 11.1 | Digital |
+| Haptics | on or off, for the whole app | on |
 
 Not kept:
 
@@ -228,6 +229,13 @@ A bottom sheet over a dimmed screen, sized to its content, styled like the New p
 
 Below the card: `Use your phone's volume buttons to set how loud the click is.` (13 pt, muted).
 
+**Haptics** is a second surface-raised card with 16 pt corners, below that line:
+
+- The same header line style: `HAPTICS`, with nothing at the right.
+- One 44 pt row: `Haptic feedback` (16 pt, dial white) and, at the right, a standard iOS switch tinted amber when on.
+
+Below the card: `A tap on every beat, and a tick when you change a setting.` (13 pt, muted).
+
 New settings are added as further rows or cards in the same sheet.
 
 ## 7. Metronome behaviour
@@ -305,6 +313,14 @@ All three tempo controls work when stopped and when playing.
 - **When stopped**, tapping a sound, including the one already selected, also plays a preview: an accented click and then a normal click, 0.5 s apart. The preview plays even when muted, because the user asked to hear it. A new tap during a preview cuts it short and starts the new one.
 - **When playing**, there is no preview; the metronome itself is the preview. The new sound is used from the next beat that is scheduled. A beat that is already scheduled keeps the old sound, as with accent toggles (7.3).
 - The choice applies to the whole app and is remembered between launches. Presets do not store a sound.
+
+**Haptics switch:**
+
+- When off, the app plays no haptics at all: no beat taps, no selection ticks and no Start / Stop impact (section 12).
+- Turning it on plays one selection tick, so the user feels that haptics are back. Turning it off plays nothing.
+- It works when stopped and when playing. While playing, the change applies from the next beat.
+- It applies to the whole app and is remembered between launches. Presets do not store it. Mute (7.5) does not affect it.
+- If haptics are turned off in the phone's own settings (System Haptics), the app has no haptics whatever the switch says; that is system behaviour.
 
 ## 8. Library sheet
 
@@ -432,6 +448,8 @@ There are no other beat visuals; in particular nothing ripples or moves outside 
 
 Other haptics: a selection tick for each 1 BPM change from the ring or − / +, for each tap-tempo tap, for each accent toggle, and for each tap on the mute button. Beat haptics continue while muted. A medium impact on Start and Stop.
 
+The Haptics switch in settings (7.8) turns all of these off.
+
 ## 13. Accessibility
 
 - **Reduce Motion:** the number pulse is disabled. Tile changes and the glow remain.
@@ -441,6 +459,7 @@ Other haptics: a selection tick for each 1 BPM change from the ring or − / +, 
   - The mute button reads as "Click sound, on" or "Click sound, muted".
   - The settings button reads as "Settings".
   - A sound row reads as its name, with "selected" for the current one, and says that tapping plays a preview.
+  - The haptics switch reads as "Haptic feedback, on" or "Haptic feedback, off".
   - The header title reads the preset name and its second line, and says that it opens the library.
   - A preset row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its play button reads "Load and start".
   - In setlist editing, rows can be moved up and down with VoiceOver actions as well as by dragging.
@@ -489,6 +508,7 @@ Settings and click sounds:
 - [ ] When stopped, tapping a sound plays an accented and a normal click; when playing, the new sound starts with the next scheduled beat. *(The model's rules are unit tested and playing carries on when the sound changes; hearing the preview and the switch needs a listener.)*
 - [x] Every sound meets the loudness, attack and length rules in 11.1. *(Unit tested on the generated buffers at 48 and 44.1 kHz.)*
 - [x] Previous and Next sit beside Start / Stop only for a preset loaded from a setlist, and Next is dimmed at the last preset. *(Tried in the simulator.)*
+- [ ] The Haptics switch turns every haptic off and back on, stopped and playing; it survives quitting and reopening the app, and a fresh install starts with it on. *(The rules are unit tested and the switch was tried in the simulator; feeling the haptics stop needs a real iPhone.)*
 - [ ] All seven sounds are equally loud by ear, and accented beats are clearly different from normal ones, on the phone's speaker and on headphones. *(Needs a listener and a real iPhone.)*
 
 ## 15. Not built yet

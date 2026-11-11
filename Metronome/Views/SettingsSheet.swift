@@ -31,6 +31,14 @@ struct SettingsSheet: View {
                         .padding(.horizontal, 4)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                VStack(alignment: .leading, spacing: 10) {
+                    hapticsCard
+                    Text("A tap on every beat, and a tick when you change a setting.")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.muted)
+                        .padding(.horizontal, 4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .padding(.horizontal, 20)
             // Room for the drag indicator above, and a margin below.
@@ -66,6 +74,32 @@ struct SettingsSheet: View {
             ForEach(ClickSound.allCases, id: \.self) { sound in
                 row(sound)
             }
+        }
+        .padding(.bottom, 4)
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var hapticsCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionLabel(text: "HAPTICS")
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
+            Toggle(isOn: Binding(
+                get: { model.hapticsEnabled },
+                set: { model.setHapticsEnabled($0) }
+            )) {
+                Text("Haptic feedback")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Theme.dialWhite)
+            }
+            .tint(Theme.amber)
+            .padding(.trailing, 16)
+            .frame(minHeight: rowHeight)
+            .overlay(alignment: .top) {
+                Rectangle().fill(Theme.line).frame(height: 1)
+            }
+            .padding(.leading, 16)
         }
         .padding(.bottom, 4)
         .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

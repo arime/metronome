@@ -21,6 +21,8 @@ final class MetronomeModel {
     private(set) var isMuted = false
     /// Applies to the whole app and is remembered; presets do not store it.
     private(set) var clickSound: ClickSound
+    /// When false the app plays no haptics at all. Applies to the whole app and is remembered.
+    private(set) var hapticsEnabled: Bool
 
     private(set) var library: Library
     private(set) var loadedPresetID: UUID?
@@ -34,7 +36,9 @@ final class MetronomeModel {
     @ObservationIgnored private let engine: ClickEngine
     @ObservationIgnored private let store: SettingsStore
     @ObservationIgnored private let libraryStore: LibraryStore
-    @ObservationIgnored private let haptics: HapticsPlaying
+    @ObservationIgnored private let hapticsPlayer: HapticsPlaying
+    /// The player while haptics are on, nil while they are off; every haptic goes through here.
+    private var haptics: HapticsPlaying? { hapticsEnabled ? hapticsPlayer : nil }
     @ObservationIgnored private var taps = TapTempo()
     @ObservationIgnored private var beatCount = 0
 
@@ -42,8 +46,9 @@ final class MetronomeModel {
         self.engine = engine
         self.store = store
         self.libraryStore = libraryStore
-        self.haptics = haptics
+        self.hapticsPlayer = haptics
         settings = store.load()
+        hapticsEnabled = store.loadHapticsEnabled()
         let sound = store.loadClickSound()
         clickSound = sound
         engine.setSound(sound)
@@ -59,7 +64,7 @@ final class MetronomeModel {
     // MARK: - Playback
 
     func togglePlayback() {
-        haptics.transport()
+        haptics?.transport()
         if isPlaying {
             stop()
         } else {
@@ -97,7 +102,7 @@ final class MetronomeModel {
         beatCount += 1
         currentBeat = beat.beat
         lastBeat = BeatEvent(id: beatCount, beat: beat.beat, isAccented: beat.isAccented)
-        haptics.beat(accented: beat.isAccented)
+        haptics?.beat(accented: beat.isAccented)
     }
 
     /// Silences the click or brings it back. The metronome keeps running either way,
@@ -105,13 +110,13 @@ final class MetronomeModel {
     func toggleMute() {
         isMuted.toggle()
         engine.setMuted(isMuted)
-        haptics.selection()
+        haptics?.selection()
     }
 
     /// Selects the sound at once. When stopped it also plays a preview, even of the
     /// sound already selected; when playing, the metronome itself is the preview.
     func selectClickSound(_ sound: ClickSound) {
-        haptics.selection()
+        haptics?.selection()
         if sound != clickSound {
             clickSound = sound
             store.saveClickSound(sound)
@@ -120,11 +125,19 @@ final class MetronomeModel {
         if !isPlaying { engine.preview(sound) }
     }
 
+    /// Turning haptics on plays one tick, so the user feels they are back.
+    func setHapticsEnabled(_ enabled: Bool) {
+        guard enabled != hapticsEnabled else { return }
+        hapticsEnabled = enabled
+        store.saveHapticsEnabled(enabled)
+        haptics?.selection()
+    }
+
     // MARK: - Tempo
 
     func setBPM(_ bpm: Int) {
         guard applyBPM(bpm) else { return }
-        haptics.selection()
+        haptics?.selection()
     }
 
     func nudgeBPM(by delta: Int) {
@@ -132,7 +145,7 @@ final class MetronomeModel {
     }
 
     func tapTempo(at time: TimeInterval) {
-        haptics.selection()
+        haptics?.selection()
         guard let bpm = taps.tap(at: time) else { return }
         applyBPM(bpm)
     }
@@ -153,7 +166,7 @@ final class MetronomeModel {
         let before = settings.accents
         settings.toggleAccent(beat: beat)
         guard settings.accents != before else { return }
-        haptics.selection()
+        haptics?.selection()
         settingsChanged(startNewBar: false)
     }
 
@@ -227,7 +240,7 @@ final class MetronomeModel {
         if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: Date()) }
         apply(preset.settings)
         persistLibrary()
-        haptics.selection()
+        haptics?.selection()
         if shouldStart, !isPlaying { start() }
     }
 

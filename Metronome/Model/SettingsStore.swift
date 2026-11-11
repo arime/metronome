@@ -34,4 +34,16 @@ struct SettingsStore: @unchecked Sendable {
     func saveClickSound(_ sound: ClickSound) {
         defaults.set(sound.rawValue, forKey: Self.clickSoundKey)
     }
+
+    /// Kept apart from the settings for the same reason as the sound.
+    private static let hapticsEnabledKey = "metronome.hapticsEnabled.v1"
+
+    /// On when nothing is stored.
+    func loadHapticsEnabled() -> Bool {
+        defaults.object(forKey: Self.hapticsEnabledKey) as? Bool ?? true
+    }
+
+    func saveHapticsEnabled(_ enabled: Bool) {
+        defaults.set(enabled, forKey: Self.hapticsEnabledKey)
+    }
 }

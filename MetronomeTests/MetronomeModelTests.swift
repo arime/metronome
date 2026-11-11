@@ -308,4 +308,51 @@ struct MetronomeModelTests {
         model.loadPreset(preset.id, from: nil)
         #expect(model.clickSound == .digital)
     }
+
+    // MARK: - Haptics switch
+
+    @Test func freshInstallHasHapticsOn() {
+        #expect(makeModel().hapticsEnabled)
+    }
+
+    @Test func turningHapticsOffSilencesEveryHaptic() {
+        let model = makeModel()
+        model.setHapticsEnabled(false)
+        #expect(haptics.selectionCount == 0)
+        model.togglePlayback()
+        engine.onBeat?(beat(1, accented: true))
+        model.setBPM(140)
+        model.toggleAccent(beat: 2)
+        model.tapTempo(at: 0)
+        model.toggleMute()
+        model.selectClickSound(.glass)
+        model.togglePlayback()
+        #expect(haptics.beats.isEmpty)
+        #expect(haptics.selectionCount == 0)
+        #expect(haptics.transportCount == 0)
+    }
+
+    @Test func turningHapticsBackOnTicksOnceAndRestoresThem() {
+        let model = makeModel()
+        model.setHapticsEnabled(false)
+        model.setHapticsEnabled(true)
+        #expect(haptics.selectionCount == 1)
+        model.togglePlayback()
+        engine.onBeat?(beat(1))
+        #expect(haptics.beats == [false])
+        #expect(haptics.transportCount == 1)
+    }
+
+    @Test func hapticsSwitchKeepsPlaybackRunning() {
+        let model = makeModel()
+        model.togglePlayback()
+        model.setHapticsEnabled(false)
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+    }
+
+    @Test func theHapticsSwitchSurvivesARelaunch() {
+        makeModel().setHapticsEnabled(false)
+        #expect(makeModel().hapticsEnabled == false)
+    }
 }
