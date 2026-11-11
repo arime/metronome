@@ -144,7 +144,7 @@ Examples: a preset renamed on one device and given a new tempo on another ends u
 - Not signed in to iCloud, or iCloud unavailable to the app: sync stays switched on and waits; the status line says so (6.10).
 - Signed in to a different iCloud account than the one sync was switched on with: sync switches itself off, so a library is never mixed into another account unasked. The user can switch it on again.
 
-The account is told apart by the identity iOS gives the app for the signed-in iCloud account. When iCloud reports an account change, sync switches off only if the account is now a different one, carries on if it is the same one, and waits if the phone is signed out. Reading that identity on a signed-in device is still to be confirmed (see section 14).
+The account is told apart by the identity iOS gives the app for the signed-in iCloud account. When iCloud reports an account change, sync switches off only if the account is now a different one, carries on if it is the same one, and waits if the phone is signed out. If the identity cannot be read in a usable form, the device counts as signed in to an account that never changes, and a change of account is then not noticed. Reading that identity on a signed-in device is still to be confirmed (see section 14).
 
 **Libraries made before sync existed.** Every part of their presets and setlists gets one fixed early change time, the same on every device and earlier than any real change, so that any real edit or deletion wins over an untouched old copy. This matters when two phones hold the same presets because one was set up from the other's backup. Creation times start from that fixed time and keep the current order.
 
@@ -632,7 +632,7 @@ iCloud sync:
 - [x] Copies are combined as in 5.1: per part of a preset, per preset in a setlist, order, an edit after a deletion, and an item missing from iCloud. *(Unit tested against an in-memory stand-in for iCloud.)*
 - [ ] When changes arrive, the metronome keeps its settings, a changed loaded preset shows Edited, and open lists update in place. *(The metronome keeping its settings, Edited, a deleted loaded preset, setlist or filter being cleared, and no haptic are unit tested. Open lists updating in place, and the setlist editor closing when its setlist is deleted elsewhere, need a change arriving from a second device.)*
 - [x] Switching sync off leaves the library on the device and the other devices untouched; switching it on again combines what changed meanwhile. *(Unit tested against an in-memory stand-in for iCloud.)*
-- [x] The last device to switch sync off empties iCloud, and a syncing device that finds iCloud emptied puts its library back. *(Unit tested against an in-memory stand-in for iCloud; the clean-up reaching real iCloud has not been seen.)*
+- [ ] The last device to switch sync off empties iCloud, and a syncing device that finds iCloud emptied puts its library back. *(Unit tested against an in-memory stand-in for iCloud. The clean-up reaching real iCloud has not been seen.)*
 - [ ] The status line shows not signed in, iCloud full and newer format as in 6.10. *(Every status text and the line below the card are unit tested, and Not signed in to iCloud was seen in the simulator. iCloud storage is full and Update the app to keep syncing were not seen on screen.)*
 - [x] A part or item the app does not know survives combining and being written back, and a higher format number stops syncing without changing iCloud. *(Unit tested.)*
 - [x] A library made before sync existed is kept in full when the app is updated. *(Unit tested.)*
@@ -640,7 +640,10 @@ iCloud sync:
 
 ## 15. Not built yet
 
-Everything in this document is built. A part that is specified before it is built is listed here until it is.
+Two parts of this document are not built yet. A part that is specified before it is built is listed here until it is.
+
+- **Dynamic Type in rows and sheets.** Text in rows and sheets, in the settings sheet and elsewhere, does not yet scale with Dynamic Type as section 13 says.
+- **Making room when iCloud is full.** When iCloud reports that it is full, delete markers are removed only when the item count is over the limit, not on iCloud's own notice (5.1).
 
 ## 16. Ideas for later
 
