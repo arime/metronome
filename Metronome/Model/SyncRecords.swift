@@ -253,7 +253,9 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
     mutating func add(_ presetID: UUID, now: Date) {
         let key = presetID.uuidString
         guard members[key]?.isIn != true else { return }
-        let time = SyncClock.stamp(now, after: members[key]?.time)
+        // Later than the order part and every other member's added time, so it lands last even when a clock is ahead.
+        let latest = [members[key]?.time, parts[Self.orderKey]?.time, members.values.map(\.added).max()]
+        let time = SyncClock.stamp(now, after: latest.compactMap { $0 }.max())
         members[key] = Membership(time: time, isIn: true, added: time)
         dropMarkerIfEdited()
     }

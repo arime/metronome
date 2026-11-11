@@ -103,6 +103,25 @@ struct SyncRecordsTests {
         #expect(record.presetIDs(alive: Set(p)) == [p[1], p[0], p[2]])
     }
 
+    @Test func aReAddedPresetGoesToTheEndEvenWhenAnotherClockIsAhead() {
+        let p = [UUID(), UUID(), UUID()]
+        let base = SetlistRecord(id: UUID(), name: "Gig", presetIDs: p, now: t(0))
+        var fast = base; fast.reorder(to: [p[1], p[0], p[2]], now: t(86_400))
+        var local = base.merged(with: fast)
+        local.remove(p[0], now: t(4))
+        local.add(p[0], now: t(5))
+        #expect(local.presetIDs(alive: Set(p)) == [p[1], p[2], p[0]])
+    }
+
+    @Test func aPresetAddedLocallyGoesAfterOnesAddedByAClockAhead() {
+        let p = [UUID(), UUID()]; let fastNew = UUID(); let localNew = UUID()
+        let base = SetlistRecord(id: UUID(), name: "Gig", presetIDs: p, now: t(0))
+        var fast = base; fast.add(fastNew, now: t(86_400))
+        var local = base.merged(with: fast)
+        local.add(localNew, now: t(10))
+        #expect(local.presetIDs(alive: Set(p + [fastNew, localNew])) == p + [fastNew, localNew])
+    }
+
     @Test func membershipIsDecidedPerPresetAndHiddenForMissingPresets() {
         let p = [UUID(), UUID()]
         let base = SetlistRecord(id: UUID(), name: "Gig", presetIDs: p, now: t(0))
