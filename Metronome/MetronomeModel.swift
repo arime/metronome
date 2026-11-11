@@ -31,18 +31,28 @@ final class MetronomeModel {
     /// What the library sheet shows; nil means all presets.
     private(set) var selectedSetlistID: UUID?
 
+    /// True while sync with iCloud is switched on.
+    private(set) var syncEnabled = false
+    /// nil while sync is off.
+    private(set) var syncStatus: SyncStatus?
+
     var tempoName: String { Tempo.name(for: settings.bpm) }
 
     @ObservationIgnored private let engine: ClickEngine
     @ObservationIgnored private let store: SettingsStore
     @ObservationIgnored private let libraryStore: LibraryStore
     @ObservationIgnored private let hapticsPlayer: HapticsPlaying
+    @ObservationIgnored private let sync: LibrarySync?
+    @ObservationIgnored private let now: () -> Date
     /// The player while haptics are on, nil while they are off; every haptic goes through here.
     private var haptics: HapticsPlaying? { hapticsEnabled ? hapticsPlayer : nil }
     @ObservationIgnored private var taps = TapTempo()
     @ObservationIgnored private var beatCount = 0
 
-    init(engine: ClickEngine, store: SettingsStore, haptics: HapticsPlaying, libraryStore: LibraryStore) {
+    init(engine: ClickEngine, store: SettingsStore, haptics: HapticsPlaying, libraryStore: LibraryStore,
+         sync: LibrarySync? = nil, now: @escaping () -> Date = Date.init) {
+        self.sync = sync
+        self.now = now
         self.engine = engine
         self.store = store
         self.libraryStore = libraryStore
@@ -59,6 +69,12 @@ final class MetronomeModel {
         selectedSetlistID = state.selectedSetlistID
         engine.onBeat = { [weak self] beat in self?.beatSounded(beat) }
         engine.onStopped = { [weak self] in self?.becomeStopped() }
+        if let sync {
+            syncEnabled = sync.isOn
+            syncStatus = sync.status
+            sync.onStatusChange = { [weak self] in self?.syncChanged() }
+            sync.onCloudChange = { [weak self] in self?.exchangeWithCloud() }
+        }
     }
 
     // MARK: - Playback
@@ -237,7 +253,7 @@ final class MetronomeModel {
         loadedPresetID = id
         let members = setlistID.flatMap(library.setlist(id:))?.presetIDs ?? []
         loadedFromSetlistID = members.contains(id) ? setlistID : nil
-        if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: Date()) }
+        if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: now()) }
         apply(preset.settings)
         persistLibrary()
         haptics?.selection()
@@ -264,7 +280,7 @@ final class MetronomeModel {
     /// Writes the current settings into the loaded preset.
     func saveChanges() {
         guard let id = loadedPresetID else { return }
-        library.updatePreset(id, settings: settings, now: Date())
+        library.updatePreset(id, settings: settings, now: now())
         persistLibrary()
     }
 
@@ -277,7 +293,7 @@ final class MetronomeModel {
     /// Creates a preset and makes it the loaded one. It is in no setlist.
     @discardableResult
     func saveAsNewPreset(name: String, settings newSettings: MetronomeSettings) -> Preset? {
-        guard let preset = library.addPreset(name: name, settings: newSettings, now: Date()) else { return nil }
+        guard let preset = library.addPreset(name: name, settings: newSettings, now: now()) else { return nil }
         loadedPresetID = preset.id
         loadedFromSetlistID = nil
         apply(preset.settings)
@@ -290,21 +306,21 @@ final class MetronomeModel {
     /// Creates a preset without loading it, optionally at the end of a setlist.
     @discardableResult
     func createPreset(name: String, settings newSettings: MetronomeSettings, addingTo setlistID: UUID?) -> Preset? {
-        let now = Date()
-        guard let preset = library.addPreset(name: name, settings: newSettings, now: now) else { return nil }
-        if let setlistID { library.add(preset.id, toSetlist: setlistID, now: now) }
+        let moment = now()
+        guard let preset = library.addPreset(name: name, settings: newSettings, now: moment) else { return nil }
+        if let setlistID { library.add(preset.id, toSetlist: setlistID, now: moment) }
         persistLibrary()
         return preset
     }
 
     func renamePreset(_ id: UUID, to name: String) {
-        library.renamePreset(id, to: name, now: Date())
+        library.renamePreset(id, to: name, now: now())
         persistLibrary()
     }
 
     /// The metronome keeps its settings if the deleted preset was the loaded one.
     func deletePreset(_ id: UUID) {
-        library.deletePreset(id, now: Date())
+        library.deletePreset(id, now: now())
         if loadedPresetID == id {
             loadedPresetID = nil
             loadedFromSetlistID = nil
@@ -317,27 +333,27 @@ final class MetronomeModel {
     /// Chooses what the library sheet shows; nil means all presets. Loads nothing.
     func selectFilter(_ setlistID: UUID?) {
         selectedSetlistID = setlistID.flatMap(library.setlist(id:))?.id
-        if let selectedSetlistID { library.touchSetlist(selectedSetlistID, now: Date()) }
+        if let selectedSetlistID { library.touchSetlist(selectedSetlistID, now: now()) }
         persistLibrary()
     }
 
     /// Creates an empty setlist and selects it.
     @discardableResult
     func createSetlist() -> UUID {
-        let setlist = library.addSetlist(name: Library.defaultSetlistName, now: Date())
+        let setlist = library.addSetlist(name: Library.defaultSetlistName, now: now())
         selectedSetlistID = setlist.id
         persistLibrary()
         return setlist.id
     }
 
     func renameSetlist(_ id: UUID, to name: String) {
-        library.renameSetlist(id, to: name, now: Date())
+        library.renameSetlist(id, to: name, now: now())
         persistLibrary()
     }
 
     /// The presets stay in the library, and a preset loaded from the setlist stays loaded.
     func deleteSetlist(_ id: UUID) {
-        library.deleteSetlist(id, now: Date())
+        library.deleteSetlist(id, now: now())
         if selectedSetlistID == id { selectedSetlistID = nil }
         if loadedFromSetlistID == id { loadedFromSetlistID = nil }
         persistLibrary()
@@ -346,7 +362,7 @@ final class MetronomeModel {
     /// Copies the setlist and selects the copy.
     @discardableResult
     func duplicateSetlist(_ id: UUID) -> UUID? {
-        guard let copy = library.duplicateSetlist(id, now: Date()) else { return nil }
+        guard let copy = library.duplicateSetlist(id, now: now()) else { return nil }
         selectedSetlistID = copy.id
         persistLibrary()
         return copy.id
@@ -355,9 +371,9 @@ final class MetronomeModel {
     /// Adds the preset at the end of the setlist, or takes it out. It always stays in the library.
     func setPreset(_ presetID: UUID, inSetlist setlistID: UUID, included: Bool) {
         if included {
-            library.add(presetID, toSetlist: setlistID, now: Date())
+            library.add(presetID, toSetlist: setlistID, now: now())
         } else {
-            library.remove(presetID, fromSetlist: setlistID, now: Date())
+            library.remove(presetID, fromSetlist: setlistID, now: now())
             if loadedPresetID == presetID, loadedFromSetlistID == setlistID {
                 loadedFromSetlistID = nil
             }
@@ -366,16 +382,62 @@ final class MetronomeModel {
     }
 
     func reorderSetlist(_ id: UUID, to order: [UUID]) {
-        library.reorder(setlist: id, to: order, now: Date())
+        library.reorder(setlist: id, to: order, now: now())
         persistLibrary()
     }
 
+    /// Saves the library, and sends it to iCloud when sync is on.
     private func persistLibrary() {
-        libraryStore.save(LibraryState(
+        libraryStore.save(currentLibraryState)
+        if sync?.isOn == true { exchangeWithCloud() }
+    }
+
+    private var currentLibraryState: LibraryState {
+        LibraryState(
             library: library,
             loadedPresetID: loadedPresetID,
             loadedFromSetlistID: loadedFromSetlistID,
             selectedSetlistID: selectedSetlistID
-        ))
+        )
+    }
+
+    // MARK: - Sync
+
+    /// Switching on exchanges the library at once; switching off leaves it as it is.
+    func setSyncEnabled(_ enabled: Bool) {
+        guard let sync else { return }
+        if enabled {
+            sync.turnOn(now: now())
+            exchangeWithCloud()
+        } else {
+            sync.turnOff(now: now())
+        }
+    }
+
+    /// Call when the app becomes active.
+    func appDidBecomeActive() {
+        guard let sync else { return }
+        sync.appOpened(now: now())
+        exchangeWithCloud()
+    }
+
+    private func syncChanged() {
+        syncEnabled = sync?.isOn ?? false
+        syncStatus = sync?.status
+    }
+
+    /// Combines the library with iCloud and keeps what the user has open. It never touches the
+    /// metronome: no settings are applied, the engine hears nothing and no haptic plays. A loaded
+    /// preset that arrived changed shows as edited, because the settings no longer match it.
+    /// It saves directly, so it cannot start itself again through `persistLibrary()`.
+    private func exchangeWithCloud() {
+        guard let sync, sync.isOn else { return }
+        library = sync.exchange(library, now: now())
+        let state = currentLibraryState.sanitized()
+        library = state.library
+        loadedPresetID = state.loadedPresetID
+        loadedFromSetlistID = state.loadedFromSetlistID
+        selectedSetlistID = state.selectedSetlistID
+        libraryStore.save(state)
     }
 }

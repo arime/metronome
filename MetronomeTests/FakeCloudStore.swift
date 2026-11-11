@@ -8,7 +8,12 @@ final class FakeCloudStore: CloudStore {
     /// Every set and remove, so a test can tell that nothing was written.
     private(set) var writes = 0
     var account: Data? = Data([1])
-    var onChange: (@MainActor (CloudChange) -> Void)?
+    /// The handler of the sync object created last.
+    var onChange: (@MainActor (CloudChange) -> Void)? {
+        didSet { if let onChange { handlers.append(onChange) } }
+    }
+    /// Every handler ever set, in order, one per device.
+    private var handlers: [@MainActor (CloudChange) -> Void] = []
     private(set) var started = false
 
     var keys: [String] {
@@ -40,6 +45,11 @@ final class FakeCloudStore: CloudStore {
 
     func send(_ change: CloudChange) {
         onChange?(change)
+    }
+
+    /// Delivers a notice to one device only; 0 is the first sync object created on this store.
+    func send(_ change: CloudChange, toDevice index: Int) {
+        handlers[index](change)
     }
 
     /// Puts data in as if another device had written it, without counting a write.
