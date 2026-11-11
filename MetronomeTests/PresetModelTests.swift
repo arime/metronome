@@ -56,6 +56,34 @@ struct PresetModelTests {
         #expect(store.load() == preset.settings)
     }
 
+    @Test func clearingThePresetKeepsTheSettingsAndPlayback() {
+        let (model, presets, setlist) = modelWithSetlist()
+        model.loadPreset(presets[1].id, from: setlist, start: true)
+        model.nudgeBPM(by: 4)
+        let edited = model.settings
+        engine.lastUpdate = nil
+        model.clearPreset()
+        #expect(model.loadedPreset == nil)
+        #expect(model.loadedFromSetlistID == nil)
+        #expect(model.position == nil)
+        #expect(model.isEdited == false)
+        #expect(model.headerSubtitle == "No preset loaded")
+        #expect(model.settings == edited)
+        #expect(model.isPlaying)
+        // The click does not change, so the engine hears nothing.
+        #expect(engine.lastUpdate == nil)
+        // The preset itself is untouched.
+        #expect(model.library.preset(id: presets[1].id)?.settings.bpm == 100)
+    }
+
+    @Test func clearingThePresetIsRemembered() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil)
+        model.clearPreset()
+        #expect(makeModel().loadedPreset == nil)
+    }
+
     @Test func thePlayButtonLoadsAndStarts() {
         let model = makeModel()
         let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!

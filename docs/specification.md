@@ -447,7 +447,12 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 
 ### 8.2 All presets
 
-- Every preset, sorted by name A–Z, ignoring case and following the phone's language rules. Presets with the same name keep their order of creation.
+- **No preset**, the first row, above the presets. It is how the user goes back to having no preset loaded.
+  - Below the name it always shows the settings in use, for example `120 BPM · 4/4 · current settings`: what the metronome keeps when the row is tapped. While a preset has unsaved edits, these are the edited values.
+  - While a preset is loaded it has nothing at the right. While nothing is loaded it is the selected row: an amber name and an amber tick where the play button would be.
+  - Tapping it unloads the preset and closes the sheet. The tempo, time signature and accents stay as they are, playing or stopped, and the click does not change. The preset itself is not changed; unsaved edits stay as plain settings. Previous / Next disappear and the header shows the "nothing loaded" state.
+  - It is not shown in a setlist view, or when the library is empty.
+- Then every preset, sorted by name A–Z, ignoring case and following the phone's language rules. Presets with the same name keep their order of creation.
 - Each row shows the name (17 pt), and below it tempo and time signature, for example `120 BPM · 4/4`. At the right is a 40 pt round play button.
 - The loaded preset's row has an amber name, `· loaded` after its details, and an amber play button.
 - **Tapping a row** loads the preset and closes the sheet. It does not start the metronome.
@@ -602,6 +607,7 @@ Metronome:
 Presets and setlists:
 
 - [x] A preset can be created, loaded, renamed and deleted; the library is sorted A–Z.
+- [x] No preset unloads the loaded preset and keeps the settings and playback; it is only in All presets.
 - [x] Tapping a row loads without starting; the play button loads and starts.
 - [x] The header shows the right title and second line in every state of 6.1.
 - [x] Changing a loaded preset's settings shows Edited; Save changes, Save as new preset and Discard changes do what 7.6 says. *(Save changes is unit tested; the other two were also tried in the simulator.)*

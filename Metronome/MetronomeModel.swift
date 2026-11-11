@@ -290,6 +290,16 @@ final class MetronomeModel {
         apply(preset.settings)
     }
 
+    /// Unloads the preset. The metronome keeps its settings, playing or stopped, and the
+    /// preset itself is not changed; unsaved edits simply stay as plain settings.
+    func clearPreset() {
+        guard loadedPresetID != nil else { return }
+        loadedPresetID = nil
+        loadedFromSetlistID = nil
+        persistLibrary()
+        haptics?.selection()
+    }
+
     /// Creates a preset and makes it the loaded one. It is in no setlist.
     @discardableResult
     func saveAsNewPreset(name: String, settings newSettings: MetronomeSettings) -> Preset? {

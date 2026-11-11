@@ -208,6 +208,14 @@ private struct PresetListView: View {
 
     private var list: some View {
         List {
+            // Only the full library offers it; a setlist lists songs and nothing else.
+            if setlist == nil {
+                NoPresetRow(isSelected: model.loadedPresetID == nil, settings: model.settings) {
+                    model.clearPreset()
+                    close()
+                }
+                .sheetRow()
+            }
             ForEach(Array(presets.enumerated()), id: \.element.id) { index, preset in
                 PresetRow(
                     preset: preset,
@@ -305,6 +313,52 @@ private struct PresetRow: View {
             .accessibilityLabel("Load and start")
         }
         .frame(height: 62)
+    }
+}
+
+/// The first row of All presets. Tapping it unloads the preset and keeps the settings.
+/// While nothing is loaded it is amber, shows the settings in use and has a tick.
+private struct NoPresetRow: View {
+    let isSelected: Bool
+    let settings: MetronomeSettings
+    let choose: () -> Void
+
+    /// The same in both states: the settings the metronome keeps when the row is tapped.
+    private var detail: String {
+        "\(settings.bpm) BPM · \(settings.timeSignature.rawValue) · current settings"
+    }
+
+    var body: some View {
+        Button(action: choose) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("No preset")
+                        .font(.system(size: 17, weight: isSelected ? .bold : .semibold))
+                        .foregroundStyle(isSelected ? Theme.amber : Theme.dialWhite)
+                    Text(detail)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.muted)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                // The same 40 pt lane as the play buttons below, so the rows line up.
+                Image(systemName: "checkmark")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Theme.amber)
+                    .frame(width: 40, height: 40)
+                    .opacity(isSelected ? 1 : 0)
+            }
+            .frame(height: 62)
+            .contentShape(Rectangle())
+            // The row changes state as the sheet closes; switching at once keeps the old
+            // and new text from fading over each other during the slide.
+            .transaction { $0.animation = nil }
+        }
+        .buttonStyle(.borderless)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("No preset, \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)")
+        .accessibilityHint(isSelected ? "" : "Unloads the preset and keeps the current settings")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
 
