@@ -37,7 +37,7 @@ final class UbiquitousCloudStore: CloudStore {
     var account: Data? {
         guard let token = FileManager.default.ubiquityIdentityToken else { return nil }
         if let remembered = defaults.data(forKey: Self.accountArchiveKey),
-           let previous = Self.unarchived(remembered), token.isEqual(previous) {
+           let previous = Self.unarchived(remembered, as: type(of: token)), token.isEqual(previous) {
             return remembered
         }
         guard let data = Self.archived(token) else { return Data("signed-in".utf8) }
@@ -53,10 +53,11 @@ final class UbiquitousCloudStore: CloudStore {
         return try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: false)
     }
 
-    /// The remembered token, allowing any NSObject-based class; non-secure when secure
-    /// unarchiving fails, as the token may have been archived that way.
-    private static func unarchived(_ data: Data) -> Any? {
-        if let object = try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSObject.self], from: data) {
+    /// The remembered token, allowing only the class of the token signed in now; the class is
+    /// private to iOS, so it is taken from the token itself. Non-secure when secure unarchiving
+    /// fails, as the token may have been archived that way or its class may have changed.
+    private static func unarchived(_ data: Data, as tokenClass: AnyClass) -> Any? {
+        if let object = try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [tokenClass], from: data) {
             return object
         }
         guard let unarchiver = try? NSKeyedUnarchiver(forReadingFrom: data) else { return nil }
