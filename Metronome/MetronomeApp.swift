@@ -24,6 +24,11 @@ struct MetronomeApp: App {
             MetronomeScreen()
                 .environment(model)
                 .preferredColorScheme(.dark)
+                .task {
+                    // A cold launch may not report a change of phase; a second call is harmless,
+                    // because an exchange with nothing new writes nothing.
+                    model.appDidBecomeActive()
+                }
                 .onChange(of: scenePhase) { _, phase in
                     // Locking the phone or leaving the app stops playback.
                     if phase == .background { model.appDidLeaveForeground() }
