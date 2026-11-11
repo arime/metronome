@@ -2,7 +2,7 @@
 
 This is the single specification for the app. It describes how version 1.0 is meant to work and is kept up to date as decisions change. Parts that are specified here but not built yet are listed in section 15.
 
-Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Presets & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its other boards are alternatives that were not chosen.
+Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Presets & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen.
 
 ## 1. Summary
 
@@ -22,12 +22,14 @@ Included:
 - A preset library and setlists.
 - A settings sheet with a choice of seven click sounds and a switch that turns all haptics off.
 - Everything remembered between launches.
+- Optional iCloud sync that keeps the presets and setlists the same on the user's devices.
 
 Not included:
 
 - Bar counter, subdivisions, a volume control inside the app (the phone's own volume controls set the click volume; see 7.7).
 - Playback with the screen locked or the app in the background.
-- Search, folders or tags, notes on presets, per-preset sounds, sync between devices, import, export and sharing.
+- Search, folders or tags, notes on presets, per-preset sounds, import, export and sharing with other people.
+- Syncing anything other than presets and setlists: the current settings, the loaded preset, the click sound and haptics stay separate on each device.
 - iPad layout, landscape, light mode, Apple Watch, widgets.
 
 ## 3. Platform and identity
@@ -69,6 +71,7 @@ Kept between launches:
 | Selected filter | what the library sheet shows: All presets or a setlist | All presets |
 | Click sound | one of the seven sounds in 11.1 | Digital |
 | Haptics | on or off, for the whole app | on |
+| iCloud sync | on or off, for this device | off |
 
 Not kept:
 
@@ -85,9 +88,64 @@ Derived:
 
 Reopening the app restores the settings, the loaded preset and its setlist, so the position in the setlist is restored too and the user can carry on with Next. The app always launches stopped and with sound on.
 
-Data is stored on the device only.
+Data is stored on the device. With iCloud sync on, the presets and setlists are also kept in the user's iCloud account (5.1).
 
-If the loaded preset is deleted, the metronome keeps its current settings and the header shows "nothing loaded". If it is removed from the loaded-from setlist, it stays loaded and the header shows the name alone, as for a preset loaded from All presets.
+If the loaded preset is deleted, the metronome keeps its current settings and the header shows "nothing loaded". If it is removed from the loaded-from setlist, it stays loaded and the header shows the name alone, as for a preset loaded from All presets. If the loaded-from setlist is deleted, the same applies. If the setlist chosen as the filter is deleted, the filter becomes All presets. These rules hold whether the change was made on this device or arrived from another one.
+
+### 5.1 iCloud sync
+
+Sync is optional and off by default; the switch and what the user sees are in 6.10 and 7.9. This section says what is synced and how copies are combined.
+
+**What is synced.** Presets and setlists, in both directions, between the user's devices that have sync on. Everything else in the tables above stays on the device.
+
+**Storage.** iCloud key-value storage (`NSUbiquitousKeyValueStore`), which uses the iCloud account the phone is signed in to. The app has no account or server of its own. iCloud holds one item per preset, one per setlist and one per device. The device always keeps its own complete library, so the app works the same with sync off, signed out or offline.
+
+**What is recorded so copies can be combined.** The device records this at all times, also with sync off, because switching sync off is treated like being offline (7.9).
+
+- A preset has three parts, each with the time it last changed: the name; the tempo; and the time signature together with the accents, which only make sense as a pair. It also has a creation time, which gives the order of creation used in 8.2.
+- A setlist has a name with the time it last changed; for every preset that is or was in it, whether it is in or out and since when; its order with the time it last changed; and its last-used time.
+- A deleted preset or setlist leaves a delete marker with the time of deletion.
+- Times come from the device's clock. A change always gets a time later than the one it replaces, even when the clock is behind.
+- Only a part that really changed gets a new time. Save changes after changing only the tempo leaves the times of the name and the time signature alone.
+
+**Combining.** Combining two copies gives the same result on every device, in whatever order the changes arrive.
+
+- A preset or setlist that exists in only one copy is added to the other.
+- For each part, the newer one wins. When two times are equal, a fixed rule picks one, the same on every device.
+- A setlist's membership is decided per preset: the newer of "in" and "out" wins. So a preset added on one device and another removed on a second device are both kept.
+- A setlist's order is taken whole from the copy with the newer order. Presets that are in the setlist but not in that order go to the end, in the order they were added.
+- The later last-used time wins.
+- A delete marker wins only when it is newer than every part of the item. Otherwise the item stays and the marker is dropped, so an edit made after a deletion brings the item back. For a setlist the parts are the name, the membership and the order; the last-used time does not count.
+- A deleted preset is hidden from its setlists, but its membership is kept, so a preset that comes back is in its setlists again.
+- An item that is missing from iCloud without a delete marker is never treated as deleted; the device puts its copy back.
+
+Examples: a preset renamed on one device and given a new tempo on another ends up with both changes. A preset deleted on one device and edited later on another comes back with the edit. A setlist reordered on one device while a preset is added on another keeps the new order with the added preset at the end.
+
+**Later versions.** Presets and setlists can get new properties in later versions, and devices on different versions must be able to sync with each other.
+
+- A new property is a new part with its own change time. A part that is missing counts as its default value, never changed, so the first device to set it wins.
+- A version that finds a part it does not know keeps it untouched, on the device and in iCloud, and writes it back unchanged. Combining works per part without knowing what the part means, so the newer of two unknown parts still wins. The same goes for items of a kind it does not know: it leaves them alone, except that the clean-up below removes them with everything else.
+- The data in iCloud carries a format number, starting at 1. A later version raises it only for a change that older versions would misread. A version that finds a higher number than it knows stops sending and receiving, keeps its library on the device, and says so in the status line (6.10). It does not take part in the clean-up below.
+
+**Delete markers** are kept for one year and then removed from the device and from iCloud. A device that has been away longer than that can bring a deleted item back.
+
+**Limits.** iCloud key-value storage holds 1 MB and 1,024 items per app, so presets, setlists, delete markers and device entries together have room for about a thousand items. When iCloud reports that it is full, the status line says so (6.10) and the library keeps working on the device. Delete markers count towards the limit, so when iCloud is full the oldest markers are removed first to make room, even if they are less than a year old.
+
+**Devices and clean-up.** While sync is on, the device keeps an entry in iCloud with a random identifier and the date it last synced, refreshed at most once a day. An entry is live when its date is less than six months old.
+
+- Switching sync off removes the device's entry. If no other live entry is left, the device also removes the presets, setlists, delete markers and stale entries from iCloud. The library on the device stays.
+- A device that has had sync on and now has it off checks the device entries each time the app is opened. If no live entry is left and the app still has data in iCloud, it removes that data. This catches two devices switched off close together, and a device that left without switching off.
+- The clean-up is best effort and happens without asking. Data stays in iCloud when the app is deleted from every device while sync is on, or when the phone changes iCloud account before sync is switched off. It reaches iCloud when the device is next online.
+- If a device that is still syncing finds iCloud emptied, it puts its library back, by the rule that missing is not deleted.
+
+**iCloud account.**
+
+- Not signed in to iCloud, or iCloud unavailable to the app: sync stays switched on and waits; the status line says so (6.10).
+- Signed in to a different iCloud account than the one sync was switched on with: sync switches itself off, so a library is never mixed into another account unasked. The user can switch it on again.
+
+The account is told apart by the identity iOS gives the app for the signed-in iCloud account. Reading it with only the key-value storage entitlement has to be confirmed first. If it cannot be read, the app falls back on the account-change notice that key-value storage itself sends, and switches sync off when it arrives.
+
+**Libraries made before sync existed.** Every part of their presets and setlists gets one fixed early change time, the same on every device and earlier than any real change, so that any real edit or deletion wins over an untouched old copy. This matters when two phones hold the same presets because one was set up from the other's backup. Creation times start from that fixed time and keep the current order.
 
 ## 6. Metronome screen
 
@@ -216,10 +274,11 @@ When accent tiles are narrower than 44 pt (seven beats in a row), each tile's to
 | amber | `#FFB224` | the single accent colour |
 | amber tint | `#1E1A12` | idle accented tile fill, muted button fill |
 | red | `#E5484D` | remove and delete actions only |
+| green | `#4CC38A` | the sync status dot when up to date, and nothing else |
 
 ### 6.10 Settings sheet
 
-A bottom sheet over a dimmed screen, sized to its content, styled like the New preset sheet: a grabber, the title `Settings` (26 pt heavy, dial white) and `Done` in amber at the right.
+A bottom sheet over a dimmed screen, styled like the New preset sheet: a grabber, the title `Settings` (26 pt heavy, dial white) and `Done` in amber at the right. It is sized to its content up to the full height of the screen; when the content is taller, as it is on most phones, the cards scroll under the title.
 
 **Click sound** is one surface-raised card with 16 pt corners:
 
@@ -235,6 +294,29 @@ Below the card: `Use your phone's volume buttons to set how loud the click is.` 
 - One 44 pt row: `Haptic feedback` (16 pt, dial white) and, at the right, a standard iOS switch tinted amber when on.
 
 Below the card: `A tap on every beat, and a tick when you change a setting.` (13 pt, muted).
+
+**iCloud** is a third surface-raised card with 16 pt corners, below that line:
+
+- The same header line style: `ICLOUD`, with nothing at the right.
+- One 44 pt row: `Sync presets and setlists` (16 pt, dial white) and, at the right, a standard iOS switch tinted amber when on.
+- While the switch is on, a second 44 pt row, the **status line**: an 8 pt dot, the status (15 pt) and, at the right, a detail (13 pt, muted dim). While the switch is off there is no status line.
+
+| Status | Dot | Text | Detail |
+|---|---|---|---|
+| Just switched on | muted dim | `Syncing…` in muted | none |
+| Working | green | `Up to date` in dial white | `Last synced 14:32`, or a date such as `Last synced 9 Nov` when it was not today; none before the first exchange |
+| No iCloud account | amber | `Not signed in to iCloud` in amber | none |
+| iCloud full | amber | `iCloud storage is full` in amber | none |
+| Newer format in iCloud | amber | `Update the app to keep syncing` in amber | none |
+
+Below the card, one line (13 pt, muted) that depends on the state:
+
+- Off, syncing or up to date: `Keeps your presets and setlists the same on every device signed in to your iCloud account. Click sound and haptics stay separate on each device.`
+- Not signed in: `Sign in to iCloud in the Settings app to sync. Until then your presets and setlists stay on this iPhone.`
+- iCloud full: `Delete presets or setlists you no longer need to make room. Until then some changes stay on this iPhone.`
+- Newer format: `Another of your devices has a newer version of the app. Until this one is updated, your presets and setlists stay on this iPhone.`
+
+The status line is the device's own view. iCloud does not tell the app when a change has reached the server, so `Last synced` is the time the device last handed a change to iCloud or received one, and there is no separate status for being offline.
 
 New settings are added as further rows or cards in the same sheet.
 
@@ -321,6 +403,35 @@ All three tempo controls work when stopped and when playing.
 - It works when stopped and when playing. While playing, the change applies from the next beat.
 - It applies to the whole app and is remembered between launches. Presets do not store it. Mute (7.5) does not affect it.
 - If haptics are turned off in the phone's own settings (System Haptics), the app has no haptics whatever the switch says; that is system behaviour.
+
+### 7.9 iCloud sync
+
+The switch works when stopped and when playing, applies to this device only and is remembered between launches. How copies are combined is in 5.1.
+
+**Switching on:**
+
+- The device's library is combined with what is in iCloud. Nothing is removed on either side except by a delete marker, so a second device gets the first one's presets and setlists next to any of its own.
+- The status line shows `Syncing…` until the first exchange with iCloud, or for two seconds when nothing arrives, and then `Up to date`.
+
+**While on:**
+
+- Every change to a preset or setlist is handed to iCloud at once.
+- Changes from other devices are combined into the library when they arrive while the app is open, and whenever the app is opened or comes back to the foreground.
+- iCloud decides when changes travel: usually within a minute, later when a device is offline. The app does not show changes live as they are typed on another device.
+
+**Switching off:**
+
+- The device stops sending and receiving, as if it were offline. Its library stays as it is. Other devices and iCloud are not affected, apart from the clean-up when it was the last device (5.1).
+- Switching on again combines everything changed in the meantime, on this device and on the others, by the same rules.
+
+**When changes arrive:**
+
+- The metronome never changes by itself: tempo, time signature and accents stay as they are, playing or stopped.
+- If the loaded preset's settings changed, the header shows `Edited`, because what is in the metronome now differs from the preset. Discard changes takes the arrived version; Save changes keeps the metronome's and sends it to the other devices.
+- If the loaded preset's name changed, the header shows the new name at once.
+- If the loaded preset, the loaded-from setlist or the selected filter's setlist was deleted, the rules in section 5 apply.
+- An open library sheet, filter list or setlist editor updates in place. An editor whose setlist was deleted closes and the library shows All presets.
+- Nothing is announced: no alert, banner, sound or haptic.
 
 ## 8. Library sheet
 
@@ -460,6 +571,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The settings button reads as "Settings".
   - A sound row reads as its name, with "selected" for the current one, and says that tapping plays a preview.
   - The haptics switch reads as "Haptic feedback, on" or "Haptic feedback, off".
+  - The sync switch reads as "Sync presets and setlists, on" or "Sync presets and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
   - The header title reads the preset name and its second line, and says that it opens the library.
   - A preset row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its play button reads "Load and start".
   - In setlist editing, rows can be moved up and down with VoiceOver actions as well as by dragging.
@@ -511,9 +623,24 @@ Settings and click sounds:
 - [ ] The Haptics switch turns every haptic off and back on, stopped and playing; it survives quitting and reopening the app, and a fresh install starts with it on. *(The rules are unit tested and the switch was tried in the simulator; feeling the haptics stop needs a real iPhone.)*
 - [ ] All seven sounds are equally loud by ear, and accented beats are clearly different from normal ones, on the phone's speaker and on headphones. *(Needs a listener and a real iPhone.)*
 
+iCloud sync:
+
+- [ ] The iCloud card looks as in 6.10 in every state, and the settings sheet scrolls when it is taller than the screen. *(Not built yet.)*
+- [ ] Sync is off on a fresh install, and the switch survives quitting and reopening the app. *(Not built yet.)*
+- [ ] Switching sync on for a second device brings the first device's presets and setlists next to its own, and later changes on either device reach the other. *(Not built yet. Needs two devices on one iCloud account.)*
+- [ ] Copies are combined as in 5.1: per part of a preset, per preset in a setlist, order, an edit after a deletion, and an item missing from iCloud. *(Not built yet. To be unit tested.)*
+- [ ] When changes arrive, the metronome keeps its settings, a changed loaded preset shows Edited, and open lists update in place. *(Not built yet.)*
+- [ ] Switching sync off leaves the library on the device and the other devices untouched; switching it on again combines what changed meanwhile. *(Not built yet.)*
+- [ ] The last device to switch sync off empties iCloud, and a syncing device that finds iCloud emptied puts its library back. *(Not built yet.)*
+- [ ] The status line shows not signed in, iCloud full and newer format as in 6.10. *(Not built yet.)*
+- [ ] A part or item the app does not know survives combining and being written back, and a higher format number stops syncing without changing iCloud. *(Not built yet. To be unit tested.)*
+- [ ] A library made before sync existed is kept in full when the app is updated. *(Not built yet.)*
+
 ## 15. Not built yet
 
-Everything in this document is built. A part that is specified before it is built is listed here until it is.
+A part that is specified before it is built is listed here until it is.
+
+- **iCloud sync:** everything in 5.1 and 7.9, the iCloud card and the scrolling of the settings sheet in 6.10, the green colour in 6.9, and the sync lines in section 13.
 
 ## 16. Ideas for later
 
