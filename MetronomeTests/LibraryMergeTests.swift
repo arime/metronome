@@ -102,6 +102,19 @@ struct LibraryMergeTests {
         #expect(try JSONDecoder().decode(Library.self, from: data) == library)
     }
 
+    @Test func aPresetRemovedAndAddedAgainIsLastInItsSetlist() {
+        var library = Library()
+        let ids = (0..<3).map { library.addPreset(name: "P\($0)", settings: settings(100), now: t(0))!.id }
+        let gig = library.addSetlist(name: "Gig", now: t(0))
+        for (index, id) in ids.enumerated() {
+            library.add(id, toSetlist: gig.id, now: t(Double(index + 1)))
+        }
+        library.reorder(setlist: gig.id, to: ids, now: t(5))
+        library.remove(ids[1], fromSetlist: gig.id, now: t(10))
+        library.add(ids[1], toSetlist: gig.id, now: t(20))
+        #expect(library.setlist(id: gig.id)?.presetIDs == [ids[0], ids[2], ids[1]])
+    }
+
     @Test func aSetlistOnlyAcceptsARearrangementOfItsVisiblePresets() {
         var library = Library()
         let ids = (0..<3).map { library.addPreset(name: "P\($0)", settings: settings(100), now: t(0))!.id }

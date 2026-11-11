@@ -214,15 +214,21 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
         parts[Self.nameKey]?.value.decoded(String.self)
     }
 
-    /// The order part first, then members not in it by `added`, then uuidString; only members that are in and alive.
+    /// The order part first, then the other members by `added`, then uuidString; only members that are in and alive.
+    /// A position in the order part counts only for a member added no later than the order part's time,
+    /// so a preset added again goes to the end.
     func presetIDs(alive: Set<UUID>) -> [UUID] {
         func isShown(_ id: UUID) -> Bool {
             alive.contains(id) && members[id.uuidString]?.isIn == true
         }
+        func isPlaced(_ id: UUID) -> Bool {
+            guard let orderTime = parts[Self.orderKey]?.time, let member = members[id.uuidString] else { return false }
+            return member.added <= orderTime
+        }
         var result: [UUID] = []
         var seen = Set<UUID>()
         let ordered = (parts[Self.orderKey]?.value.decoded([String].self) ?? []).compactMap(UUID.init(uuidString:))
-        for id in ordered where isShown(id) && seen.insert(id).inserted {
+        for id in ordered where isShown(id) && isPlaced(id) && seen.insert(id).inserted {
             result.append(id)
         }
         let rest = members.compactMap { key, member -> (id: UUID, added: Date)? in
@@ -261,8 +267,16 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
         dropMarkerIfEdited()
     }
 
+    /// The order part's time is never earlier than the `added` time of a member it lists,
+    /// so a reorder right after an add still places that member.
     mutating func reorder(to order: [UUID], now: Date) {
-        setPart(Self.orderKey, to: Self.orderValue(order), now: now)
+        let value = Self.orderValue(order)
+        let previous = parts[Self.orderKey]
+        let latestAdded = order.compactMap { members[$0.uuidString]?.added }.max()
+        if previous?.value == value, latestAdded.map({ $0 <= previous!.time }) ?? true { return }
+        let after = [previous?.time, latestAdded].compactMap { $0 }.max()
+        parts[Self.orderKey] = Part(time: SyncClock.stamp(now, after: after), value: value)
+        dropMarkerIfEdited()
     }
 
     private mutating func setPart(_ key: String, to value: JSONValue, now: Date) {

@@ -81,6 +81,28 @@ struct SyncRecordsTests {
         #expect(merged.presetIDs(alive: Set(p + [new])) == [p[2], p[0], p[1], new])
     }
 
+    @Test func aPresetRemovedAndAddedAgainGoesToTheEnd() {
+        let p = [UUID(), UUID(), UUID()]
+        var record = SetlistRecord(id: UUID(), name: "Gig", presetIDs: p, now: t(0))
+        record.remove(p[1], now: t(10))
+        record.add(p[1], now: t(20))
+        #expect(record.presetIDs(alive: Set(p)) == [p[0], p[2], p[1]])
+    }
+
+    @Test func aReorderAfterAnAddPlacesTheAddedPreset() {
+        let p = [UUID(), UUID(), UUID()]
+        var record = SetlistRecord(id: UUID(), name: "Gig", presetIDs: p, now: t(0))
+        record.remove(p[1], now: t(10))
+        record.add(p[1], now: t(20))
+        record.reorder(to: [p[1], p[0], p[2]], now: t(15))
+        #expect(record.presetIDs(alive: Set(p)) == [p[1], p[0], p[2]])
+        // The same order as the stored one still counts as a reorder.
+        record.remove(p[0], now: t(30))
+        record.add(p[0], now: t(40))
+        record.reorder(to: [p[1], p[0], p[2]], now: t(41))
+        #expect(record.presetIDs(alive: Set(p)) == [p[1], p[0], p[2]])
+    }
+
     @Test func membershipIsDecidedPerPresetAndHiddenForMissingPresets() {
         let p = [UUID(), UUID()]
         let base = SetlistRecord(id: UUID(), name: "Gig", presetIDs: p, now: t(0))
