@@ -615,6 +615,43 @@ struct LibrarySyncTests {
         #expect(snapshot() == before)
     }
 
+    @Test func switchingOffInAnotherAccountTouchesNothingInICloud() {
+        let sync = device()
+        var library = Library()
+        library.addPreset(name: "Song", settings: settings(100), now: t(1))
+        _ = sync.exchange(library, now: t(2))
+        cloud.account = Data([2])
+        let before = snapshot()
+        let writes = cloud.writes
+
+        sync.turnOff(now: t(3))
+
+        #expect(!sync.isOn)
+        #expect(snapshot() == before)
+        #expect(cloud.writes == writes)
+    }
+
+    @Test func openingInAnotherAccountAfterSwitchingOffCleansNothingUp() {
+        let defaultsA = freshDefaults()
+        _ = device(defaultsA)
+        let b = device()
+        var library = Library()
+        library.addPreset(name: "Song", settings: settings(100), now: t(1))
+        _ = b.exchange(library, now: t(2))
+        b.turnOff(now: t(3))
+        #expect(!cloud.keys.isEmpty)
+
+        cloud.account = Data([2])
+        cloud.remove(entryKey(defaultsA))
+        let before = snapshot()
+        let writes = cloud.writes
+
+        b.appOpened(now: t(4))
+
+        #expect(snapshot() == before)
+        #expect(cloud.writes == writes)
+    }
+
     @Test func switchingOffWhileNotSignedInTouchesNothingInICloud() {
         let sync = device()
         _ = sync.exchange(Library(), now: t(1))
