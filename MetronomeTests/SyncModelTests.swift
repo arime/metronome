@@ -27,6 +27,8 @@ struct SyncModelTests {
         let engine: FakeClickEngine
         let haptics: FakeHaptics
         let sync: LibrarySync
+        /// Where the library store keeps the library, so a test can tell whether it was saved.
+        let libraryDefaults: UserDefaults
     }
 
     private func settings(_ bpm: Int) -> MetronomeSettings {
@@ -39,16 +41,17 @@ struct SyncModelTests {
         let haptics = FakeHaptics()
         let clock = clock
         let sync = LibrarySync(cloud: cloud, defaults: defaults, syncingDelay: .seconds(3600))
+        let libraryDefaults = UserDefaults(suiteName: UUID().uuidString)!
         let model = MetronomeModel(
             engine: engine,
             store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
             haptics: haptics,
-            libraryStore: LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            libraryStore: LibraryStore(defaults: libraryDefaults),
             sync: sync,
             now: { clock.now() }
         )
         if on { model.setSyncEnabled(true) }
-        return Device(model: model, engine: engine, haptics: haptics, sync: sync)
+        return Device(model: model, engine: engine, haptics: haptics, sync: sync, libraryDefaults: libraryDefaults)
     }
 
     /// Device A makes "Song" at 100 BPM; B has it after a notice from iCloud.
@@ -173,6 +176,20 @@ struct SyncModelTests {
         #expect(b.haptics.selectionCount == selections)
         #expect(b.haptics.transportCount == transports)
         #expect(b.haptics.beats == beats)
+    }
+
+    /// The stored library is replaced by a marker; a save would overwrite it.
+    @Test func aNoticeThatBringsNothingNewSavesNothing() {
+        let (_, b, _) = twoDevicesSharingASong()
+        let library = b.model.library
+        let marker = Data("not saved again".utf8)
+        b.libraryDefaults.set(marker, forKey: "metronome.library.v2")
+
+        clock.advance()
+        cloud.send(.changed, toDevice: 1)
+
+        #expect(b.model.library == library)
+        #expect(b.libraryDefaults.data(forKey: "metronome.library.v2") == marker)
     }
 
     @Test func withSyncOffNothingReachesICloud() {

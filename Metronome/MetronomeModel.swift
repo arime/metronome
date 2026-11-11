@@ -429,11 +429,15 @@ final class MetronomeModel {
     /// Combines the library with iCloud and keeps what the user has open. It never touches the
     /// metronome: no settings are applied, the engine hears nothing and no haptic plays. A loaded
     /// preset that arrived changed shows as edited, because the settings no longer match it.
-    /// It saves directly, so it cannot start itself again through `persistLibrary()`.
+    /// It saves directly, so it cannot start itself again through `persistLibrary()`, and only
+    /// when the exchange changed something, since this runs on every library change.
     private func exchangeWithCloud() {
         guard let sync, sync.isOn else { return }
-        library = sync.exchange(library, now: now())
-        let state = currentLibraryState.sanitized()
+        let before = currentLibraryState
+        var state = before
+        state.library = sync.exchange(library, now: now())
+        state = state.sanitized()
+        guard state != before else { return }
         library = state.library
         loadedPresetID = state.loadedPresetID
         loadedFromSetlistID = state.loadedFromSetlistID
