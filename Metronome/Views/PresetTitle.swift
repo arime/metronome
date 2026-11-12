@@ -1,9 +1,13 @@
 import SwiftUI
 
 /// The loaded preset's name in the header. Tapping it always opens the library; saving
-/// and reverting unsaved changes belong to the Save button beside it.
+/// and reverting unsaved changes belong to the save controls in the dial's gap (or, on a
+/// small dial, to the Save button beside the title).
 struct PresetTitle: View {
     @Environment(MetronomeModel.self) private var model
+    /// False while the Save button is beside the title: it takes width from the name, and
+    /// the chevron's place gives some of it back.
+    var showsChevron = true
     let openLibrary: () -> Void
 
     var body: some View {
@@ -23,9 +27,7 @@ struct PresetTitle: View {
                     .tracking(-0.2)
                     .foregroundStyle(Theme.dialWhite)
                     .lineLimit(1)
-                // Left out while the Save button is showing: the button takes width from
-                // the name, and the chevron's place gives some of it back.
-                if !model.isSaveOffered {
+                if showsChevron {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(Theme.muted)
@@ -43,7 +45,8 @@ struct PresetTitle: View {
     }
 }
 
-/// The amber split pill in the header while the loaded preset has unsaved changes. Its
+/// The amber split pill in the header while the loaded preset has unsaved changes, on a
+/// dial too small for the save controls in its gap (iPhone SE and the like). Its
 /// Save part writes them into the preset in one tap; its ˅ part opens a menu with the
 /// other two ways out: saving as a new preset, and going back to the saved one.
 struct SaveButton: View {

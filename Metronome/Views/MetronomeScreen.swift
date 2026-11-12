@@ -15,10 +15,11 @@ struct MetronomeScreen: View {
                 beats: model.settings.timeSignature.beatsPerBar,
                 hasSetlist: model.position != nil
             )
+            let savesInDial = DialGeometry.fitsSaveControls(dialDiameter: layout.dialDiameter)
             VStack(spacing: 0) {
-                header
+                header(savesInDial: savesInDial)
                     .padding(.top, 8)
-                TempoDial(diameter: layout.dialDiameter)
+                TempoDial(diameter: layout.dialDiameter, showsSaveControls: savesInDial)
                     .padding(.top, 12)
                 TempoControls()
                     .padding(.top, 4)
@@ -51,10 +52,13 @@ struct MetronomeScreen: View {
         #endif
     }
 
-    private var header: some View {
-        HStack(spacing: 8) {
-            PresetTitle { isLibraryShown = true }
-            if model.isSaveOffered {
+    /// Title, mute and gear. The save controls stand in the dial's gap; only on a dial too
+    /// small for them is the Save button here instead.
+    private func header(savesInDial: Bool) -> some View {
+        let savesInHeader = !savesInDial && model.isSaveOffered
+        return HStack(spacing: 8) {
+            PresetTitle(showsChevron: !savesInHeader) { isLibraryShown = true }
+            if savesInHeader {
                 SaveButton()
                     .transition(.opacity)
             }

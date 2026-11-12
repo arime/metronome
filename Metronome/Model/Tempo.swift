@@ -74,6 +74,35 @@ enum DialGeometry {
         return distance >= 0.35 * dialDiameter - tolerance && distance <= 0.55 * dialDiameter + tolerance
     }
 
+    /// The save controls in the gap at the bottom of the ring: a round button, the Save
+    /// pill and a round button, side by side. They keep their size on every dial, as
+    /// touch targets, and stand this far above the bottom of the dial's frame.
+    static let saveControlsButton = 38.0
+    static let saveControlsPillWidth = 84.0
+    static let saveControlsSpacing = 8.0
+    static let saveControlsBottomInset = 6.0
+
+    static var saveControlsWidth: Double {
+        2 * saveControlsButton + saveControlsPillWidth + 2 * saveControlsSpacing
+    }
+
+    /// True when the save controls fit in the gap: a round button stays clear of the knob
+    /// even with the knob at either end of the arc. On a smaller dial the controls go to
+    /// the header instead.
+    static func fitsSaveControls(dialDiameter: Double) -> Bool {
+        let radius = saveControlsButton / 2
+        let button = (
+            x: saveControlsWidth / 2 - radius,
+            y: dialDiameter / 2 - saveControlsBottomInset - radius
+        )
+        // The knob at the end of the arc, at 4:30 (or 7:30, which mirrors it).
+        let knobOffset = 131 * dialDiameter / 300 / 2.0.squareRoot()
+        let dx = knobOffset - button.x
+        let dy = button.y - knobOffset
+        let clearance = 4.0
+        return (dx * dx + dy * dy).squareRoot() >= knobDiameter(dialDiameter: dialDiameter) / 2 + radius + clearance
+    }
+
     /// Degrees clockwise from 12 o'clock, for an offset from the dial centre with y pointing down.
     static func angle(dx: Double, dy: Double) -> Double {
         atan2(dx, -dy) * 180 / .pi

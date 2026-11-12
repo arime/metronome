@@ -2,7 +2,7 @@
 
 This is the single specification for the app. It describes how version 1.0 is meant to work and is kept up to date as decisions change. Parts that are specified here but not built yet are listed in section 15.
 
-Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Presets & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen. The page *Main view UX review (draft)* holds the tempo sheet (board A), the split Save button in the header and its menu (boards D and E; board B is the earlier one-part button they replaced) and the next-up line (board C).
+Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Presets & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen. The page *Main view UX review (draft)* holds the tempo sheet (board A), the split Save button in the header and its menu (boards D and E; board B is the earlier one-part button they replaced), now used only on small dials, the next-up line (board C), and the save controls in the dial's gap (board V4; the other boards in its row are alternatives that were not chosen).
 
 ## 1. Summary
 
@@ -84,7 +84,7 @@ Not kept:
 
 Derived:
 
-- **Edited:** a preset is loaded and the current tempo, time signature or accents differ from it. On screen this is shown by the Save button (6.1); the word itself is not displayed.
+- **Edited:** a preset is loaded and the current tempo, time signature or accents differ from it. On screen this is shown by the save controls in the dial (6.2), or on a small dial by the Save button in the header (6.1); the word itself is not displayed.
 - **Position:** the loaded preset's place in the loaded-from setlist, such as 3 of 8.
 
 Reopening the app restores the settings, the loaded preset and its setlist, so the position in the setlist is restored too and the user can carry on with Next. The app always launches stopped and with sound on.
@@ -155,7 +155,7 @@ One screen with two states, Ready (stopped) and Playing. The layout is identical
 
 ### 6.1 Header
 
-**Preset title**, at the left, taking the space left by the buttons. One or two lines; a long name is cut with an ellipsis. Line 1 is 20 pt heavy in dial white, followed by a small ˅, which is left out while the Save button is showing, so that the name gets its place. Line 2 is 13 pt in muted. Without a line 2, line 1 is centred vertically in the header.
+**Preset title**, at the left, taking the space left by the buttons. One or two lines; a long name is cut with an ellipsis. Line 1 is 20 pt heavy in dial white, followed by a small ˅, which is left out while the Save button is showing in the header (on a small dial only), so that the name gets its place. Line 2 is 13 pt in muted. Without a line 2, line 1 is centred vertically in the header.
 
 | State | Line 1 | Line 2 |
 |---|---|---|
@@ -163,18 +163,18 @@ One screen with two states, Ready (stopped) and Playing. The layout is identical
 | Loaded from the Presets tab | preset name | none |
 | Loaded from a setlist | preset name | setlist name · `3 of 8` |
 
-The title does not change when the loaded preset is edited: unsaved changes are shown by the Save button alone. So the setlist name stays in view while a song is being adjusted, and a title without a second line does not gain one and shift.
+The title does not change when the loaded preset is edited: unsaved changes are shown by the save controls (6.2) alone. So the setlist name stays in view while a song is being adjusted, and a title without a second line does not gain one and shift.
 
 The title looks the same stopped and playing. Nothing is added in front of it while playing, so it does not move when Start is pressed; the dial, the tiles and the Stop button show that the metronome is running.
 
-**Save button**, shown only while the loaded preset is edited, between the title and the mute button: a 40 pt tall amber pill in two parts, about 109 pt wide.
+**Save button**, only on a dial too small for the save controls in its gap (6.2), as on iPhone SE. It takes their place: shown only while the loaded preset is edited, between the title and the mute button, a 40 pt tall amber pill in two parts, about 109 pt wide.
 
 - The left part reads `Save` (15 pt, bold, ink), with 16 pt of padding before it and 12 pt after. One tap saves the changes (7.6).
 - A 1 pt, 22 pt tall divider in ink at 28 % separates the parts.
 - The right part is 44 pt wide with an ink ˅ (14 pt). It opens the Save menu (7.6). It is a full-size target of its own, because a miss to the left would save.
 - Both parts take touches over a height of 44 pt.
 
-The button fades in and out, and the title gives up its width to it. It appears with the first change. It does not go away the instant the settings equal the saved ones again: it stays until they have rested there for half a second, so that turning the dial past the saved tempo does not make it blink out and in. Reverting, and loading or unloading a preset, take it away at once. After Save it confirms the save first: for one second the pill keeps its size and place and reads `Saved ✓` (15 pt, bold) in place of its two parts, and cannot be tapped; then it fades away. The word starts where `Save` did, so it only gains a letter, and the tick stands where the ˅ was, so nothing jumps; there is no divider. In that second it is green text on a see-through green tint (green at 16 %), not solid amber, so that it reads as a status and not as a button. A change to the settings during that second brings `Save` straight back. Everything that can be done with unsaved changes is in this one control, which is there only while there are changes; the title never changes what it does.
+The button comes and goes like the save controls (6.2), and the title gives up its width to it. After Save it confirms the save the same way: for one second the pill keeps its size and place and reads `Saved ✓` (15 pt, bold) in place of its two parts, green on the green tint, and cannot be tapped; then it fades away. The word starts where `Save` did, so it only gains a letter, and the tick stands where the ˅ was, so nothing jumps; there is no divider. Everything that can be done with unsaved changes is in this one control, which is there only while there are changes; the title never changes what it does.
 
 **Mute button**, 40 pt round:
 
@@ -183,7 +183,7 @@ The button fades in and out, and the title gives up its width to it. It appears 
 
 **Settings button**, at the far right: a 20 pt dial-white gear with no fill, in a 32 pt wide slot aligned to the right margin. It is lighter than the round buttons because it is used far less often. Its touch area is 44 × 44 pt. It opens the settings sheet (6.10).
 
-The header has only these buttons, so the title gets about 240 pt, or about 142 pt while the Save button is shown, with the title's ˅ left out: room for about 13 characters of the name, which comes back in full once the changes are saved or reverted. Previous and Next sit beside the Start / Stop button (6.7).
+The header has only these buttons, so the title gets about 240 pt, also while the preset is edited. Only on a small dial, while the Save button is shown there, it gets about 142 pt, with the title's ˅ left out: room for about 13 characters of the name, which comes back in full once the changes are saved or reverted. Previous and Next sit beside the Start / Stop button (6.7).
 
 ### 6.2 Tempo dial
 
@@ -192,6 +192,17 @@ The header has only these buttons, so the title gets about 240 pt, or about 142 
 - A 28 pt amber knob with a dark 5 pt border and an amber glow sits at the end of the lit arc.
 - Centre: the BPM number (112 pt, heavy, digits set slightly tight, dial white). Three-digit tempos are drawn at 88 % of that size so they stay clear of the knob. Below the number: `BPM` in amber, a dot, and the tempo name in muted italic.
 - Tapping the number or the line below it opens the tempo sheet (6.11).
+
+**Save controls**, in the gap at the bottom of the ring, shown only while the loaded preset is edited. Three pieces side by side, 176 pt wide in all, centred under the number, with their bottom edge 6 pt above the bottom of the dial, so about 10 pt above `Tap tempo`. They do not scale with the dial.
+
+- Left: **Revert**, a 38 pt round button with a dial-white ↺ on a surface fill and a 1 pt outline in the line colour.
+- Middle: **Save**, an amber pill, 84 × 38 pt, reading `Save` (15 pt, bold, ink). It is the only coloured piece, so it reads as the thing to tap.
+- Right: **Save as new preset**, a 38 pt round button like Revert, with two overlapping squares and a +.
+- 8 pt between the pieces. Each takes touches over 44 pt, which leaves 2 pt between the touch areas. A touch on a control never turns the dial. Revert and Save as new preset are on opposite sides of Save, so the two less-used actions are never mistaken for each other.
+
+The controls fade in with the first change. They do not go away the instant the settings equal the saved ones again: they stay until the settings have rested there for half a second, so that turning the dial past the saved tempo does not make them blink out and in. Reverting, and loading or unloading a preset, take them away at once. After Save they confirm the save first: the two round buttons fade out, and for one second the pill keeps its size and place and reads `Saved ✓` (15 pt, bold, centred), in green on a see-through green tint (green at 16 %) rather than solid amber, so that it reads as a status and not as a button. It cannot be tapped then. Then it fades away. A change to the settings during that second brings the controls straight back.
+
+The controls fit in the gap only while a round button stays at least 4 pt clear of the knob with the knob at either end of the arc, which takes a dial of about 290 pt or more. On a smaller dial, as on iPhone SE, they are left out and the Save button in the header (6.1) is shown instead.
 
 Tempo names:
 
@@ -298,7 +309,7 @@ When accent tiles are narrower than 44 pt (seven beats in a row), each tile's to
 | amber | `#FFB224` | the single accent colour |
 | amber tint | `#1E1A12` | idle accented tile fill, muted button fill |
 | red | `#E5484D` | remove and delete actions only |
-| green | `#4CC38A` | confirmations only: the sync status dot when up to date, and the Save button while it reads Saved |
+| green | `#4CC38A` | confirmations only: the sync status dot when up to date, and the Save pill while it reads Saved |
 
 ### 6.10 Settings sheet
 
@@ -419,17 +430,17 @@ All four ways of setting the tempo work when stopped and when playing.
 
 **Tapping the title** always opens the library sheet (section 8), edited or not. Unsaved edits are kept while the library is open.
 
-**Unsaved changes** are handled with the Save button (6.1), which is shown while the preset is edited. There are three things to do with them:
+**Unsaved changes** are handled with the save controls in the dial's gap (6.2), which are shown while the preset is edited; on a small dial, with the Save button in the header and its menu (6.1). There are three things to do with them:
 
-- **Save:** tapping `Save` writes the current settings into the loaded preset. The button confirms it by reading `Saved ✓` for a second, with a success haptic, and then goes away (6.1). There is no separate message.
-- **Save as new preset:** in the Save menu. It opens the New preset sheet (section 10) filled with the current settings. After saving, the new preset is the loaded one, and the preset that was edited is left as it was.
-- **Revert:** in the Save menu, as `Revert` with the saved preset's tempo and time signature on a second, smaller line, for example `120 BPM · 4/4`, so that it is clear what comes back. It sets the metronome back to the preset's tempo, time signature and accents, with a selection tick.
+- **Save:** tapping `Save` writes the current settings into the loaded preset. The pill confirms it by reading `Saved ✓` for a second, with a success haptic, and then goes away (6.2). There is no separate message.
+- **Save as new preset:** the round button right of Save (in the header, the Save menu). It opens the New preset sheet (section 10) filled with the current settings. After saving, the new preset is the loaded one, and the preset that was edited is left as it was.
+- **Revert:** the round ↺ button left of Save (in the header, the Save menu, as `Revert` with the saved preset's tempo and time signature on a second, smaller line, for example `120 BPM · 4/4`, so that it is clear what comes back). It sets the metronome back to the preset's tempo, time signature and accents, with a selection tick.
   - While playing, the bar carries on when only the tempo or the accents go back, as with any other change of tempo or accents (7.1, 7.3). When the time signature goes back, the next beat is beat 1 of a new bar (7.2).
   - There is no confirmation and no undo.
 
-The Save menu is the system menu, opened by the ˅ part of the button, with these two items in this order. Tapping outside it closes it.
+The Save menu, on a small dial only, is the system menu, opened by the ˅ part of the header button, with Save as new preset and Revert in this order. Tapping outside it closes it.
 
-Edits also go away without the button: loading another preset, with Previous / Next or from the library, drops them without asking, and **No preset** in the library (8.2) keeps them as plain settings.
+Edits also go away without the controls: loading another preset, with Previous / Next or from the library, drops them without asking, and **No preset** in the library (8.2) keeps them as plain settings.
 
 **Previous and Next** load the previous or next preset in the loaded-from setlist's order.
 
@@ -491,7 +502,7 @@ The switch works when stopped and when playing, applies to this device only and 
 **When changes arrive:**
 
 - The metronome never changes by itself: tempo, time signature and accents stay as they are, playing or stopped.
-- If the loaded preset's settings changed, the preset counts as edited and the Save button appears, because what is in the metronome now differs from the preset. Revert takes the arrived version; Save keeps the metronome's and sends it to the other devices.
+- If the loaded preset's settings changed, the preset counts as edited and the save controls appear, because what is in the metronome now differs from the preset. Revert takes the arrived version; Save keeps the metronome's and sends it to the other devices.
 - If the loaded preset's name changed, the header shows the new name at once.
 - If the loaded preset, the loaded-from setlist or the setlist the library is showing was deleted, the rules in section 5 apply.
 - An open library sheet, setlist or setlist editor updates in place. A setlist view or editor whose setlist was deleted closes and the library shows the Setlists tab.
@@ -634,13 +645,13 @@ All three settings start from the metronome's current values, so the quickest wa
 
 Changing values in the sheet does not affect the metronome, playing or stopped.
 
-Saving a new preset from the library does not load it, with one exception: **naming the current settings.** When no preset is loaded and the preset is saved with the same tempo, time signature and accents as the metronome has, the new preset becomes the loaded one, so the header shows its name at once and later changes bring up the Save button.
+Saving a new preset from the library does not load it, with one exception: **naming the current settings.** When no preset is loaded and the preset is saved with the same tempo, time signature and accents as the metronome has, the new preset becomes the loaded one, so the header shows its name at once and later changes bring up the save controls.
 
 - The metronome is not touched: it keeps playing or stays stopped, and no new bar starts.
 - If the preset was added to a setlist (9.3, with "Add to <setlist>" on), it counts as loaded from that setlist, so the header shows its position and Previous / Next appear. Otherwise it is loaded on its own.
 - In every other case the preset is only created: when a preset is already loaded, or when the values were changed in the sheet.
 
-**Save as new preset** from the Save menu (7.6) always makes the new preset the loaded one.
+**Save as new preset** for unsaved changes (7.6) always makes the new preset the loaded one.
 
 ## 11. Audio and timing
 
@@ -695,7 +706,7 @@ The Haptics switch in settings (7.8) turns all of these off.
 - **VoiceOver:**
   - The dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. It has the action "Type a tempo", which opens the tempo sheet.
   - In the tempo sheet the field reads as "Tempo" with the typed digits, each key as its digit, and the delete key as "Delete".
-  - The Save button's two parts read as "Save changes" and "More save options". After Save, "Saved" is announced, and the button reads "Saved" while it shows that.
+  - The save controls in the dial read as "Revert", with a hint that says what comes back (for example "Goes back to 120 BPM · 4/4"), "Save changes" and "Save as new preset". They are separate from the dial's own element. The header Save button on a small dial reads as "Save changes" and "More save options". After Save, "Saved" is announced, and the pill reads "Saved" while it shows that.
   - The tap tempo pill reads as "Tap tempo" also while it shows `Tap again`.
   - The next-up line reads as one element, for example "Next: Seven Bridges, 168 beats per minute, 7/8", or "Last preset in the setlist".
   - Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action.
@@ -705,7 +716,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The haptics switch reads as "Haptic feedback, on" or "Haptic feedback, off".
   - The screen switch reads as "Keep screen awake, on" or "Keep screen awake, off".
   - The sync switch reads as "Sync presets and setlists, on" or "Sync presets and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
-  - The header title reads the preset name and its second line, and says that it opens the library. While the preset is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the Save button appearing cannot be heard.
+  - The header title reads the preset name and its second line, and says that it opens the library. While the preset is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the save controls appearing cannot be heard.
   - A preset row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its menu button reads "More for Harbour Lights".
   - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist"; the pen in setlist editing reads "Rename setlist". The tabs read "Presets" and "Setlists", with "selected" for the one shown.
   - In setlist editing, rows can be moved up and down with VoiceOver actions as well as by dragging.
@@ -747,7 +758,7 @@ Presets and setlists:
 - [x] The library opens on the Presets tab, or inside the loaded preset's setlist when it came from one, and scrolls to its row. *(Choosing the setlist is unit tested, and both ways of opening were seen in the simulator. In the simulator the list stayed at its top on an iPhone 17 Pro, where the loaded row fits, and scrolled just far enough to show it on an iPhone SE, where it does not. A library of several screens has not been tried.)*
 - [x] A preset loaded from the Presets tab keeps the setlist being stepped through when it is in it. *(Unit tested.)*
 - [x] The header shows the right title and second line in every state of 6.1.
-- [x] Changing a loaded preset's settings shows the Save button and leaves the title as it is; Save, Save as new preset and Revert do what 7.6 says, and the title opens the library also while edited. *(Save and Revert, with the bar carrying on or starting over, are unit tested. Save, the menu and Revert were tried in the simulator, and Save as new preset was seen to open its sheet from the menu.)*
+- [x] Changing a loaded preset's settings shows the save controls in the dial's gap and leaves the title as it is; Save, Save as new preset and Revert do what 7.6 says, and the title opens the library also while edited. *(Save and Revert, with the bar carrying on or starting over, are unit tested, and so is the dial size the controls need. On the iPhone 17 Pro simulator Revert, Save with its Saved confirmation, and Save as new preset opening its sheet were tried. On the iPhone SE simulator the header Save button was seen to take their place.)*
 - [x] Quick taps on − / + each count once and never leave the tempo running on by itself. *(Four quick taps on + were tried in the simulator after two quick taps had left the repeat running up to 250.)*
 - [x] Naming the current settings while nothing is loaded loads the new preset, from the setlist it was added to; in other cases a new preset from the library is not loaded. *(Unit tested.)*
 - [ ] The next-up line names the preset Next would load, says so at the last preset, and is left out when it would push the dial below 200 pt. *(The preset and the layout rule are unit tested, and the line was seen in the simulator. The last preset and a small phone were not seen on screen.)*
