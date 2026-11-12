@@ -121,6 +121,41 @@ struct DialDragTests {
     }
 }
 
+struct DialSlideTests {
+    @Test func onlyTouchesInsideTheRingStartASlide() {
+        #expect(DialGeometry.startsSlide(dx: 0, dy: 0, dialDiameter: 300) == true)
+        #expect(DialGeometry.startsSlide(dx: 0, dy: -104, dialDiameter: 300) == true)
+        #expect(DialGeometry.startsSlide(dx: 0, dy: -105, dialDiameter: 300) == false)
+    }
+
+    @Test func aTouchThatDoesNotMoveChangesNothing() {
+        var slide = DialSlide(startBPM: 120, y: 50)
+        #expect(slide.move(y: 50) == 120)
+    }
+
+    @Test func upIsFasterByOneBPMPerFourPoints() {
+        var slide = DialSlide(startBPM: 120, y: 100)
+        #expect(slide.move(y: 60) == 130)
+        #expect(slide.move(y: 140) == 110)
+    }
+
+    @Test func smallMovesAddUp() {
+        var slide = DialSlide(startBPM: 120, y: 100)
+        #expect(slide.move(y: 99) == 120)
+        #expect(slide.move(y: 98) == 121)
+        #expect(slide.move(y: 96) == 121)
+    }
+
+    @Test func itStopsAtTheEndsAndComesBackAtOnce() {
+        var slide = DialSlide(startBPM: 295, y: 100)
+        #expect(slide.move(y: -400) == 300)
+        #expect(slide.move(y: -360) == 290)
+        var low = DialSlide(startBPM: 35, y: 0)
+        #expect(low.move(y: 400) == 30)
+        #expect(low.move(y: 380) == 35)
+    }
+}
+
 struct TempoEntryTests {
     private func entry(_ digits: Int...) -> TempoEntry {
         var entry = TempoEntry()

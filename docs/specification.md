@@ -14,7 +14,7 @@ Settings can be saved as named **presets**, usually one per song or practice set
 
 Included:
 
-- Tempo from 30 to 300 BPM, set by ring drag, − / + buttons, tap tempo or typing the number.
+- Tempo from 30 to 300 BPM, set by turning the ring, sliding the number up or down, − / + buttons, tap tempo or typing the number.
 - Eight time signatures: 2/4, 3/4, 4/4, 5/4, 6/8, 7/8, 9/8, 12/8.
 - Per-beat accents; any combination of beats, including none.
 - Start / Stop with click sound, visual beat effects and haptics.
@@ -190,8 +190,8 @@ The header has only these buttons, so the title gets about 240 pt, also while th
 - 300 pt gauge in the design; on a tall screen it grows, up to 340 pt (6.8), and everything in it scales with it. 48 tick marks on a 270° arc that starts at the lower left (the 7:30 position), runs clockwise over the top and ends at the lower right (4:30), leaving a 90° gap at the bottom. Every fourth tick is longer and thicker.
 - Ticks from the start of the arc up to the current tempo are amber; the rest are unlit, in the tick colour, which is light enough against the background (3 : 1) that the rest of the range can be seen. Position along the arc is linear: `(bpm − 30) / 270`.
 - A 28 pt amber knob with a dark 5 pt border and an amber glow sits at the end of the lit arc.
-- Centre: the BPM number (112 pt, heavy, digits set slightly tight, dial white). Three-digit tempos are drawn at 88 % of that size so they stay clear of the knob. Below the number: `BPM` in amber, a dot, and the tempo name in muted italic.
-- Tapping the number or the line below it opens the tempo sheet (6.11).
+- Centre: the BPM number (112 pt, heavy, digits set slightly tight, dial white). Three-digit tempos are drawn at 88 % of that size so they stay clear of the knob. Below the number: the tempo name in muted italic (15 pt), for example `Presto`. There is no `BPM` label.
+- Tapping the number or the tempo name opens the tempo sheet (6.11). Dragging up or down on them slides the tempo (7.1).
 
 **Save controls**, in the gap at the bottom of the ring, shown only while the loaded preset is edited. Three pieces side by side, 176 pt wide in all, centred under the number, with their bottom edge 6 pt above the bottom of the dial, so about 10 pt above `Tap tempo`. They do not scale with the dial.
 
@@ -285,7 +285,7 @@ In practice only an iPhone SE with Display Zoom (320 × 568 pt) goes below 200 p
 
 A small dial is simplified so that it stays legible:
 
-- Below 180 pt the tempo name is hidden; the centre shows the number and `BPM` only.
+- Below 180 pt the tempo name is hidden; the centre shows only the number.
 - The knob scales with the dial, from 28 pt on the full-size dial down to about 17 pt at the smallest.
 
 At least 16 pt is always kept between the accent tiles and the Start / Stop button. Phones without a home indicator get a 16 pt margin below the button.
@@ -375,12 +375,14 @@ A bottom sheet over a dimmed screen, sized to its content, opened by tapping the
 
 ### 7.1 Tempo
 
-All four ways of setting the tempo work when stopped and when playing.
+All five ways of setting the tempo work when stopped and when playing.
 
 - **Ring.** Dragging on the ring turns the dial: the tempo changes by the angle the finger travels around the dial centre, 270° for the whole range, rounded to whole BPM. It makes no difference where on the ring the drag begins, so the knob can be grabbed and moved, and a drag anywhere else on the ring turns it by the same amount.
   - The tempo never jumps to where the finger lands. A touch that does not move changes nothing, and the drag begins only after the finger has moved 4 pt, so a tap or a brush against the ring is ignored.
   - The tempo stops at 30 and 300. Turning back from an end takes effect at once.
   - Only touches that begin on the ring, between 0.35 and 0.55 dial diameters from the centre (105 pt and 165 pt on the 300 pt dial), start a drag.
+- **Slide.** Dragging up or down on the number, a touch that begins inside the ring (closer to the centre than 0.35 dial diameters), slides the tempo: up is faster, 1 BPM for every 4 pt the finger travels vertically. Sideways movement is ignored, so it does not matter whether the finger moves straight.
+  - As with the ring, the tempo never jumps, the slide begins only after the finger has moved 4 pt, so a tap still opens the tempo sheet, and the tempo stops at 30 and 300 and comes back from an end at once.
 - **Typing.** Tapping the number opens the tempo sheet (6.11).
   - A digit key adds a digit, up to three; a leading zero is ignored. The delete key removes the last digit.
   - `Set tempo` sets the tempo and closes the sheet. Until the digits are a tempo from 30 to 300, the button is `Cancel` instead (6.11), so there is always a visible way back.
@@ -742,6 +744,7 @@ A ticked line has been verified in the simulator, by unit tests or on a phone. A
 Metronome:
 
 - [x] Tempo can be set by ring, − / + and tap tempo, when stopped and when playing, and never leaves 30…300. *(A tap tempo series has not been tapped by hand; its rules are unit tested.)*
+- [ ] Dragging up or down on the number slides the tempo 1 BPM per 4 pt, up being faster, and a tap on the number still opens the tempo sheet. *(The slide rules are unit tested, and an 80 pt upward drag and a tap were tried in the simulator. How it feels under a finger needs a real iPhone.)*
 - [ ] A drag on the ring turns the dial by the angle travelled, wherever it begins; a tap or a brush against the ring changes nothing. *(The turning rules are unit tested, and a drag and a tap on the ring were tried in the simulator. How it feels under a finger needs a real iPhone.)*
 - [x] Tapping the number opens the tempo sheet; typing a tempo and Set tempo sets it, and only tempos from 30 to 300 can be set. *(The digit rules are unit tested; typing 174 was tried in the simulator.)*
 - [ ] The tap tempo pill reads Tap again with an amber outline during a series and goes back two seconds after the last tap. *(The label and outline were seen in the simulator; going back after two seconds was not watched.)*

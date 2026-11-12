@@ -11,7 +11,13 @@ struct TempoDial: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isEntryShown = false
     /// The drag in progress, with the touch it belongs to.
-    @State private var drag: (start: CGPoint, turn: DialDrag)?
+    @State private var drag: (start: CGPoint, motion: DialMotion)?
+
+    /// A drag on the ring turns the dial; one on the number slides the tempo up and down.
+    private enum DialMotion {
+        case turn(DialDrag)
+        case slide(DialSlide)
+    }
 
     /// Everything is drawn for a 300 pt dial and scaled.
     private var scale: CGFloat { diameter / 300 }
@@ -92,21 +98,18 @@ struct TempoDial: View {
                     MoveKeyframe(1.04)
                     CubicKeyframe(1.0, duration: BeatPulse.decay(bpm: model.settings.bpm))
                 }
-            HStack(spacing: 8) {
-                SectionLabel(text: "BPM", color: Theme.amber)
-                // On a small dial the tempo name does not fit inside the ring.
-                if DialGeometry.showsTempoName(dialDiameter: diameter) {
-                    Circle().fill(Theme.muted).frame(width: 3, height: 3)
-                    Text(model.tempoName)
-                        .font(.system(size: 15).italic())
-                        .foregroundStyle(Theme.muted)
-                }
+            // On a small dial the tempo name does not fit inside the ring.
+            if DialGeometry.showsTempoName(dialDiameter: diameter) {
+                Text(model.tempoName)
+                    .font(.system(size: 15).italic())
+                    .foregroundStyle(Theme.muted)
             }
         }
     }
 
-    /// Turns the dial by the angle the finger travels. The drag only begins once the finger
-    /// has moved a little, so a tap or a brush against the ring changes nothing.
+    /// On the ring, turns the dial by the angle the finger travels; on the number, slides the
+    /// tempo up and down with the finger. The drag only begins once the finger has moved a
+    /// little, so a tap or a brush against the dial changes nothing.
     private var ringDrag: some Gesture {
         DragGesture(minimumDistance: 4)
             .onChanged { value in
@@ -115,22 +118,29 @@ struct TempoDial: View {
                 let dy = value.location.y - centre
                 // A drag is told apart by where its touch began rather than by an "ended"
                 // flag, so a cancelled gesture cannot leave a stale drag for the next touch.
-                guard var current = drag, current.start == value.startLocation else {
-                    let startedOnRing = DialGeometry.startsDrag(
-                        dx: value.startLocation.x - centre,
-                        dy: value.startLocation.y - centre,
-                        dialDiameter: diameter
-                    )
-                    guard startedOnRing else { return }
+                guard let current = drag, current.start == value.startLocation else {
+                    let startDX = value.startLocation.x - centre
+                    let startDY = value.startLocation.y - centre
                     // Measured from here, not from where the touch began, so the first
                     // movement does not arrive as a jump.
-                    let turn = DialDrag(startFraction: Tempo.arcFraction(for: model.settings.bpm), dx: dx, dy: dy)
-                    drag = (value.startLocation, turn)
+                    if DialGeometry.startsDrag(dx: startDX, dy: startDY, dialDiameter: diameter) {
+                        let turn = DialDrag(startFraction: Tempo.arcFraction(for: model.settings.bpm), dx: dx, dy: dy)
+                        drag = (value.startLocation, .turn(turn))
+                    } else if DialGeometry.startsSlide(dx: startDX, dy: startDY, dialDiameter: diameter) {
+                        drag = (value.startLocation, .slide(DialSlide(startBPM: model.settings.bpm, y: value.location.y)))
+                    }
                     return
                 }
-                let fraction = current.turn.move(dx: dx, dy: dy)
-                drag = current
-                model.setBPM(Tempo.bpm(forArcFraction: fraction))
+                switch current.motion {
+                case .turn(var turn):
+                    let fraction = turn.move(dx: dx, dy: dy)
+                    drag = (current.start, .turn(turn))
+                    model.setBPM(Tempo.bpm(forArcFraction: fraction))
+                case .slide(var slide):
+                    let bpm = slide.move(y: value.location.y)
+                    drag = (current.start, .slide(slide))
+                    model.setBPM(bpm)
+                }
             }
             .onEnded { _ in drag = nil }
     }

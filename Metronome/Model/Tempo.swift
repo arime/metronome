@@ -74,6 +74,12 @@ enum DialGeometry {
         return distance >= 0.35 * dialDiameter - tolerance && distance <= 0.55 * dialDiameter + tolerance
     }
 
+    /// True when the touch starts inside the ring, on the number: closer to the centre than
+    /// 0.35 dial diameters. Such a drag slides the tempo up and down instead of turning it.
+    static func startsSlide(dx: Double, dy: Double, dialDiameter: Double) -> Bool {
+        (dx * dx + dy * dy).squareRoot() < 0.35 * dialDiameter - 1e-9
+    }
+
     /// The save controls in the gap at the bottom of the ring: a round button, the Save
     /// pill and a round button, side by side. They keep their size on every dial, as
     /// touch targets, and stand this far above the bottom of the dial's frame.
@@ -133,6 +139,31 @@ struct DialDrag: Equatable {
         lastAngle = angle
         fraction = min(max(fraction + delta / DialGeometry.arcSweepDegrees, 0), 1)
         return fraction
+    }
+}
+
+/// An up or down drag that began on the number. Up is faster: the tempo changes by 1 BPM for
+/// every 4 pt the finger travels vertically; sideways movement is ignored.
+struct DialSlide: Equatable {
+    static let pointsPerBPM = 4.0
+
+    /// Kept unrounded so slow drags add up between whole BPM.
+    private(set) var bpm: Double
+    private var lastY: Double
+
+    init(startBPM: Int, y: Double) {
+        bpm = Double(Tempo.clamp(startBPM))
+        lastY = y
+    }
+
+    /// Moves the finger and returns the new tempo. The tempo stops at the ends of the range,
+    /// and moving back from an end takes effect at once.
+    @discardableResult
+    mutating func move(y: Double) -> Int {
+        let range = Tempo.range
+        bpm = min(max(bpm + (lastY - y) / Self.pointsPerBPM, Double(range.lowerBound)), Double(range.upperBound))
+        lastY = y
+        return Tempo.clamp(Int(bpm.rounded()))
     }
 }
 
