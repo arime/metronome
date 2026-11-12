@@ -1,68 +1,123 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Snappy Metronome Support</title>
-  <meta name="description" content="Help and contact for Snappy Metronome, a metronome for iPhone.">
-  <link rel="icon" href="icon.png">
-  <link rel="apple-touch-icon" href="icon.png">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <main>
-    <header>
-      <img src="icon.png" alt="">
-      <div>
-        <h1>Snappy Metronome</h1>
-        <p>A metronome for iPhone</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Snappy Metronome Support</title>
+    <meta
+      name="description"
+      content="Help and contact for Snappy Metronome, a metronome for iPhone."
+    />
+    <link rel="icon" href="icon.png" />
+    <link rel="apple-touch-icon" href="icon.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="icon.png" alt="" />
+        <div>
+          <h1>Snappy Metronome</h1>
+          <p>A metronome for iPhone</p>
+        </div>
+      </header>
+
+      <nav>
+        <a href="./" aria-current="page">Support</a>
+        <a href="privacy.html">Privacy policy</a>
+      </nav>
+
+      <div class="card">
+        <h2 style="margin-top: 0">Contact</h2>
+        <p>
+          Questions, problems or ideas: email
+          <a href="mailto:metsari+metronome@proton.me">metsari+metronome@proton.me</a>. I read every
+          message and usually answer within a few days.
+        </p>
+        <p>
+          You can also
+          <a href="https://github.com/arime/metronome/issues"
+            >open an issue on GitHub</a
+          >.
+        </p>
+        <p class="muted">
+          It helps to mention your iPhone model, its iOS version, and the app
+          version shown in the App Store.
+        </p>
       </div>
-    </header>
 
-    <nav>
-      <a href="./" aria-current="page">Support</a>
-      <a href="privacy.html">Privacy policy</a>
-    </nav>
+      <h2>Common questions</h2>
 
-    <div class="card">
-      <h2 style="margin-top:0">Contact</h2>
-      <p>Questions, problems or ideas: email <a href="mailto:arime-metronome@proton.me">arime-metronome@proton.me</a>. I read every message and usually answer within a few days.</p>
-      <p>You can also <a href="https://github.com/arime/metronome/issues">open an issue on GitHub</a>.</p>
-      <p class="muted">It helps to mention your iPhone model, its iOS version, and the app version shown in the App Store.</p>
-    </div>
+      <h3>How do I make the click louder or quieter?</h3>
+      <p>
+        Use your phone's volume buttons or the volume slider in Control Center
+        while the metronome is playing. The app has no volume control of its
+        own.
+      </p>
 
-    <h2>Common questions</h2>
+      <h3>Does it play when the phone is on silent?</h3>
+      <p>
+        Yes. The click plays even when the ring/silent switch is set to silent,
+        because a metronome that goes quiet would be no use.
+      </p>
 
-    <h3>How do I make the click louder or quieter?</h3>
-    <p>Use your phone's volume buttons or the volume slider in Control Center while the metronome is playing. The app has no volume control of its own.</p>
+      <h3>Why does it stop when I lock the screen or switch apps?</h3>
+      <p>
+        That is how this version works: playback stops when the app leaves the
+        screen, when the phone is locked, during a phone call, or when
+        headphones are unplugged. Press Start again to carry on. The screen
+        stays awake while the metronome plays.
+      </p>
 
-    <h3>Does it play when the phone is on silent?</h3>
-    <p>Yes. The click plays even when the ring/silent switch is set to silent, because a metronome that goes quiet would be no use.</p>
+      <h3>How do presets and setlists work?</h3>
+      <p>
+        Set the tempo, time signature and accents, then tap the title at the top
+        of the screen to open the library and save them as a preset. A setlist
+        is an ordered selection of presets, for example one per gig. When you
+        load a preset from a setlist, the ‹ and › buttons beside Start step
+        through the songs.
+      </p>
 
-    <h3>Why does it stop when I lock the screen or switch apps?</h3>
-    <p>That is how this version works: playback stops when the app leaves the screen, when the phone is locked, during a phone call, or when headphones are unplugged. Press Start again to carry on. The screen stays awake while the metronome plays.</p>
+      <h3>How do I sync my presets between devices?</h3>
+      <p>
+        Open Settings (the gear at the top right) and switch on
+        <em>Sync presets and setlists</em> on each device. They must be signed
+        in to the same iCloud account. Changes usually arrive within a minute.
+        Click sound, haptics and the current settings stay separate on each
+        device.
+      </p>
 
-    <h3>How do presets and setlists work?</h3>
-    <p>Set the tempo, time signature and accents, then tap the title at the top of the screen to open the library and save them as a preset. A setlist is an ordered selection of presets, for example one per gig. When you load a preset from a setlist, the ‹ and › buttons beside Start step through the songs.</p>
+      <h3>Sync says "Not signed in to iCloud"</h3>
+      <p>
+        Sign in to iCloud in the iPhone Settings app. Until then your presets
+        and setlists stay on this iPhone, and they sync once you are signed in.
+      </p>
 
-    <h3>How do I sync my presets between devices?</h3>
-    <p>Open Settings (the gear at the top right) and switch on <em>Sync presets and setlists</em> on each device. They must be signed in to the same iCloud account. Changes usually arrive within a minute. Click sound, haptics and the current settings stay separate on each device.</p>
+      <h3>Sync says "iCloud storage is full"</h3>
+      <p>
+        The app's share of iCloud has room for about a thousand presets and
+        setlists in total. Delete ones you no longer need to make room. Until
+        then, some changes stay on this iPhone.
+      </p>
 
-    <h3>Sync says "Not signed in to iCloud"</h3>
-    <p>Sign in to iCloud in the iPhone Settings app. Until then your presets and setlists stay on this iPhone, and they sync once you are signed in.</p>
+      <h3>Sync says "Update the app to keep syncing"</h3>
+      <p>
+        Another of your devices has a newer version of the app. Update this one
+        from the App Store and syncing carries on.
+      </p>
 
-    <h3>Sync says "iCloud storage is full"</h3>
-    <p>The app's share of iCloud has room for about a thousand presets and setlists in total. Delete ones you no longer need to make room. Until then, some changes stay on this iPhone.</p>
+      <h3>How do I turn off the vibration?</h3>
+      <p>
+        Open Settings in the app and switch off <em>Haptic feedback</em>. This
+        turns off every haptic in the app.
+      </p>
 
-    <h3>Sync says "Update the app to keep syncing"</h3>
-    <p>Another of your devices has a newer version of the app. Update this one from the App Store and syncing carries on.</p>
-
-    <h3>How do I turn off the vibration?</h3>
-    <p>Open Settings in the app and switch off <em>Haptic feedback</em>. This turns off every haptic in the app.</p>
-
-    <footer>
-      <p>Snappy Metronome by Ari Metsähalme · <a href="privacy.html">Privacy policy</a></p>
-    </footer>
-  </main>
-</body>
+      <footer>
+        <p>
+          Snappy Metronome by Ari Metsähalme ·
+          <a href="privacy.html">Privacy policy</a>
+        </p>
+      </footer>
+    </main>
+  </body>
 </html>

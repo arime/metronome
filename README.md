@@ -28,7 +28,7 @@ Set a tempo and a time signature, choose which beats are accented, and press Sta
 
 - Help and contact: [arime.github.io/metronome](https://arime.github.io/metronome/)
 - Privacy policy: [arime.github.io/metronome/privacy.html](https://arime.github.io/metronome/privacy.html). The app collects no data.
-- Problems and ideas: email [arime-metronome@proton.me](mailto:arime-metronome@proton.me) or [open an issue](https://github.com/arime/metronome/issues)
+- Problems and ideas: email [metsari+metronome@proton.me](mailto:metsari+metronome@proton.me) or [open an issue](https://github.com/arime/metronome/issues)
 
 ## For developers
 
@@ -50,15 +50,15 @@ It launches a Debug build once per scene with sample presets, no sound and a cle
 
 ### Where things are
 
-| Folder | Contents |
-|---|---|
-| `Metronome/Engine` | Audio scheduling, click synthesis, haptics and the iCloud store |
-| `Metronome/Model` | Tempo, time signatures, the beat clock, presets, setlists and sync |
-| `Metronome/Views` | The SwiftUI screens and sheets |
-| `Metronome/Screenshots` | The screenshot scenes, in Debug builds only |
-| `MetronomeTests` | Unit tests |
-| `screenshots` | The App Store screenshots |
-| `site` | The support and privacy pages, published to GitHub Pages |
+| Folder                  | Contents                                                           |
+| ----------------------- | ------------------------------------------------------------------ |
+| `Metronome/Engine`      | Audio scheduling, click synthesis, haptics and the iCloud store    |
+| `Metronome/Model`       | Tempo, time signatures, the beat clock, presets, setlists and sync |
+| `Metronome/Views`       | The SwiftUI screens and sheets                                     |
+| `Metronome/Screenshots` | The screenshot scenes, in Debug builds only                        |
+| `MetronomeTests`        | Unit tests                                                         |
+| `screenshots`           | The App Store screenshots                                          |
+| `site`                  | The support and privacy pages, published to GitHub Pages           |
 
 ### How it works
 
