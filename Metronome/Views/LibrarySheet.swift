@@ -464,12 +464,11 @@ private struct SongListView: View {
                         menu: { rowMenu(for: song) }
                     )
                     .sheetRow()
-                    // The swipe is a shortcut to the two most common items of the row's menu.
+                    // On the Songs tab the swipe is a shortcut to the two most common items of
+                    // the row's menu. A setlist has none: its list is in edit mode, so that the
+                    // handles drag at once, and such a list takes no swipes.
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        if let setlist {
-                            Button("Remove") { remove(song, from: setlist) }
-                                .tint(Color(hex: 0x3A3A3F))
-                        } else {
+                        if setlist == nil {
                             Button("Delete") { deleting = song }
                                 .tint(Theme.red)
                             Button("Edit") { editingSong = song }
