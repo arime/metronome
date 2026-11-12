@@ -54,7 +54,9 @@ final class MetronomeModel {
     @ObservationIgnored private var beatCount = 0
 
     init(engine: ClickEngine, store: SettingsStore, haptics: HapticsPlaying, libraryStore: LibraryStore,
-         sync: LibrarySync? = nil, now: @escaping () -> Date = Date.init) {
+         sync: LibrarySync? = nil, now: @escaping () -> Date = Date.init,
+         saveOfferDelay: Duration = .milliseconds(500)) {
+        self.saveOfferDelay = saveOfferDelay
         self.sync = sync
         self.now = now
         self.engine = engine
@@ -74,6 +76,7 @@ final class MetronomeModel {
         selectedSetlistID = state.selectedSetlistID
         engine.onBeat = { [weak self] beat in self?.beatSounded(beat) }
         engine.onStopped = { [weak self] in self?.becomeStopped() }
+        isSaveOffered = isEdited
         if let sync {
             syncEnabled = sync.isOn
             syncStatus = sync.status
@@ -185,6 +188,7 @@ final class MetronomeModel {
         settings.setBPM(bpm)
         guard settings.bpm != before else { return false }
         settingsChanged(startNewBar: false)
+        userChangedSettings()
         return true
     }
 
@@ -196,6 +200,7 @@ final class MetronomeModel {
         guard settings.accents != before else { return }
         haptics?.selection()
         settingsChanged(startNewBar: false)
+        userChangedSettings()
     }
 
     /// A different signature resets the accents and, while playing, starts a new bar.
@@ -203,6 +208,7 @@ final class MetronomeModel {
     func selectTimeSignature(_ signature: TimeSignature) {
         guard settings.setTimeSignature(signature) else { return }
         settingsChanged(startNewBar: true)
+        userChangedSettings()
     }
 
     private func settingsChanged(startNewBar: Bool) {
@@ -226,6 +232,37 @@ final class MetronomeModel {
     /// True when a preset is loaded and the current settings differ from it.
     var isEdited: Bool {
         loadedPreset.map { $0.settings != settings } ?? false
+    }
+
+    /// Whether the Save button is shown. It follows `isEdited`, except that it stays for a
+    /// moment when the user's own changes bring the settings back to the saved ones: turning
+    /// the dial past the saved tempo must not make the button blink out and in again.
+    private(set) var isSaveOffered = false
+    @ObservationIgnored private var saveOfferHide: Task<Void, Never>?
+    @ObservationIgnored private let saveOfferDelay: Duration
+
+    /// After the user changed the tempo, time signature or accents.
+    private func userChangedSettings() {
+        saveOfferHide?.cancel()
+        saveOfferHide = nil
+        if isEdited {
+            isSaveOffered = true
+        } else if isSaveOffered {
+            // Back on the saved values: take the button away only if they stay there.
+            saveOfferHide = Task { [weak self, saveOfferDelay] in
+                try? await Task.sleep(for: saveOfferDelay)
+                guard !Task.isCancelled, let self else { return }
+                self.isSaveOffered = self.isEdited
+            }
+        }
+    }
+
+    /// After anything else that can change whether the preset is edited: saving, reverting,
+    /// loading, unloading, or a change arriving from another device. These take effect at once.
+    private func syncSaveOffer() {
+        saveOfferHide?.cancel()
+        saveOfferHide = nil
+        isSaveOffered = isEdited
     }
 
     /// The loaded preset's place in the setlist it was loaded from.
@@ -320,6 +357,7 @@ final class MetronomeModel {
     func discardChanges() {
         guard let preset = loadedPreset, isEdited else { return }
         apply(preset.settings, startNewBar: preset.settings.timeSignature != settings.timeSignature)
+        syncSaveOffer()
         haptics?.selection()
     }
 
@@ -506,6 +544,7 @@ final class MetronomeModel {
 
     /// Saves the library, and sends it to iCloud when sync is on.
     private func persistLibrary() {
+        syncSaveOffer()
         libraryStore.save(currentLibraryState)
         if sync?.isOn == true { exchangeWithCloud() }
     }
@@ -561,5 +600,6 @@ final class MetronomeModel {
         loadedFromSetlistID = state.loadedFromSetlistID
         selectedSetlistID = state.selectedSetlistID
         libraryStore.save(state)
+        syncSaveOffer()
     }
 }

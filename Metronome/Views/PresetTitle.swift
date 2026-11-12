@@ -23,9 +23,13 @@ struct PresetTitle: View {
                     .tracking(-0.2)
                     .foregroundStyle(Theme.dialWhite)
                     .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Theme.muted)
+                // Left out while the Save button is showing: the button takes width from
+                // the name, and the chevron's place gives some of it back.
+                if !model.isSaveOffered {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Theme.muted)
+                }
             }
             if let subtitle = model.headerSubtitle {
                 Text(subtitle)
@@ -57,7 +61,8 @@ struct SaveButton: View {
                     .padding(.leading, 16)
                     .padding(.trailing, 12)
                     .frame(height: 40)
-                    .contentShape(Rectangle())
+                    // Drawn 40 pt tall; the touch area is 44 pt.
+                    .contentShape(Rectangle().scale(x: 1, y: 1.1))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Save changes")
@@ -83,10 +88,12 @@ struct SaveButton: View {
                 }
             } label: {
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 12, weight: .heavy))
+                    .font(.system(size: 14, weight: .heavy))
                     .foregroundStyle(Theme.ink)
-                    .frame(width: 34, height: 40)
-                    .contentShape(Rectangle())
+                    .frame(width: 44, height: 40)
+                    // A full-size target of its own, since a miss to the left saves.
+                    // Drawn 40 pt tall; the touch area is 44 pt.
+                    .contentShape(Rectangle().scale(x: 1, y: 1.1))
             }
             .accessibilityLabel("More save options")
         }

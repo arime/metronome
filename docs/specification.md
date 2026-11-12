@@ -155,7 +155,7 @@ One screen with two states, Ready (stopped) and Playing. The layout is identical
 
 ### 6.1 Header
 
-**Preset title**, at the left, taking the space left by the buttons. One or two lines; a long name is cut with an ellipsis. Line 1 is 20 pt heavy in dial white, followed by a small ˅. Line 2 is 13 pt in muted. Without a line 2, line 1 is centred vertically in the header.
+**Preset title**, at the left, taking the space left by the buttons. One or two lines; a long name is cut with an ellipsis. Line 1 is 20 pt heavy in dial white, followed by a small ˅, which is left out while the Save button is showing, so that the name gets its place. Line 2 is 13 pt in muted. Without a line 2, line 1 is centred vertically in the header.
 
 | State | Line 1 | Line 2 |
 |---|---|---|
@@ -167,13 +167,14 @@ The title does not change when the loaded preset is edited: unsaved changes are 
 
 The title looks the same stopped and playing. Nothing is added in front of it while playing, so it does not move when Start is pressed; the dial, the tiles and the Stop button show that the metronome is running.
 
-**Save button**, shown only while the loaded preset is edited, between the title and the mute button: a 40 pt tall amber pill in two parts, about 99 pt wide.
+**Save button**, shown only while the loaded preset is edited, between the title and the mute button: a 40 pt tall amber pill in two parts, about 109 pt wide.
 
 - The left part reads `Save` (15 pt, bold, ink), with 16 pt of padding before it and 12 pt after. One tap saves the changes (7.6).
 - A 1 pt, 22 pt tall divider in ink at 28 % separates the parts.
-- The right part is 34 pt wide with an ink ˅. It opens the Save menu (7.6).
+- The right part is 44 pt wide with an ink ˅ (14 pt). It opens the Save menu (7.6). It is a full-size target of its own, because a miss to the left would save.
+- Both parts take touches over a height of 44 pt.
 
-The button fades in and out, and the title gives up its width to it. Everything that can be done with unsaved changes is in this one control, which is there only while there are changes; the title never changes what it does.
+The button fades in and out, and the title gives up its width to it. It appears with the first change. It does not go away the instant the settings equal the saved ones again: it stays until they have rested there for half a second, so that turning the dial past the saved tempo does not make it blink out and in. Saving, reverting, and loading or unloading a preset take it away at once. Everything that can be done with unsaved changes is in this one control, which is there only while there are changes; the title never changes what it does.
 
 **Mute button**, 40 pt round:
 
@@ -182,7 +183,7 @@ The button fades in and out, and the title gives up its width to it. Everything 
 
 **Settings button**, at the far right: a 20 pt dial-white gear with no fill, in a 32 pt wide slot aligned to the right margin. It is lighter than the round buttons because it is used far less often. Its touch area is 44 × 44 pt. It opens the settings sheet (6.10).
 
-The header has only these buttons, so the title gets about 240 pt, or about 135 pt while the Save button is shown: room for about 11 characters of the name, which comes back in full once the changes are saved or reverted. Previous and Next sit beside the Start / Stop button (6.7).
+The header has only these buttons, so the title gets about 240 pt, or about 142 pt while the Save button is shown, with the title's ˅ left out: room for about 13 characters of the name, which comes back in full once the changes are saved or reverted. Previous and Next sit beside the Start / Stop button (6.7).
 
 ### 6.2 Tempo dial
 

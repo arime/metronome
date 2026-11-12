@@ -307,6 +307,71 @@ struct PresetModelTests {
         #expect(model.revertDescription == "90 BPM · 6/8")
     }
 
+    /// A model whose Save button waits only briefly before it goes away.
+    private func modelWithShortSaveOfferDelay() -> MetronomeModel {
+        MetronomeModel(
+            engine: engine, store: store, haptics: haptics, libraryStore: libraryStore,
+            saveOfferDelay: .milliseconds(20)
+        )
+    }
+
+    @Test func saveStaysOfferedWhileTheTempoPassesTheSavedValue() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(130), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil)
+        #expect(model.isSaveOffered == false)
+        model.setBPM(129)
+        #expect(model.isSaveOffered)
+        model.setBPM(130)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered)
+        model.setBPM(131)
+        #expect(model.isSaveOffered)
+    }
+
+    @Test func saveStopsBeingOfferedOnceTheSettingsRestOnTheSavedValues() async throws {
+        let model = modelWithShortSaveOfferDelay()
+        let preset = model.createPreset(name: "Song", settings: settings(130), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil)
+        model.setBPM(129)
+        model.setBPM(130)
+        #expect(model.isSaveOffered)
+        // The tests share the main thread, so the wait is for the outcome, up to a limit,
+        // not for a fixed time.
+        for _ in 0..<300 where model.isSaveOffered {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func movingOnBeforeTheWaitIsOverKeepsSaveOffered() async throws {
+        let model = modelWithShortSaveOfferDelay()
+        let preset = model.createPreset(name: "Song", settings: settings(130), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil)
+        model.setBPM(129)
+        model.setBPM(130)
+        model.setBPM(131)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(model.isSaveOffered)
+    }
+
+    @Test func savingRevertingAndLoadingTakeTheSaveOfferAwayAtOnce() {
+        let (model, presets, setlist) = modelWithSetlist()
+        model.loadPreset(presets[0].id, from: setlist)
+        model.setBPM(66)
+        model.saveChanges()
+        #expect(model.isSaveOffered == false)
+        model.setBPM(70)
+        model.discardChanges()
+        #expect(model.isSaveOffered == false)
+        model.setBPM(70)
+        model.goToNext()
+        #expect(model.isSaveOffered == false)
+        model.setBPM(104)
+        model.clearPreset()
+        #expect(model.isSaveOffered == false)
+    }
+
     @Test func loadingAnotherPresetDropsUnsavedEdits() {
         let (model, presets, setlist) = modelWithSetlist()
         model.loadPreset(presets[0].id, from: setlist)

@@ -54,7 +54,7 @@ struct MetronomeScreen: View {
     private var header: some View {
         HStack(spacing: 8) {
             PresetTitle { isLibraryShown = true }
-            if model.isEdited {
+            if model.isSaveOffered {
                 SaveButton()
                     .transition(.opacity)
             }
@@ -62,7 +62,7 @@ struct MetronomeScreen: View {
             SettingsButton { isSettingsShown = true }
         }
         .frame(height: 40)
-        .animation(.easeOut(duration: 0.15), value: model.isEdited)
+        .animation(.easeOut(duration: 0.15), value: model.isSaveOffered)
         .sheet(isPresented: $isLibraryShown) {
             LibrarySheet()
                 .environment(model)
