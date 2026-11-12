@@ -8,6 +8,8 @@ protocol HapticsPlaying {
     func selection()
     /// Start and Stop.
     func transport()
+    /// The loaded preset was saved.
+    func success()
 }
 
 @MainActor
@@ -16,6 +18,7 @@ final class Haptics: HapticsPlaying {
     private let rigid = UIImpactFeedbackGenerator(style: .rigid)
     private let medium = UIImpactFeedbackGenerator(style: .medium)
     private let selectionGenerator = UISelectionFeedbackGenerator()
+    private let notification = UINotificationFeedbackGenerator()
 
     func beat(accented: Bool) {
         if accented {
@@ -36,5 +39,9 @@ final class Haptics: HapticsPlaying {
         medium.impactOccurred()
         light.prepare()
         rigid.prepare()
+    }
+
+    func success() {
+        notification.notificationOccurred(.success)
     }
 }

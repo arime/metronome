@@ -135,5 +135,6 @@ private struct NoHaptics: HapticsPlaying {
     func beat(accented: Bool) {}
     func selection() {}
     func transport() {}
+    func success() {}
 }
 #endif

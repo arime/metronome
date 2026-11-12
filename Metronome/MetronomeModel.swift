@@ -55,8 +55,10 @@ final class MetronomeModel {
 
     init(engine: ClickEngine, store: SettingsStore, haptics: HapticsPlaying, libraryStore: LibraryStore,
          sync: LibrarySync? = nil, now: @escaping () -> Date = Date.init,
-         saveOfferDelay: Duration = .milliseconds(500)) {
+         saveOfferDelay: Duration = .milliseconds(500),
+         saveConfirmationTime: Duration = .seconds(1)) {
         self.saveOfferDelay = saveOfferDelay
+        self.saveConfirmationTime = saveConfirmationTime
         self.sync = sync
         self.now = now
         self.engine = engine
@@ -241,10 +243,16 @@ final class MetronomeModel {
     @ObservationIgnored private var saveOfferHide: Task<Void, Never>?
     @ObservationIgnored private let saveOfferDelay: Duration
 
+    /// True for a moment after Save: the button stays and reads Saved, as the confirmation.
+    private(set) var isSaveConfirmed = false
+    @ObservationIgnored private let saveConfirmationTime: Duration
+
     /// After the user changed the tempo, time signature or accents.
     private func userChangedSettings() {
         saveOfferHide?.cancel()
         saveOfferHide = nil
+        // A change during the confirmation ends it: there is something to save again.
+        isSaveConfirmed = false
         if isEdited {
             isSaveOffered = true
         } else if isSaveOffered {
@@ -262,7 +270,21 @@ final class MetronomeModel {
     private func syncSaveOffer() {
         saveOfferHide?.cancel()
         saveOfferHide = nil
+        isSaveConfirmed = false
         isSaveOffered = isEdited
+    }
+
+    /// After Save: the button stays for a moment, reading Saved, and then goes away.
+    private func confirmSave() {
+        saveOfferHide?.cancel()
+        isSaveOffered = true
+        isSaveConfirmed = true
+        saveOfferHide = Task { [weak self, saveConfirmationTime] in
+            try? await Task.sleep(for: saveConfirmationTime)
+            guard !Task.isCancelled, let self else { return }
+            self.isSaveConfirmed = false
+            self.isSaveOffered = self.isEdited
+        }
     }
 
     /// The loaded preset's place in the setlist it was loaded from.
@@ -344,12 +366,14 @@ final class MetronomeModel {
         loadPreset(ids[position.index + offset], from: setlistID)
     }
 
-    /// Writes the current settings into the loaded preset.
+    /// Writes the current settings into the loaded preset, and confirms it: the Save button
+    /// reads Saved for a moment, with a success haptic.
     func saveChanges() {
-        guard let id = loadedPresetID else { return }
+        guard let id = loadedPresetID, !isSaveConfirmed else { return }
         library.updatePreset(id, settings: settings, now: now())
         persistLibrary()
-        haptics?.selection()
+        confirmSave()
+        haptics?.success()
     }
 
     /// Sets the metronome back to the loaded preset. While playing, the bar carries on

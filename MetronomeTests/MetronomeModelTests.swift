@@ -37,10 +37,12 @@ final class FakeHaptics: HapticsPlaying {
     var beats: [Bool] = []
     var selectionCount = 0
     var transportCount = 0
+    var successCount = 0
 
     func beat(accented: Bool) { beats.append(accented) }
     func selection() { selectionCount += 1 }
     func transport() { transportCount += 1 }
+    func success() { successCount += 1 }
 }
 
 private struct StartFailed: Error {}

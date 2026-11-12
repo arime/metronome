@@ -174,7 +174,7 @@ The title looks the same stopped and playing. Nothing is added in front of it wh
 - The right part is 44 pt wide with an ink ˅ (14 pt). It opens the Save menu (7.6). It is a full-size target of its own, because a miss to the left would save.
 - Both parts take touches over a height of 44 pt.
 
-The button fades in and out, and the title gives up its width to it. It appears with the first change. It does not go away the instant the settings equal the saved ones again: it stays until they have rested there for half a second, so that turning the dial past the saved tempo does not make it blink out and in. Saving, reverting, and loading or unloading a preset take it away at once. Everything that can be done with unsaved changes is in this one control, which is there only while there are changes; the title never changes what it does.
+The button fades in and out, and the title gives up its width to it. It appears with the first change. It does not go away the instant the settings equal the saved ones again: it stays until they have rested there for half a second, so that turning the dial past the saved tempo does not make it blink out and in. Reverting, and loading or unloading a preset, take it away at once. After Save it confirms the save first: for one second the pill keeps its size and place and reads `✓ Saved` (15 pt, bold, ink) in place of its two parts, and cannot be tapped; then it fades away. A change to the settings during that second brings `Save` straight back. Everything that can be done with unsaved changes is in this one control, which is there only while there are changes; the title never changes what it does.
 
 **Mute button**, 40 pt round:
 
@@ -421,7 +421,7 @@ All four ways of setting the tempo work when stopped and when playing.
 
 **Unsaved changes** are handled with the Save button (6.1), which is shown while the preset is edited. There are three things to do with them:
 
-- **Save:** tapping `Save` writes the current settings into the loaded preset, with a selection tick. The preset is then no longer edited and the button goes away.
+- **Save:** tapping `Save` writes the current settings into the loaded preset. The button confirms it by reading `✓ Saved` for a second, with a success haptic, and then goes away (6.1). There is no separate message.
 - **Save as new preset:** in the Save menu. It opens the New preset sheet (section 10) filled with the current settings. After saving, the new preset is the loaded one, and the preset that was edited is left as it was.
 - **Revert:** in the Save menu, as `Revert` with the saved preset's tempo and time signature on a second, smaller line, for example `120 BPM · 4/4`, so that it is clear what comes back. It sets the metronome back to the preset's tempo, time signature and accents, with a selection tick.
   - While playing, the bar carries on when only the tempo or the accents go back, as with any other change of tempo or accents (7.1, 7.3). When the time signature goes back, the next beat is beat 1 of a new bar (7.2).
@@ -685,7 +685,7 @@ Each beat fires all of the following at the moment of its click.
 
 There are no other beat visuals; in particular nothing ripples or moves outside the dial.
 
-Other haptics: a selection tick for each 1 BPM change from the ring or − / +, for each tap-tempo tap, for each key in the tempo sheet and for `Set tempo` when it changes the tempo, for each accent toggle, for Save and Revert, and for each tap on the mute button. Beat haptics continue while muted. A medium impact on Start and Stop.
+Other haptics: a selection tick for each 1 BPM change from the ring or − / +, for each tap-tempo tap, for each key in the tempo sheet and for `Set tempo` when it changes the tempo, for each accent toggle, for Revert, and for each tap on the mute button. Beat haptics continue while muted. A medium impact on Start and Stop. The system's success notification on Save.
 
 The Haptics switch in settings (7.8) turns all of these off.
 
@@ -695,7 +695,7 @@ The Haptics switch in settings (7.8) turns all of these off.
 - **VoiceOver:**
   - The dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. It has the action "Type a tempo", which opens the tempo sheet.
   - In the tempo sheet the field reads as "Tempo" with the typed digits, each key as its digit, and the delete key as "Delete".
-  - The Save button's two parts read as "Save changes" and "More save options".
+  - The Save button's two parts read as "Save changes" and "More save options". After Save, "Saved" is announced, and the button reads "Saved" while it shows that.
   - The tap tempo pill reads as "Tap tempo" also while it shows `Tap again`.
   - The next-up line reads as one element, for example "Next: Seven Bridges, 168 beats per minute, 7/8", or "Last preset in the setlist".
   - Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action.

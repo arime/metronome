@@ -355,12 +355,44 @@ struct PresetModelTests {
         #expect(model.isSaveOffered)
     }
 
-    @Test func savingRevertingAndLoadingTakeTheSaveOfferAwayAtOnce() {
+    @Test func savingConfirmsInTheButtonAndThenTakesItAway() async throws {
+        let model = MetronomeModel(
+            engine: engine, store: store, haptics: haptics, libraryStore: libraryStore,
+            saveConfirmationTime: .milliseconds(20)
+        )
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil)
+        model.setBPM(96)
+        model.saveChanges()
+        #expect(model.library.preset(id: preset.id)?.settings.bpm == 96)
+        #expect(model.isSaveConfirmed)
+        #expect(model.isSaveOffered)
+        #expect(haptics.successCount == 1)
+        // A second tap during the confirmation does nothing.
+        model.saveChanges()
+        #expect(haptics.successCount == 1)
+        for _ in 0..<300 where model.isSaveOffered {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(model.isSaveConfirmed == false)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func aChangeDuringTheConfirmationBringsSaveBack() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil)
+        model.setBPM(96)
+        model.saveChanges()
+        model.setBPM(97)
+        #expect(model.isSaveConfirmed == false)
+        #expect(model.isSaveOffered)
+        #expect(model.isEdited)
+    }
+
+    @Test func revertingAndLoadingTakeTheSaveOfferAwayAtOnce() {
         let (model, presets, setlist) = modelWithSetlist()
         model.loadPreset(presets[0].id, from: setlist)
-        model.setBPM(66)
-        model.saveChanges()
-        #expect(model.isSaveOffered == false)
         model.setBPM(70)
         model.discardChanges()
         #expect(model.isSaveOffered == false)

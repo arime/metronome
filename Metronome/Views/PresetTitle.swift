@@ -97,6 +97,30 @@ struct SaveButton: View {
             }
             .accessibilityLabel("More save options")
         }
+        // After Save the pill keeps its size and place and reads Saved for a moment. The
+        // two parts stay laid out underneath, unseen and untouchable, so nothing moves.
+        .opacity(model.isSaveConfirmed ? 0 : 1)
+        .allowsHitTesting(!model.isSaveConfirmed)
+        .accessibilityHidden(model.isSaveConfirmed)
+        .overlay {
+            if model.isSaveConfirmed {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .heavy))
+                    Text("Saved")
+                        .font(.system(size: 15, weight: .bold))
+                }
+                .foregroundStyle(Theme.ink)
+                .transition(.opacity)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Saved")
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: model.isSaveConfirmed)
+        .onChange(of: model.isSaveConfirmed) { _, isConfirmed in
+            // The change is silent on screen for VoiceOver, so it is spoken.
+            if isConfirmed { AccessibilityNotification.Announcement("Saved").post() }
+        }
         .background(Theme.amber, in: Capsule())
         .clipShape(Capsule())
         .sheet(isPresented: $isSaveAsShown) {
