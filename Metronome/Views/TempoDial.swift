@@ -49,7 +49,7 @@ struct TempoDial: View {
         }
         .animation(.easeOut(duration: 0.15), value: model.isSaveOffered)
         .sheet(isPresented: $isEntryShown) {
-            TempoEntrySheet()
+            TempoEntrySheet(current: model.settings.bpm) { model.setBPM($0) }
                 .environment(model)
         }
     }

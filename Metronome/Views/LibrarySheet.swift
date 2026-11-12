@@ -366,8 +366,8 @@ private struct PresetListView: View {
     let close: () -> Void
 
     @State private var isNewPresetShown = false
-    @State private var renaming: Preset?
-    @State private var newName = ""
+    /// The preset open in the Edit preset sheet.
+    @State private var editingPreset: Preset?
     @State private var deleting: Preset?
     @State private var isDeleteSetlistShown = false
 
@@ -433,13 +433,12 @@ private struct PresetListView: View {
             }
         }
         .sheet(isPresented: $isNewPresetShown) {
-            NewPresetSheet(purpose: .library(setlistID: setlist?.id))
+            PresetSheet(purpose: .library(setlistID: setlist?.id))
                 .environment(model)
         }
-        .alert("Rename preset", isPresented: isPresented($renaming), presenting: renaming) { preset in
-            TextField("Name", text: $newName)
-            Button("Save") { model.renamePreset(preset.id, to: newName) }
-            Button("Cancel", role: .cancel) {}
+        .sheet(item: $editingPreset) { preset in
+            PresetSheet(purpose: .edit(preset))
+                .environment(model)
         }
         .alert("Delete “\(deleting?.name ?? "")”?", isPresented: isPresented($deleting), presenting: deleting) { preset in
             Button("Delete", role: .destructive) { model.deletePreset(preset.id) }
@@ -497,7 +496,7 @@ private struct PresetListView: View {
                         } else {
                             Button("Delete") { deleting = preset }
                                 .tint(Theme.red)
-                            Button("Rename") { startRenaming(preset) }
+                            Button("Edit") { editingPreset = preset }
                                 .tint(Color(hex: 0x3A3A3F))
                         }
                     }
@@ -542,10 +541,11 @@ private struct PresetListView: View {
         } label: {
             Label("Add to setlist", systemImage: "text.badge.plus")
         }
+        // Edit holds the name too, so there is no separate Rename.
         Button {
-            startRenaming(preset)
+            editingPreset = preset
         } label: {
-            Label("Rename", systemImage: "pencil")
+            Label("Edit", systemImage: "pencil")
         }
         if let setlist {
             Button {
@@ -560,11 +560,6 @@ private struct PresetListView: View {
         } label: {
             Label("Delete", systemImage: "trash")
         }
-    }
-
-    private func startRenaming(_ preset: Preset) {
-        newName = preset.name
-        renaming = preset
     }
 
     private func remove(_ preset: Preset, from setlist: Setlist) {

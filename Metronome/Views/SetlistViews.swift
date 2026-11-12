@@ -290,7 +290,7 @@ struct AddPresetsView: View {
             .sheetList()
         }
         .sheet(isPresented: $isNewPresetShown) {
-            NewPresetSheet(purpose: .library(setlistID: setlistID))
+            PresetSheet(purpose: .library(setlistID: setlistID))
                 .environment(model)
         }
     }

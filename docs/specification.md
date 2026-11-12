@@ -364,14 +364,12 @@ New settings are added as further rows or cards in the same sheet.
 
 ### 6.11 Tempo sheet
 
-A bottom sheet over a dimmed screen, sized to its content, opened by tapping the BPM number (6.2). From top to bottom:
+A bottom sheet over a dimmed screen, sized to its content, opened by tapping the BPM number on the dial (6.2) or in the preset sheet (section 10). From the dial, Set tempo sets the metronome's tempo; from the preset sheet, only the sheet's. From top to bottom:
 
 - A grabber, the title `Tempo` (26 pt heavy, dial white) and, at the right, the range `30 to 250 BPM` (13 pt, muted).
 - **The field:** a 92 pt tall surface-raised card with 20 pt corners and a 1.5 pt amber outline. It shows the typed digits (64 pt, heavy, dial white), an amber caret and `BPM` in amber. Before the first key it shows the current tempo in muted dim, as a reminder of where the tempo is now.
 - **The keys:** the digits 1 to 9 in three rows of three, then a last row with an empty place, 0 and a delete key. Each key is 54 pt tall with 8 pt gaps; digit keys are surface raised with 16 pt corners and a 26 pt bold digit, and the delete key is an icon with no fill. The sheet has its own keys, not the system keyboard, so they are large, match the app and appear with the sheet.
-- **Set tempo:** a 56 pt amber pill.
-
-## 7. Metronome behaviour
+- **Cancel / Set tempo:** a 56 pt pill. Until the digits are a tempo from 30 to 250, it reads `Cancel` (17 pt, bold, dial white) with a 1 pt outline in the line colour and no fill, and closes the sheet without changes. Once they are, it becomes the amber `Set tempo` (ink text). Deleting digits until they are no longer a valid tempo turns it back into Cancel.
 
 ## 7. Metronome behaviour
 
@@ -385,9 +383,9 @@ All four ways of setting the tempo work when stopped and when playing.
   - Only touches that begin on the ring, between 0.35 and 0.55 dial diameters from the centre (105 pt and 165 pt on the 300 pt dial), start a drag.
 - **Typing.** Tapping the number opens the tempo sheet (6.11).
   - A digit key adds a digit, up to three; a leading zero is ignored. The delete key removes the last digit.
-  - `Set tempo` sets the tempo and closes the sheet. It is dimmed and does nothing until the digits are a tempo from 30 to 250.
+  - `Set tempo` sets the tempo and closes the sheet. Until the digits are a tempo from 30 to 250, the button is `Cancel` instead (6.11), so there is always a visible way back.
   - When the digits are above 250, the range at the top right turns amber.
-  - Swiping the sheet down or tapping outside it closes it without changes. Nothing changes before `Set tempo`.
+  - `Cancel`, swiping the sheet down or tapping outside it closes it without changes. Nothing changes before `Set tempo`.
 - **− / +.** One tap changes the tempo by 1 BPM. Holding repeats: after 400 ms, 10 steps per second. The repeat ends the moment the finger lifts, however quickly taps follow each other.
 - **Tap tempo.** From the second tap on, the tempo is set to the average of the last four intervals between taps (fewer if fewer exist). A pause longer than 2 seconds starts a new series. While a series is open the pill reads `Tap again` (6.3), so the first tap, which cannot set a tempo yet, is still seen to register.
 - All inputs clamp to 30…250.
@@ -550,7 +548,7 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 - The loaded preset's row has an amber name and `· loaded` after its details.
 - **Tapping a row** loads the preset and closes the sheet. It does not start the metronome; Start is under the thumb when the sheet has closed. If the metronome is already playing, it keeps playing with the new preset.
 - A preset loaded from this view keeps the setlist that was being stepped through when it is in that setlist, so the header still shows its position and Previous / Next stay. A preset that is not in that setlist, or one loaded while no setlist was being stepped through, has no loaded-from setlist, and Previous / Next are hidden.
-- **Swiping a row left** reveals **Rename** and **Delete**, as a shortcut to the same items in the row's menu.
+- **Swiping a row left** reveals **Edit** and **Delete**, as a shortcut to the same items in the row's menu.
 - Empty library: centred, `No presets yet` (17 pt, semibold, dial white) and below it `A preset is a tempo, time signature and accents saved under a name, usually one per song. Make one with New preset.` (15 pt, muted). New presets are made with the button in the header.
 
 There is no button on a row that loads and starts in one tap. A button that looked like a preview but replaced the loaded preset and closed the sheet was easy to misread, and its place is better used for the menu.
@@ -573,11 +571,11 @@ The ⋯ button at the end of every preset row, on the Presets tab and in a setli
 - **Add to setlist**, which opens a second level:
   - Every setlist, most recently used first, with a tick when the preset is in it. Tapping one adds the preset to the end of that setlist, or takes it out (8.5).
   - **New setlist**, after a divider: creates a setlist that starts with this preset and opens it for naming (9.2).
-- **Rename:** asks for the new name in a small dialog.
+- **Edit:** opens the Edit preset sheet (10.2), with the name, tempo, time signature and accents. There is no separate Rename, as the sheet holds the name.
 - **Remove from setlist:** only in a setlist view. Takes the preset out of the setlist shown (8.5).
 - **Delete**, in red: asks for confirmation and says how many setlists the preset is in.
 
-So a preset can be put into a setlist, renamed or deleted from wherever it is listed, without first changing what the library shows.
+So a preset can be put into a setlist, edited or deleted from wherever it is listed, without first changing what the library shows.
 
 ### 8.5 Removing a preset from a setlist, and Undo
 
@@ -630,20 +628,22 @@ Opened with Add preset, in Edit or in an empty setlist. A list titled `Add to <s
 - Then every preset in the library, A–Z, with a tick when it is in the setlist.
 - Tapping a row adds the preset to the end of the setlist, or takes it out, with Undo (8.5). Changes take effect at once.
 
-## 10. New preset sheet
+## 10. Preset sheet
 
-A short sheet with:
+One sheet for creating a preset (10.1) and editing one (10.2). A short sheet with:
 
-- **Name field**, ready for typing. Save is disabled while the name is empty. Names are limited to 60 characters; spaces at the ends are removed.
-- **Tempo:** − and + around the value. One tap changes it by 1 BPM; holding repeats, as on the metronome screen.
+- **Name field.** Save is disabled while the name is empty. Names are limited to 60 characters; spaces at the ends are removed.
+- **Tempo:** − and + around the value. One tap changes it by 1 BPM; holding repeats, as on the metronome screen. Tapping the value opens the tempo sheet (6.11) to type a tempo, which sets only the sheet's tempo.
 - **Time signature row:** opens the same picker as the metronome screen. Changing it resets the accents to beat 1.
 - **Accent tiles:** one per beat, tap to toggle.
 - **Add to <setlist>** switch: shown only when the sheet was opened from 9.3, and on by default there.
-- **Save preset.**
+- **The save button**, a 60 pt amber pill.
 
-All three settings start from the metronome's current values, so the quickest way to make a preset is to set the metronome first.
+Changing values in the sheet does not affect the metronome, playing or stopped, until the sheet is saved.
 
-Changing values in the sheet does not affect the metronome, playing or stopped.
+### 10.1 New preset
+
+Titled `New preset`, with `Save preset`. Opened with New preset in the library (8.1, 9.3) or with Save as new preset (7.6). The name field is ready for typing. All three settings start from the metronome's current values, so the quickest way to make a preset is to set the metronome first.
 
 Saving a new preset from the library does not load it, with one exception: **naming the current settings.** When no preset is loaded and the preset is saved with the same tempo, time signature and accents as the metronome has, the new preset becomes the loaded one, so the header shows its name at once and later changes bring up the save controls.
 
@@ -652,6 +652,16 @@ Saving a new preset from the library does not load it, with one exception: **nam
 - In every other case the preset is only created: when a preset is already loaded, or when the values were changed in the sheet.
 
 **Save as new preset** for unsaved changes (7.6) always makes the new preset the loaded one.
+
+### 10.2 Edit preset
+
+Titled `Edit preset`, with `Save changes`. Opened with Edit in a preset's row menu, or by swiping its row on the Presets tab (8.2, 8.4). The name and the three settings start from the preset's saved values, also when it is the loaded preset with unsaved changes. The keyboard does not come up by itself, as the change is more often to the tempo or the accents; tapping the name brings it up. Swiping the sheet away keeps the preset as it was.
+
+`Save changes` writes only what changed, so that a part left alone does not win over a change made to it on another device (section 5).
+
+- A preset that is not loaded is only changed; the metronome is not touched.
+- The loaded preset with changed settings: the metronome takes them, as if the preset were loaded again, and any unsaved changes are dropped. While playing, the bar carries on when only the tempo or the accents changed, and the next beat is beat 1 of a new bar when the time signature changed.
+- The loaded preset with only a new name: the header shows the new name, and the metronome and any unsaved changes stay as they are.
 
 ## 11. Audio and timing
 
@@ -706,6 +716,7 @@ The Haptics switch in settings (7.8) turns all of these off.
 - **VoiceOver:**
   - The dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. It has the action "Type a tempo", which opens the tempo sheet.
   - In the tempo sheet the field reads as "Tempo" with the typed digits, each key as its digit, and the delete key as "Delete".
+  - In the preset sheet the tempo value is a button: "Tempo, 120 beats per minute", with the hint "Type a tempo".
   - The save controls in the dial read as "Revert", with a hint that says what comes back (for example "Goes back to 120 BPM · 4/4"), "Save changes" and "Save as new preset". They are separate from the dial's own element. The header Save button on a small dial reads as "Save changes" and "More save options". After Save, "Saved" is announced, and the pill reads "Saved" while it shows that.
   - The tap tempo pill reads as "Tap tempo" also while it shows `Tap again`.
   - The next-up line reads as one element, for example "Next: Seven Bridges, 168 beats per minute, 7/8", or "Last preset in the setlist".
@@ -750,10 +761,12 @@ Metronome:
 
 Presets and setlists:
 
-- [x] A preset can be created, loaded, renamed and deleted; the library is sorted A–Z.
+- [x] A preset can be created, loaded, edited and deleted; the library is sorted A–Z.
 - [x] No preset unloads the loaded preset and keeps the settings and playback; it is only on the Presets tab, and only while a preset is loaded. *(Unit tested; the row and its new text were seen in the simulator.)*
 - [x] Tapping a row loads without starting, and keeps playing when the metronome is running. *(Unit tested.)*
-- [x] The row menu offers Add to setlist, Rename, Remove from setlist and Delete in every list, and the swipe gives the shortcuts of 8.2 and 8.3. *(Every item was tried in the simulator: adding to a setlist, New setlist, Rename and Delete from the Presets tab, and Remove from the menu and by swipe in a setlist view. The Rename and Delete swipe on the Presets tab was not tried again after this change.)*
+- [x] The row menu offers Add to setlist, Edit, Remove from setlist and Delete in every list, and the swipe gives the shortcuts of 8.2 and 8.3. *(Adding to a setlist, New setlist, Delete and Remove were tried in the simulator before Edit replaced Rename. Edit from the menu on the Presets tab was tried after it; the Edit swipe and Edit in a setlist view were not.)*
+- [x] Edit preset changes a preset's name, tempo, time signature and accents as 10.2 says. *(The rules for the loaded and the unloaded preset are unit tested. Changing a tempo by typing it and saving was tried in the simulator.)*
+- [x] Tapping the tempo in the preset sheet opens the tempo sheet, and Set tempo sets only the sheet's tempo. *(Tried in the simulator from Edit preset; New preset uses the same sheet and was not tried separately.)*
 - [x] Taking a preset out of a setlist shows the Undo bar, and Undo puts it back in its place. *(Unit tested, including the loaded preset's position, and tried in the simulator.)*
 - [x] The library opens on the Presets tab, or inside the loaded preset's setlist when it came from one, and scrolls to its row. *(Choosing the setlist is unit tested, and both ways of opening were seen in the simulator. In the simulator the list stayed at its top on an iPhone 17 Pro, where the loaded row fits, and scrolled just far enough to show it on an iPhone SE, where it does not. A library of several screens has not been tried.)*
 - [x] A preset loaded from the Presets tab keeps the setlist being stepped through when it is in it. *(Unit tested.)*

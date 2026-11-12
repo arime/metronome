@@ -447,6 +447,29 @@ final class MetronomeModel {
         persistLibrary()
     }
 
+    /// Writes a new name and settings into a preset, from Edit in the library. Only what
+    /// changed is written, so an untouched part does not win over another device's change.
+    /// When it is the loaded preset and its settings changed, the metronome takes them, as if
+    /// the preset were loaded again: unsaved changes are dropped, and while playing the bar
+    /// carries on unless the time signature changed. A new name alone leaves the metronome,
+    /// and any unsaved changes, as they are.
+    func editPreset(_ id: UUID, name: String, settings newSettings: MetronomeSettings) {
+        guard let preset = library.preset(id: id), Library.cleanName(name) != nil else { return }
+        let moment = now()
+        if Library.cleanName(name) != preset.name {
+            library.renamePreset(id, to: name, now: moment)
+        }
+        let settingsChanged = newSettings.sanitized() != preset.settings
+        if settingsChanged {
+            library.updatePreset(id, settings: newSettings, now: moment)
+        }
+        if loadedPresetID == id, settingsChanged, let updated = library.preset(id: id) {
+            apply(updated.settings, startNewBar: updated.settings.timeSignature != settings.timeSignature)
+        }
+        syncSaveOffer()
+        persistLibrary()
+    }
+
     /// The metronome keeps its settings if the deleted preset was the loaded one.
     func deletePreset(_ id: UUID) {
         library.deletePreset(id, now: now())

@@ -1,10 +1,13 @@
 import SwiftUI
 
 /// Types a tempo: a bottom sheet with its own number keys. Opened by tapping the BPM
-/// number. Nothing changes until Set tempo is pressed.
+/// number, on the dial or in the preset sheet. Nothing changes until Set tempo is pressed.
 struct TempoEntrySheet: View {
     @Environment(MetronomeModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    /// Shown dimmed in the field until the first key.
+    let current: Int
+    let set: (Int) -> Void
 
     @State private var entry = TempoEntry()
     /// The sheet's height. Starts near the usual height, then follows the content.
@@ -27,17 +30,19 @@ struct TempoEntrySheet: View {
             }
             field
             keypad
-            Button(action: set) {
-                Text("Set tempo")
+            // Cancel until the digits make a tempo that can be set, so there is always a
+            // visible way back: before the first key, and while the digits are out of range.
+            Button(action: entry.isValid ? setTempo : { dismiss() }) {
+                Text(entry.isValid ? "Set tempo" : "Cancel")
                     .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Theme.ink)
+                    .foregroundStyle(entry.isValid ? Theme.ink : Theme.dialWhite)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(Theme.amber, in: Capsule())
-                    .opacity(entry.isValid ? 1 : 0.35)
+                    .background(entry.isValid ? Theme.amber : Color.clear, in: Capsule())
+                    .overlay(Capsule().strokeBorder(entry.isValid ? Color.clear : Theme.line, lineWidth: 1))
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(!entry.isValid)
         }
         .padding(.horizontal, Theme.sideMargin)
         // Room for the drag indicator above, and a margin below the button.
@@ -60,7 +65,7 @@ struct TempoEntrySheet: View {
     /// The typed digits, or the current tempo in a dimmer colour until the first key.
     private var field: some View {
         HStack(spacing: 10) {
-            Text(entry.digits.isEmpty ? "\(model.settings.bpm)" : entry.digits)
+            Text(entry.digits.isEmpty ? "\(current)" : entry.digits)
                 .font(.system(size: 64, weight: .heavy))
                 .monospacedDigit()
                 .foregroundStyle(entry.digits.isEmpty ? Theme.mutedDim : Theme.dialWhite)
@@ -127,9 +132,9 @@ struct TempoEntrySheet: View {
         .buttonStyle(.plain)
     }
 
-    private func set() {
+    private func setTempo() {
         guard let bpm = entry.value, entry.isValid else { return }
-        model.setBPM(bpm)
+        set(bpm)
         dismiss()
     }
 }

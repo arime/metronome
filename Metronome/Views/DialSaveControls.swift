@@ -37,7 +37,7 @@ struct DialSaveControls: View {
             if isConfirmed { AccessibilityNotification.Announcement("Saved").post() }
         }
         .sheet(isPresented: $isSaveAsShown) {
-            NewPresetSheet(purpose: .saveAsNew)
+            PresetSheet(purpose: .saveAsNew)
                 .environment(model)
         }
     }

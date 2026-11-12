@@ -265,6 +265,60 @@ struct PresetModelTests {
         #expect(model.library.preset(id: preset.id)?.settings.bpm == 96)
     }
 
+    @Test func editingAPresetWritesItsNameAndSettings() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.editPreset(preset.id, name: "Ballad", settings: settings(72, .threeFour))
+        let edited = model.library.preset(id: preset.id)
+        #expect(edited?.name == "Ballad")
+        #expect(edited?.settings.bpm == 72)
+        #expect(edited?.settings.timeSignature == .threeFour)
+        // Not loaded: the metronome is not touched.
+        #expect(model.settings.bpm != 72)
+        #expect(model.loadedPreset == nil)
+    }
+
+    @Test func editingKeepsTheOldNameWhenTheNewOneIsEmpty() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.editPreset(preset.id, name: "  ", settings: settings(72))
+        #expect(model.library.preset(id: preset.id)?.name == "Song")
+        #expect(model.library.preset(id: preset.id)?.settings.bpm == 90)
+    }
+
+    @Test func editingTheLoadedPresetSetsTheMetronomeToIt() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil)
+        model.setBPM(96)
+        #expect(model.isSaveOffered)
+        model.editPreset(preset.id, name: "Song", settings: settings(110))
+        #expect(model.settings.bpm == 110)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func renamingTheLoadedPresetInEditKeepsUnsavedChanges() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil)
+        model.setBPM(96)
+        model.editPreset(preset.id, name: "Ballad", settings: preset.settings)
+        #expect(model.headerTitle == "Ballad")
+        #expect(model.settings.bpm == 96)
+        #expect(model.isEdited)
+        #expect(model.isSaveOffered)
+    }
+
+    @Test func editingTheTempoAloneKeepsTheBarWhilePlaying() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil, start: true)
+        model.editPreset(preset.id, name: "Song", settings: settings(100))
+        #expect(model.settings.bpm == 100)
+        #expect(engine.lastUpdateStartedNewBar == false)
+    }
+
     @Test func discardChangesRestoresThePreset() {
         let model = makeModel()
         let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!

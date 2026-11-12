@@ -135,7 +135,7 @@ struct SaveButton: View {
         .background(model.isSaveConfirmed ? Theme.green.opacity(0.16) : Theme.amber, in: Capsule())
         .clipShape(Capsule())
         .sheet(isPresented: $isSaveAsShown) {
-            NewPresetSheet(purpose: .saveAsNew)
+            PresetSheet(purpose: .saveAsNew)
                 .environment(model)
         }
     }

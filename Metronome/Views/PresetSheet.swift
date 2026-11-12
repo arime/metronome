@@ -1,9 +1,12 @@
 import SwiftUI
 
-/// Creates a preset. It starts from the metronome's current settings, and its own
-/// tempo, time signature and accents can be changed without touching the metronome.
-struct NewPresetSheet: View {
+/// Creates or edits a preset. A new preset starts from the metronome's current settings;
+/// an edited one from its own. The tempo, time signature and accents in the sheet can be
+/// changed without touching the metronome.
+struct PresetSheet: View {
     enum Purpose {
+        /// From Edit in a preset row's menu: the preset's name and settings are changed.
+        case edit(Preset)
         /// From the library: the preset is created but not loaded. With a setlist,
         /// a switch offers to add it there.
         case library(setlistID: UUID?)
@@ -19,6 +22,7 @@ struct NewPresetSheet: View {
     @State private var draft = MetronomeSettings()
     @State private var addToSetlist = true
     @State private var isPickerShown = false
+    @State private var isTempoEntryShown = false
     /// The sheet's height. Starts near the usual height, then follows the content.
     @State private var sheetHeight: CGFloat = 560
     @FocusState private var isNameFocused: Bool
@@ -28,12 +32,17 @@ struct NewPresetSheet: View {
         return nil
     }
 
+    private var editedPreset: Preset? {
+        if case .edit(let preset) = purpose { return preset }
+        return nil
+    }
+
     private var canSave: Bool { Library.cleanName(name) != nil }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("New preset")
+                Text(editedPreset == nil ? "New preset" : "Edit preset")
                     .font(.system(size: 26, weight: .heavy))
                     .tracking(-0.52)
                     .foregroundStyle(Theme.dialWhite)
@@ -63,7 +72,7 @@ struct NewPresetSheet: View {
                     .tint(Theme.amber)
                 }
                 Button(action: save) {
-                    Text("Save preset")
+                    Text(editedPreset == nil ? "Save preset" : "Save changes")
                         .font(.system(size: 18, weight: .heavy))
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity)
@@ -94,8 +103,15 @@ struct NewPresetSheet: View {
         .presentationCornerRadius(28)
         .presentationBackground(Theme.surface)
         .onAppear {
-            draft = model.settings
-            isNameFocused = true
+            if let editedPreset {
+                // Editing starts from the preset itself. The keyboard waits for a tap on
+                // the name, as the change is more often to the tempo or accents.
+                name = editedPreset.name
+                draft = editedPreset.settings
+            } else {
+                draft = model.settings
+                isNameFocused = true
+            }
         }
         .onChange(of: name) { _, newName in
             if newName.count > Library.maxNameLength { name = String(newName.prefix(Library.maxNameLength)) }
@@ -106,6 +122,10 @@ struct NewPresetSheet: View {
                 isPickerShown = false
             }
         }
+        .sheet(isPresented: $isTempoEntryShown) {
+            TempoEntrySheet(current: draft.bpm) { draft.setBPM($0) }
+                .environment(model)
+        }
     }
 
     private var tempo: some View {
@@ -114,19 +134,31 @@ struct NewPresetSheet: View {
                 draft.setBPM(draft.bpm - 1)
             }
             Spacer(minLength: 0)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(draft.bpm)")
-                    .font(.system(size: 44, weight: .heavy))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.dialWhite)
-                Text("BPM")
-                    .font(.system(size: 13, weight: .semibold))
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.muted)
+            // Tapping the number types a tempo, as on the dial.
+            Button {
+                isNameFocused = false
+                isTempoEntryShown = true
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("\(draft.bpm)")
+                        .font(.system(size: 44, weight: .heavy))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.dialWhite)
+                    Text("BPM")
+                        .font(.system(size: 13, weight: .semibold))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.muted)
+                }
+                .padding(.horizontal, 12)
+                .frame(height: 56)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Tempo")
             .accessibilityValue("\(draft.bpm) beats per minute")
+            .accessibilityHint("Type a tempo")
+            .accessibilityAddTraits(.isButton)
             Spacer(minLength: 0)
             StepButton(symbol: "plus", label: "Faster", size: 48, fill: Theme.surfaceRaised) {
                 draft.setBPM(draft.bpm + 1)
@@ -191,6 +223,8 @@ struct NewPresetSheet: View {
 
     private func save() {
         switch purpose {
+        case .edit(let preset):
+            model.editPreset(preset.id, name: name, settings: draft)
         case .saveAsNew:
             model.saveAsNewPreset(name: name, settings: draft)
         case .library:
