@@ -11,7 +11,7 @@ struct LibraryTests {
 
     @Test func settingsInitialiserSanitizes() {
         let made = MetronomeSettings(bpm: 900, timeSignature: .threeFour, accents: [1, 5])
-        #expect(made.bpm == 250)
+        #expect(made.bpm == 300)
         #expect(made.timeSignature == .threeFour)
         #expect(made.accents == [1])
     }

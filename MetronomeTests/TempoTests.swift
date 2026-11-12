@@ -4,13 +4,13 @@ import Testing
 struct TempoTests {
     @Test func clampsToTheRange() {
         #expect(Tempo.clamp(10) == 30)
-        #expect(Tempo.clamp(999) == 250)
+        #expect(Tempo.clamp(999) == 300)
         #expect(Tempo.clamp(120) == 120)
         #expect(Tempo.defaultBPM == 120)
     }
 
     @Test func namesFollowTheSpecTable() {
-        let bpms = [30, 39, 40, 59, 60, 65, 66, 75, 76, 107, 108, 119, 120, 155, 156, 175, 176, 199, 200, 250]
+        let bpms = [30, 39, 40, 59, 60, 65, 66, 75, 76, 107, 108, 119, 120, 155, 156, 175, 176, 199, 200, 300]
         #expect(bpms.map(Tempo.name(for:)) == [
             "Grave", "Grave", "Largo", "Largo", "Larghetto", "Larghetto", "Adagio", "Adagio",
             "Andante", "Andante", "Moderato", "Moderato", "Allegro", "Allegro", "Vivace", "Vivace",
@@ -20,17 +20,17 @@ struct TempoTests {
 
     @Test func arcFractionIsLinearOverTheRange() {
         #expect(Tempo.arcFraction(for: 30) == 0)
-        #expect(Tempo.arcFraction(for: 250) == 1)
-        #expect(Tempo.bpm(forArcFraction: 0.5) == 140)
+        #expect(Tempo.arcFraction(for: 300) == 1)
+        #expect(Tempo.bpm(forArcFraction: 0.5) == 165)
     }
 
     @Test func arcFractionOutsideTheArcClamps() {
         #expect(Tempo.bpm(forArcFraction: -1) == 30)
-        #expect(Tempo.bpm(forArcFraction: 2) == 250)
+        #expect(Tempo.bpm(forArcFraction: 2) == 300)
     }
 
     @Test func everyBPMSurvivesARoundTripThroughTheArc() {
-        #expect((30...250).allSatisfy { Tempo.bpm(forArcFraction: Tempo.arcFraction(for: $0)) == $0 })
+        #expect((30...300).allSatisfy { Tempo.bpm(forArcFraction: Tempo.arcFraction(for: $0)) == $0 })
     }
 }
 
@@ -146,13 +146,15 @@ struct TempoEntryTests {
     @Test func onlyTemposInRangeAreValid() {
         #expect(entry(2, 9).isValid == false)
         #expect(entry(3, 0).isValid)
-        #expect(entry(2, 5, 0).isValid)
-        #expect(entry(2, 5, 1).isValid == false)
+        #expect(entry(2, 5, 1).isValid)
+        #expect(entry(3, 0, 0).isValid)
+        #expect(entry(3, 0, 1).isValid == false)
     }
 
     @Test func tooHighIsOnlyAboveTheRange() {
-        #expect(entry(2, 5).isTooHigh == false)
-        #expect(entry(2, 5, 1).isTooHigh)
+        #expect(entry(3, 0).isTooHigh == false)
+        #expect(entry(3, 0, 0).isTooHigh == false)
+        #expect(entry(3, 0, 1).isTooHigh)
     }
 
     @Test func deleteRemovesTheLastDigit() {

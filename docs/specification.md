@@ -14,7 +14,7 @@ Settings can be saved as named **presets**, usually one per song or practice set
 
 Included:
 
-- Tempo from 30 to 250 BPM, set by ring drag, − / + buttons, tap tempo or typing the number.
+- Tempo from 30 to 300 BPM, set by ring drag, − / + buttons, tap tempo or typing the number.
 - Eight time signatures: 2/4, 3/4, 4/4, 5/4, 6/8, 7/8, 9/8, 12/8.
 - Per-beat accents; any combination of beats, including none.
 - Start / Stop with click sound, visual beat effects and haptics.
@@ -61,7 +61,7 @@ Kept between launches:
 
 | Item | Contents | Default |
 |---|---|---|
-| Tempo | integer, 30…250 BPM | 120 |
+| Tempo | integer, 30…300 BPM | 120 |
 | Time signature | one of the eight in section 2 | 4/4 |
 | Accents | set of beat numbers, 1…beats per bar | {1} |
 | Presets | each with id, name, tempo, time signature, accents | none |
@@ -188,7 +188,7 @@ The header has only these buttons, so the title gets about 240 pt, also while th
 ### 6.2 Tempo dial
 
 - 300 pt gauge in the design; on a tall screen it grows, up to 340 pt (6.8), and everything in it scales with it. 48 tick marks on a 270° arc that starts at the lower left (the 7:30 position), runs clockwise over the top and ends at the lower right (4:30), leaving a 90° gap at the bottom. Every fourth tick is longer and thicker.
-- Ticks from the start of the arc up to the current tempo are amber; the rest are unlit, in the tick colour, which is light enough against the background (3 : 1) that the rest of the range can be seen. Position along the arc is linear: `(bpm − 30) / 220`.
+- Ticks from the start of the arc up to the current tempo are amber; the rest are unlit, in the tick colour, which is light enough against the background (3 : 1) that the rest of the range can be seen. Position along the arc is linear: `(bpm − 30) / 270`.
 - A 28 pt amber knob with a dark 5 pt border and an amber glow sits at the end of the lit arc.
 - Centre: the BPM number (112 pt, heavy, digits set slightly tight, dial white). Three-digit tempos are drawn at 88 % of that size so they stay clear of the knob. Below the number: `BPM` in amber, a dot, and the tempo name in muted italic.
 - Tapping the number or the line below it opens the tempo sheet (6.11).
@@ -217,7 +217,7 @@ Tempo names:
 | 120–155 | Allegro |
 | 156–175 | Vivace |
 | 176–199 | Presto |
-| 200–250 | Prestissimo |
+| 200–300 | Prestissimo |
 
 ### 6.3 Tempo controls
 
@@ -366,10 +366,10 @@ New settings are added as further rows or cards in the same sheet.
 
 A bottom sheet over a dimmed screen, sized to its content, opened by tapping the BPM number on the dial (6.2) or in the preset sheet (section 10). From the dial, Set tempo sets the metronome's tempo; from the preset sheet, only the sheet's. From top to bottom:
 
-- A grabber, the title `Tempo` (26 pt heavy, dial white) and, at the right, the range `30 to 250 BPM` (13 pt, muted).
+- A grabber, the title `Tempo` (26 pt heavy, dial white) and, at the right, the range `30 to 300 BPM` (13 pt, muted).
 - **The field:** a 92 pt tall surface-raised card with 20 pt corners and a 1.5 pt amber outline. It shows the typed digits (64 pt, heavy, dial white), an amber caret and `BPM` in amber. Before the first key it shows the current tempo in muted dim, as a reminder of where the tempo is now.
 - **The keys:** the digits 1 to 9 in three rows of three, then a last row with an empty place, 0 and a delete key. Each key is 54 pt tall with 8 pt gaps; digit keys are surface raised with 16 pt corners and a 26 pt bold digit, and the delete key is an icon with no fill. The sheet has its own keys, not the system keyboard, so they are large, match the app and appear with the sheet.
-- **Cancel / Set tempo:** a 56 pt pill. Until the digits are a tempo from 30 to 250, it reads `Cancel` (17 pt, bold, dial white) with a 1 pt outline in the line colour and no fill, and closes the sheet without changes. Once they are, it becomes the amber `Set tempo` (ink text). Deleting digits until they are no longer a valid tempo turns it back into Cancel.
+- **Cancel / Set tempo:** a 56 pt pill. Until the digits are a tempo from 30 to 300, it reads `Cancel` (17 pt, bold, dial white) with a 1 pt outline in the line colour and no fill, and closes the sheet without changes. Once they are, it becomes the amber `Set tempo` (ink text). Deleting digits until they are no longer a valid tempo turns it back into Cancel.
 
 ## 7. Metronome behaviour
 
@@ -379,16 +379,16 @@ All four ways of setting the tempo work when stopped and when playing.
 
 - **Ring.** Dragging on the ring turns the dial: the tempo changes by the angle the finger travels around the dial centre, 270° for the whole range, rounded to whole BPM. It makes no difference where on the ring the drag begins, so the knob can be grabbed and moved, and a drag anywhere else on the ring turns it by the same amount.
   - The tempo never jumps to where the finger lands. A touch that does not move changes nothing, and the drag begins only after the finger has moved 4 pt, so a tap or a brush against the ring is ignored.
-  - The tempo stops at 30 and 250. Turning back from an end takes effect at once.
+  - The tempo stops at 30 and 300. Turning back from an end takes effect at once.
   - Only touches that begin on the ring, between 0.35 and 0.55 dial diameters from the centre (105 pt and 165 pt on the 300 pt dial), start a drag.
 - **Typing.** Tapping the number opens the tempo sheet (6.11).
   - A digit key adds a digit, up to three; a leading zero is ignored. The delete key removes the last digit.
-  - `Set tempo` sets the tempo and closes the sheet. Until the digits are a tempo from 30 to 250, the button is `Cancel` instead (6.11), so there is always a visible way back.
-  - When the digits are above 250, the range at the top right turns amber.
+  - `Set tempo` sets the tempo and closes the sheet. Until the digits are a tempo from 30 to 300, the button is `Cancel` instead (6.11), so there is always a visible way back.
+  - When the digits are above 300, the range at the top right turns amber.
   - `Cancel`, swiping the sheet down or tapping outside it closes it without changes. Nothing changes before `Set tempo`.
 - **− / +.** One tap changes the tempo by 1 BPM. Holding repeats: after 400 ms, 10 steps per second. The repeat ends the moment the finger lifts, however quickly taps follow each other.
 - **Tap tempo.** From the second tap on, the tempo is set to the average of the last four intervals between taps (fewer if fewer exist). A pause longer than 2 seconds starts a new series. While a series is open the pill reads `Tap again` (6.3), so the first tap, which cannot set a tempo yet, is still seen to register.
-- All inputs clamp to 30…250.
+- All inputs clamp to 30…300.
 - While playing, a tempo change takes effect from the next beat. The beat that is already scheduled is not moved, and the bar position is kept.
 
 ### 7.2 Time signature
@@ -691,7 +691,7 @@ Rules for every sound:
 
 - **Loudness.** The normal variants of all seven sounds are equally loud, measured as RMS over their first 20 ms. Each accented variant is 4 dB louder than its normal variant. The loudest peak of any sound stays below full scale.
 - **Attack.** The click must be heard at its scheduled time: every sound reaches half of its peak within 1 ms of its start.
-- **Length.** No sound is longer than 150 ms, so each one ends well before the next beat at 250 BPM (240 ms). The last 3 ms fade to silence.
+- **Length.** No sound is longer than 150 ms, so each one ends well before the next beat at 300 BPM (200 ms). The last 3 ms fade to silence.
 
 ## 12. Beat effects
 
@@ -741,9 +741,9 @@ A ticked line has been verified in the simulator, by unit tests or on a phone. A
 
 Metronome:
 
-- [x] Tempo can be set by ring, − / + and tap tempo, when stopped and when playing, and never leaves 30…250. *(A tap tempo series has not been tapped by hand; its rules are unit tested.)*
+- [x] Tempo can be set by ring, − / + and tap tempo, when stopped and when playing, and never leaves 30…300. *(A tap tempo series has not been tapped by hand; its rules are unit tested.)*
 - [ ] A drag on the ring turns the dial by the angle travelled, wherever it begins; a tap or a brush against the ring changes nothing. *(The turning rules are unit tested, and a drag and a tap on the ring were tried in the simulator. How it feels under a finger needs a real iPhone.)*
-- [x] Tapping the number opens the tempo sheet; typing a tempo and Set tempo sets it, and only tempos from 30 to 250 can be set. *(The digit rules are unit tested; typing 174 was tried in the simulator.)*
+- [x] Tapping the number opens the tempo sheet; typing a tempo and Set tempo sets it, and only tempos from 30 to 300 can be set. *(The digit rules are unit tested; typing 174 was tried in the simulator.)*
 - [ ] The tap tempo pill reads Tap again with an amber outline during a series and goes back two seconds after the last tap. *(The label and outline were seen in the simulator; going back after two seconds was not watched.)*
 - [x] Unlit ticks are visible against the background, and nothing in the header moves when Start is pressed. *(Seen in the simulator.)*
 - [x] On a tall screen the dial grows up to 340 pt and never wider than the space between the margins. *(Unit tested, and seen on an iPhone 17 Pro.)*
@@ -753,7 +753,7 @@ Metronome:
 - [ ] Accents can be toggled when stopped and when playing; accented beats sound, look and feel different from normal beats. *(Toggling and the look are verified. Sound and haptics need a listener and a real iPhone.)*
 - [x] Start always begins on beat 1. Stop is immediate.
 - [x] The mute button silences the click at once and brings it back, while the visuals and haptics continue.
-- [ ] Click, visual and haptic stay together at 30, 120 and 250 BPM. *(Needs a real iPhone.)*
+- [ ] Click, visual and haptic stay together at 30, 120 and 300 BPM. *(Needs a real iPhone.)*
 - [ ] No audible drift against a reference metronome over 10 minutes. *(The timing maths is unit tested to the sample; the listening check needs a real iPhone.)*
 - [ ] The phone's volume buttons and the Control Center slider change the click volume. *(Needs a real iPhone.)*
 - [x] Tempo, time signature and accents survive quitting and reopening the app.

@@ -14,7 +14,7 @@ Set a tempo and a time signature, choose which beats are accented, and press Sta
 
 ## Features
 
-- Tempo from 30 to 250 BPM, set with the dial, the − / + buttons or tap tempo
+- Tempo from 30 to 300 BPM, set with the dial, the − / + buttons or tap tempo
 - Eight time signatures: 2/4, 3/4, 4/4, 5/4, 6/8, 7/8, 9/8 and 12/8
 - Accent any combination of beats
 - Seven click sounds, all generated in code

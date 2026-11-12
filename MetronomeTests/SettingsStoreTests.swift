@@ -33,7 +33,7 @@ struct SettingsStoreTests {
     @Test func outOfRangeValuesAreSanitized() {
         defaults.set(Data(#"{"bpm":900,"timeSignature":"3/4","accents":[1,5]}"#.utf8), forKey: key)
         let loaded = store.load()
-        #expect(loaded.bpm == 250)
+        #expect(loaded.bpm == 300)
         #expect(loaded.timeSignature == .threeFour)
         #expect(loaded.accents == [1])
     }

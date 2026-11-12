@@ -1,7 +1,7 @@
 import Foundation
 
 enum Tempo {
-    static let range: ClosedRange<Int> = 30...250
+    static let range: ClosedRange<Int> = 30...300
     static let defaultBPM = 120
 
     static func clamp(_ bpm: Int) -> Int {
@@ -25,7 +25,7 @@ enum Tempo {
 
     private static var span: Double { Double(range.upperBound - range.lowerBound) }
 
-    /// Position of a tempo along the dial arc, 0 at 30 BPM and 1 at 250 BPM.
+    /// Position of a tempo along the dial arc, 0 at 30 BPM and 1 at 300 BPM.
     static func arcFraction(for bpm: Int) -> Double {
         Double(clamp(bpm) - range.lowerBound) / span
     }

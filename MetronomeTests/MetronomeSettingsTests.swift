@@ -12,7 +12,7 @@ struct MetronomeSettingsTests {
     @Test func setBPMClamps() {
         var settings = MetronomeSettings()
         settings.setBPM(999)
-        #expect(settings.bpm == 250)
+        #expect(settings.bpm == 300)
         settings.setBPM(-5)
         #expect(settings.bpm == 30)
     }

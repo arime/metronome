@@ -32,12 +32,12 @@ struct TapTempoTests {
     @Test func veryFastTapsClampHigh() {
         var taps = TapTempo()
         _ = taps.tap(at: 0)
-        #expect(taps.tap(at: 0.02) == 250)
+        #expect(taps.tap(at: 0.02) == 300)
     }
 
     @Test func identicalTimestampsDoNotDivideByZero() {
         var taps = TapTempo()
         _ = taps.tap(at: 1)
-        #expect(taps.tap(at: 1) == 250)
+        #expect(taps.tap(at: 1) == 300)
     }
 }
