@@ -275,11 +275,14 @@ final class MetronomeModel {
 
     /// Applies the preset to the metronome. Unsaved edits to the previous preset are dropped.
     /// While playing it keeps playing, with a new bar; `start` also starts a stopped metronome.
+    /// Loaded from all presets (`setlistID` nil), a preset that is in the setlist being
+    /// stepped through keeps that setlist, so Previous and Next do not vanish.
     func loadPreset(_ id: UUID, from setlistID: UUID?, start shouldStart: Bool = false) {
         guard let preset = library.preset(id: id) else { return }
         loadedPresetID = id
-        let members = setlistID.flatMap(library.setlist(id:))?.presetIDs ?? []
-        loadedFromSetlistID = members.contains(id) ? setlistID : nil
+        let source = setlistID ?? loadedFromSetlistID
+        let members = source.flatMap(library.setlist(id:))?.presetIDs ?? []
+        loadedFromSetlistID = members.contains(id) ? source : nil
         if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: now()) }
         apply(preset.settings)
         persistLibrary()
@@ -439,6 +442,61 @@ final class MetronomeModel {
             }
         }
         persistLibrary()
+    }
+
+    /// What is needed to put a preset back where it was in a setlist.
+    struct SetlistRemoval: Equatable {
+        let presetID: UUID
+        let presetName: String
+        let setlistID: UUID
+        /// The setlist's order just before the removal.
+        let order: [UUID]
+        /// True when the preset was the loaded one, loaded from this setlist.
+        let wasLoadedFromIt: Bool
+    }
+
+    /// Takes the preset out of the setlist and returns what `undo` needs to put it back;
+    /// nil when it was not in the setlist.
+    @discardableResult
+    func removePreset(_ presetID: UUID, fromSetlist setlistID: UUID) -> SetlistRemoval? {
+        guard let setlist = library.setlist(id: setlistID), setlist.presetIDs.contains(presetID),
+              let preset = library.preset(id: presetID)
+        else { return nil }
+        let removal = SetlistRemoval(
+            presetID: presetID, presetName: preset.name, setlistID: setlistID, order: setlist.presetIDs,
+            wasLoadedFromIt: loadedPresetID == presetID && loadedFromSetlistID == setlistID
+        )
+        setPreset(presetID, inSetlist: setlistID, included: false)
+        return removal
+    }
+
+    /// Puts a removed preset back in its place. If the setlist has changed since, the preset
+    /// goes back at the end. Does nothing when the preset or the setlist is gone.
+    func undo(_ removal: SetlistRemoval) {
+        guard library.preset(id: removal.presetID) != nil, library.setlist(id: removal.setlistID) != nil else { return }
+        let moment = now()
+        library.add(removal.presetID, toSetlist: removal.setlistID, now: moment)
+        library.reorder(setlist: removal.setlistID, to: removal.order, now: moment)
+        if removal.wasLoadedFromIt, loadedPresetID == removal.presetID, loadedFromSetlistID == nil {
+            loadedFromSetlistID = removal.setlistID
+        }
+        persistLibrary()
+    }
+
+    /// Shows the setlist the loaded preset came from, so the library opens where the user is.
+    /// Without one, the list chosen last stays.
+    func showLoadedSetlist() {
+        guard let setlistID = loadedFromSetlistID, selectedSetlistID != setlistID else { return }
+        selectedSetlistID = setlistID
+        persistLibrary()
+    }
+
+    /// Deletes a setlist that was created and then left alone: still unnamed and empty.
+    func discardSetlistIfUntouched(_ id: UUID) {
+        guard let setlist = library.setlist(id: id),
+              setlist.name == Library.defaultSetlistName, setlist.presetIDs.isEmpty
+        else { return }
+        deleteSetlist(id)
     }
 
     func reorderSetlist(_ id: UUID, to order: [UUID]) {

@@ -80,8 +80,96 @@ struct PresetModelTests {
         #expect(model.nextPreset?.id == presets[1].id)
         model.loadPreset(presets[2].id, from: setlist)
         #expect(model.nextPreset == nil)
+        model.clearPreset()
         model.loadPreset(presets[0].id, from: nil)
         #expect(model.nextPreset == nil)
+    }
+
+    @Test func loadingFromAllPresetsKeepsTheSetlistBeingSteppedThrough() {
+        let (model, presets, setlist) = modelWithSetlist()
+        let other = model.createPreset(name: "Other", settings: settings(70), addingTo: nil)!
+        model.loadPreset(presets[0].id, from: setlist)
+        model.loadPreset(presets[2].id, from: nil)
+        #expect(model.loadedFromSetlistID == setlist)
+        #expect(model.position?.index == 2)
+        // A preset that is not in the setlist leaves it.
+        model.loadPreset(other.id, from: nil)
+        #expect(model.loadedFromSetlistID == nil)
+        #expect(model.position == nil)
+    }
+
+    @Test func removingAPresetFromASetlistCanBeUndoneInPlace() {
+        let (model, presets, setlist) = modelWithSetlist()
+        let removal = model.removePreset(presets[1].id, fromSetlist: setlist)
+        #expect(removal?.presetName == "Mid")
+        #expect(model.library.presets(inSetlist: setlist).map(\.name) == ["Slow", "Fast"])
+        model.undo(removal!)
+        #expect(model.library.presets(inSetlist: setlist).map(\.name) == ["Slow", "Mid", "Fast"])
+    }
+
+    @Test func undoingARemovalBringsBackTheLoadedPresetsPlace() {
+        let (model, presets, setlist) = modelWithSetlist()
+        model.loadPreset(presets[1].id, from: setlist)
+        let removal = model.removePreset(presets[1].id, fromSetlist: setlist)!
+        #expect(model.position == nil)
+        model.undo(removal)
+        #expect(model.position?.index == 1)
+        #expect(model.position?.count == 3)
+    }
+
+    @Test func undoAfterTheSetlistChangedPutsThePresetAtTheEnd() {
+        let (model, presets, setlist) = modelWithSetlist()
+        let removal = model.removePreset(presets[0].id, fromSetlist: setlist)!
+        model.removePreset(presets[1].id, fromSetlist: setlist)
+        model.undo(removal)
+        #expect(model.library.presets(inSetlist: setlist).map(\.name) == ["Fast", "Slow"])
+    }
+
+    @Test func removingAPresetThatIsNotInTheSetlistGivesNothingToUndo() {
+        let (model, _, setlist) = modelWithSetlist()
+        let other = model.createPreset(name: "Other", settings: settings(70), addingTo: nil)!
+        #expect(model.removePreset(other.id, fromSetlist: setlist) == nil)
+    }
+
+    @Test func theLibraryShowsTheSetlistTheLoadedPresetCameFrom() {
+        let (model, presets, setlist) = modelWithSetlist()
+        model.loadPreset(presets[0].id, from: setlist)
+        model.selectFilter(nil)
+        model.showLoadedSetlist()
+        #expect(model.selectedSetlistID == setlist)
+    }
+
+    @Test func withoutALoadedSetlistTheLibraryKeepsTheListChosenLast() {
+        let (model, presets, setlist) = modelWithSetlist()
+        model.clearPreset()
+        model.selectFilter(setlist)
+        model.loadPreset(presets[0].id, from: nil)
+        model.clearPreset()
+        model.showLoadedSetlist()
+        #expect(model.selectedSetlistID == setlist)
+        model.selectFilter(nil)
+        model.showLoadedSetlist()
+        #expect(model.selectedSetlistID == nil)
+    }
+
+    @Test func aNewSetlistLeftUntouchedIsDiscarded() {
+        let model = makeModel()
+        let untouched = model.createSetlist()
+        model.discardSetlistIfUntouched(untouched)
+        #expect(model.library.setlists.isEmpty)
+        #expect(model.selectedSetlistID == nil)
+    }
+
+    @Test func aNewSetlistWithANameOrAPresetIsKept() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        let named = model.createSetlist()
+        model.renameSetlist(named, to: "Friday gig")
+        model.discardSetlistIfUntouched(named)
+        let filled = model.createSetlist()
+        model.setPreset(preset.id, inSetlist: filled, included: true)
+        model.discardSetlistIfUntouched(filled)
+        #expect(model.library.setlists.count == 2)
     }
 
     @Test func loadingAppliesTheSettingsWithoutStarting() {

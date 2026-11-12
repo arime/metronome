@@ -68,7 +68,7 @@ Kept between launches:
 | Setlists | each with id, name, ordered preset ids, last-used time | none |
 | Loaded preset | the preset in the metronome, if any | none |
 | Loaded-from setlist | the setlist the preset was loaded from, if any | none |
-| Selected filter | what the library sheet shows: All presets or a setlist | All presets |
+| Selected filter | the list the library sheet showed last: All presets or a setlist. The sheet opens on it unless the loaded preset came from a setlist (section 8) | All presets |
 | Click sound | one of the seven sounds in 11.1 | Digital |
 | Haptics | on or off, for the whole app | on |
 | Keep screen awake | on or off, for this device | off |
@@ -493,71 +493,105 @@ The switch works when stopped and when playing, applies to this device only and 
 - If the loaded preset's settings changed, the preset counts as edited and the Save button appears, because what is in the metronome now differs from the preset. Revert takes the arrived version; Save keeps the metronome's and sends it to the other devices.
 - If the loaded preset's name changed, the header shows the new name at once.
 - If the loaded preset, the loaded-from setlist or the selected filter's setlist was deleted, the rules in section 5 apply.
-- An open library sheet, filter list or setlist editor updates in place. An editor whose setlist was deleted closes and the library shows All presets.
+- An open library sheet, Setlists screen or setlist editor updates in place. An editor whose setlist was deleted closes and the library shows All presets.
 - Nothing is announced: no alert, banner, sound or haptic.
 
 ## 8. Library sheet
 
 A tall sheet over the metronome, with a grabber. Swiping it down closes it and changes nothing.
 
+**Where it opens.** The library opens where the user is:
+
+- When the loaded preset was loaded from a setlist, it shows that setlist, whatever list was shown last.
+- Otherwise it shows the list that was shown last (the selected filter).
+- Either way the list is scrolled so that the loaded preset's row is in view, when the list has it.
+
 ### 8.1 Header
 
-- **Title = filter selector.** It names what is shown, `All presets` or the setlist's name, with a ˅. Tapping it opens the filter list (9.1).
+- **Title = list selector.** It names what is shown, `All presets` or the setlist's name, with a ˅. Tapping it opens the Setlists screen (9.1).
 - One button at the right, depending on what is shown:
   - All presets: **New preset**, which opens the New preset sheet (section 10).
-  - A setlist: **Edit**, with a pencil, which opens editing (9.2). Adding presets to the setlist happens there; only an empty setlist has a shortcut for it (8.3).
+  - A setlist: **Edit**, with a pencil, which opens editing (9.2). Reordering happens there; only an empty setlist has a shortcut for adding presets (8.3).
 
 ### 8.2 All presets
 
 - **No preset**, the first row, above the presets. It is how the user goes back to having no preset loaded.
   - Below the name it always shows the settings in use, for example `120 BPM · 4/4 · current settings`: what the metronome keeps when the row is tapped. While a preset has unsaved edits, these are the edited values.
-  - While a preset is loaded it has nothing at the right. While nothing is loaded it is the selected row: an amber name and an amber tick where the play button would be.
+  - While a preset is loaded it has nothing at the right. While nothing is loaded it is the selected row: an amber name and an amber tick where the menu button would be.
   - Tapping it unloads the preset and closes the sheet. The tempo, time signature and accents stay as they are, playing or stopped, and the click does not change. The preset itself is not changed; unsaved edits stay as plain settings. Previous / Next disappear and the header shows the "nothing loaded" state.
   - It is not shown in a setlist view, or when the library is empty.
 - Then every preset, sorted by name A–Z, ignoring case and following the phone's language rules. Presets with the same name keep their order of creation.
-- Each row shows the name (17 pt), and below it tempo and time signature, for example `120 BPM · 4/4`. At the right is a 40 pt round play button.
-- The loaded preset's row has an amber name, `· loaded` after its details, and an amber play button.
-- **Tapping a row** loads the preset and closes the sheet. It does not start the metronome.
-- **Tapping the play button** loads the preset, closes the sheet and starts the metronome. If it is already playing, it keeps playing with the new preset.
-- A preset loaded from this view has no loaded-from setlist, so Previous / Next are hidden.
-- **Swiping a row left** reveals **Rename** and **Delete**.
-  - Rename asks for the new name in a small dialog.
-  - Delete asks for confirmation and says how many setlists the preset is in.
+- Each row shows the name (17 pt), and below it tempo and time signature, for example `120 BPM · 4/4`. At the right is the **menu button**: a 40 pt round surface-raised button with a dial-white ⋯ (8.4).
+- The loaded preset's row has an amber name and `· loaded` after its details.
+- **Tapping a row** loads the preset and closes the sheet. It does not start the metronome; Start is under the thumb when the sheet has closed. If the metronome is already playing, it keeps playing with the new preset.
+- A preset loaded from this view keeps the setlist that was being stepped through when it is in that setlist, so the header still shows its position and Previous / Next stay. A preset that is not in that setlist, or one loaded while no setlist was being stepped through, has no loaded-from setlist, and Previous / Next are hidden.
+- **Swiping a row left** reveals **Rename** and **Delete**, as a shortcut to the same items in the row's menu.
 - Empty library: only the text `No presets in the library yet`, centred. New presets are made with the button in the header.
+
+There is no button on a row that loads and starts in one tap. A button that looked like a preview but replaced the loaded preset and closed the sheet was easy to misread, and its place is better used for the menu.
 
 ### 8.3 A setlist
 
 - Only the setlist's presets, in the setlist's order, each with its position number at the left.
 - Above the list: the count, such as `8 PRESETS`.
-- Rows, tapping and the play button work as in 8.2. A preset loaded from this view has this setlist as its loaded-from setlist, so the header shows the position and Previous / Next.
-- Rows cannot be swiped here; removing and reordering happen in Edit.
+- Rows, tapping and the menu button work as in 8.2. A preset loaded from this view has this setlist as its loaded-from setlist, so the header shows the position and Previous / Next.
+- **Swiping a row left** reveals **Remove**, which takes the preset out of this setlist (8.5). Reordering happens in Edit.
 - Empty setlist: the text `No presets in this setlist`, centred, with an outlined **Add preset** button under it. The button opens 9.3 directly, as a shortcut for filling a new setlist without going through Edit.
+
+### 8.4 The row menu
+
+The ⋯ button at the end of every preset row, in All presets and in a setlist, opens the system menu with everything that can be done with that preset, in this order:
+
+- **Add to setlist**, which opens a second level:
+  - Every setlist, most recently used first, with a tick when the preset is in it. Tapping one adds the preset to the end of that setlist, or takes it out (8.5).
+  - **New setlist**, after a divider: creates a setlist that starts with this preset, selects it and opens it in Edit with the name field ready for typing.
+- **Rename:** asks for the new name in a small dialog.
+- **Remove from setlist:** only in a setlist view. Takes the preset out of the setlist shown (8.5).
+- **Delete**, in red: asks for confirmation and says how many setlists the preset is in.
+
+So a preset can be put into a setlist, renamed or deleted from wherever it is listed, without first changing what the library shows.
+
+### 8.5 Removing a preset from a setlist, and Undo
+
+A preset can be taken out of a setlist from the row menu, by swiping in a setlist view, with the remove button in Edit (9.2) and by unticking it in 9.3. In every case:
+
+- It happens at once, without confirmation. The preset stays in the library.
+- An **Undo bar** appears at the bottom of the sheet: `Removed <preset name>` (15 pt, dial white) and `Undo` in amber at the right, on a surface-raised bar with 14 pt corners. It goes away by itself after 6 seconds, and a new removal replaces it.
+- **Undo** puts the preset back in the setlist at the place it had. If it was the loaded preset, loaded from that setlist, its position and Previous / Next come back too.
+- If the setlist's order was changed in Edit after the removal, the bar goes away, since the old place no longer means anything. If the setlist changed in another way meanwhile, Undo puts the preset back at the end.
+
+Only the last removal can be undone. Deleting a preset or a setlist is confirmed beforehand and has no Undo.
 
 ## 9. Setlists
 
-### 9.1 Filter list
+### 9.1 Setlists screen
 
-Opened from the library sheet's title. A list titled `Show`:
+Opened from the library sheet's title. A list titled `Setlists`, with a ‹ back button before the title that returns to the list of presets without changing what is shown:
 
 - `All presets` first, with the number of presets.
 - Then every setlist with its preset count, most recently used first. A setlist counts as used when it is selected here or a preset is loaded from it.
-- The current filter is amber with a tick.
-- Tapping an entry selects it, closes the list and shows that view. It loads nothing into the metronome.
+- The list that is shown now is amber with a tick.
+- Tapping an entry selects it, closes the screen and shows that list. It loads nothing into the metronome.
 - **New setlist** button at the top right: creates an empty setlist, selects it and opens it in Edit with the name field ready for typing.
+- While there are no setlists, a line under `All presets` says what one is: `A setlist is an ordered selection of presets, for a gig or a practice routine. Make one with New setlist.` (15 pt, muted).
 - The list scrolls; there is no limit on the number of setlists.
 
 ### 9.2 Editing a setlist
 
-Opened with Edit in a setlist view's header.
+Opened with Edit in a setlist view's header, and for a setlist that has just been created.
 
-- **Name field** at the top. An empty name is not accepted; the previous name is kept.
-- **Done** closes editing. Every change below takes effect at once; there is no cancel.
+- **Name field** at the top, in the place and size of a title. An empty name is not accepted; the previous name is kept.
+- **Done** closes editing. Every change takes effect at once; there is no cancel.
+- **Menu button** (⋯, 40 pt round) beside Done, with:
+  - **Rename setlist:** puts the cursor in the name field. The field looks like a title, so renaming is also offered by name.
+  - **Duplicate setlist:** creates a setlist named `<name> copy` with the same presets in the same order, selects it and stays in Edit on the copy. The presets are shared, not copied.
+  - **Delete setlist**, in red: asks for confirmation, deletes the setlist and shows All presets. The presets stay in the library.
 - Each row has a red remove button at the left and a drag handle at the right.
-  - Remove takes the preset out of this setlist immediately, without confirmation. The preset stays in the library.
+  - Remove takes the preset out of this setlist, with Undo (8.5).
   - Dragging the handle moves the row; the new order is the setlist's order.
 - **Add preset** row after the last preset: opens 9.3.
-- **Duplicate setlist:** creates a setlist named `<name> copy` with the same presets in the same order, selects it and stays in Edit on the copy. The presets are shared, not copied.
-- **Delete setlist:** asks for confirmation, deletes the setlist and shows All presets. The presets stay in the library.
+
+**A new setlist that is left untouched is not kept.** If a setlist created with New setlist still has its default name and no presets when Done is pressed or the library is closed, it is deleted, and the library shows the list it showed before. A setlist that was given a name or a preset is kept.
 
 ### 9.3 Adding presets to a setlist
 
@@ -565,7 +599,7 @@ Opened with Add preset, in Edit or in an empty setlist. A list titled `Add to <s
 
 - First row: **New preset**, which opens the New preset sheet (section 10) with "Add to <setlist>" switched on.
 - Then every preset in the library, A–Z, with a tick when it is in the setlist.
-- Tapping a row adds the preset to the end of the setlist, or removes it. Changes take effect at once.
+- Tapping a row adds the preset to the end of the setlist, or takes it out, with Undo (8.5). Changes take effect at once.
 
 ## 10. New preset sheet
 
@@ -654,7 +688,8 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The screen switch reads as "Keep screen awake, on" or "Keep screen awake, off".
   - The sync switch reads as "Sync presets and setlists, on" or "Sync presets and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
   - The header title reads the preset name and its second line, and says that it opens the library. While the preset is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the Save button appearing cannot be heard.
-  - A preset row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its play button reads "Load and start".
+  - A preset row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its menu button reads "More for Harbour Lights".
+  - The Undo bar's button reads "Undo"; the back button on the Setlists screen reads "Back"; the menu button in setlist editing reads "More for this setlist".
   - In setlist editing, rows can be moved up and down with VoiceOver actions as well as by dragging.
   - Beat changes during playback are not announced.
 - Every tappable control is at least 44 × 44 pt.
@@ -688,7 +723,11 @@ Presets and setlists:
 
 - [x] A preset can be created, loaded, renamed and deleted; the library is sorted A–Z.
 - [x] No preset unloads the loaded preset and keeps the settings and playback; it is only in All presets.
-- [x] Tapping a row loads without starting; the play button loads and starts.
+- [x] Tapping a row loads without starting, and keeps playing when the metronome is running. *(Unit tested.)*
+- [x] The row menu offers Add to setlist, Rename, Remove from setlist and Delete in every list, and the swipe gives the shortcuts of 8.2 and 8.3. *(Every item was tried in the simulator: adding to a setlist, New setlist, Rename and Delete from All presets, and Remove from the menu and by swipe in a setlist view. The Rename and Delete swipe in All presets was not tried again after this change.)*
+- [x] Taking a preset out of a setlist shows the Undo bar, and Undo puts it back in its place. *(Unit tested, including the loaded preset's position, and tried in the simulator.)*
+- [x] The library opens on the loaded preset's setlist and scrolls to its row. *(Choosing the setlist is unit tested. In the simulator the list stayed at its top on an iPhone 17 Pro, where the loaded row fits, and scrolled just far enough to show it on an iPhone SE, where it does not. A library of several screens has not been tried.)*
+- [x] A preset loaded from All presets keeps the setlist being stepped through when it is in it. *(Unit tested.)*
 - [x] The header shows the right title and second line in every state of 6.1.
 - [x] Changing a loaded preset's settings shows the Save button and leaves the title as it is; Save, Save as new preset and Revert do what 7.6 says, and the title opens the library also while edited. *(Save and Revert, with the bar carrying on or starting over, are unit tested. Save, the menu and Revert were tried in the simulator, and Save as new preset was seen to open its sheet from the menu.)*
 - [x] Quick taps on − / + each count once and never leave the tempo running on by itself. *(Four quick taps on + were tried in the simulator after two quick taps had left the repeat running up to 250.)*
@@ -700,7 +739,8 @@ Presets and setlists:
 - [x] A new preset can be created from inside a setlist and lands in that setlist.
 - [x] Previous and Next step through the loaded-from setlist, stopped and playing, and stop at the ends. *(Next was tried in the simulator; Previous and the ends are unit tested.)*
 - [x] Loading a preset while playing keeps the metronome running and starts a new bar.
-- [ ] The filter list shows all setlists with counts and stays usable with 20 setlists. *(Counts and order are verified; it has not been tried with 20 setlists.)*
+- [ ] The Setlists screen shows all setlists with counts, has a way back, explains setlists while there are none, and stays usable with 20 setlists. *(Counts, order, the back button and the explanation are verified. 20 setlists have not been seen.)*
+- [x] Setlist editing has Rename, Duplicate and Delete in its menu, and a new setlist left unnamed and empty is not kept. *(The discard rule is unit tested, and all three menu items and the discard were tried in the simulator.)*
 - [x] Presets, setlists, the loaded preset, its position in the setlist and the selected filter survive quitting and reopening the app.
 
 Settings and click sounds:

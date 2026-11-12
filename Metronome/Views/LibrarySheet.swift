@@ -13,8 +13,14 @@ struct LibrarySheet: View {
     @State private var mode = Mode.presets
     /// True right after "New setlist", so the name field is ready for typing.
     @State private var isNewSetlist = false
+    /// The setlist made with "New setlist" in this visit; discarded if it is left untouched.
+    @State private var newSetlistID: UUID?
+    /// The list that was shown before "New setlist", to go back to if the new one is discarded.
+    @State private var listBeforeNewSetlist: UUID?
     /// Where Done on the add screen goes back to: the screen it was opened from.
     @State private var addingReturnsTo = Mode.editing
+    /// The last preset taken out of a setlist, while it can still be put back.
+    @State private var removal: MetronomeModel.SetlistRemoval?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,31 +30,61 @@ struct LibrarySheet: View {
                     showFilters: { mode = .filters },
                     edit: { isNewSetlist = false; mode = .editing },
                     addPresets: { addingReturnsTo = .presets; mode = .adding },
+                    newSetlist: { presetID in
+                        listBeforeNewSetlist = model.selectedSetlistID
+                        let id = model.createSetlist()
+                        model.setPreset(presetID, inSetlist: id, included: true)
+                        editNewSetlist(id)
+                    },
+                    removed: { removal = $0 },
                     close: { dismiss() }
                 )
             case .filters:
                 FilterListView(
                     done: { mode = .presets },
-                    newSetlist: { isNewSetlist = true; mode = .editing }
+                    newSetlist: {
+                        listBeforeNewSetlist = model.selectedSetlistID
+                        editNewSetlist(model.createSetlist())
+                    }
                 )
             case .editing:
                 if let id = model.selectedSetlistID {
                     SetlistEditor(
                         setlistID: id, focusName: isNewSetlist,
                         addPresets: { isNewSetlist = false; addingReturnsTo = .editing; mode = .adding },
-                        done: { mode = .presets }
+                        removed: { removal = $0 },
+                        orderChanged: { removal = nil },
+                        done: finishEditing
                     )
                     // A duplicate takes the editor's place, with its own name.
                     .id(id)
                 }
             case .adding:
                 if let id = model.selectedSetlistID {
-                    AddPresetsView(setlistID: id) { mode = addingReturnsTo }
+                    AddPresetsView(setlistID: id, removed: { removal = $0 }) { mode = addingReturnsTo }
                 }
             }
         }
         .padding(.top, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .overlay(alignment: .bottom) {
+            if let removal {
+                UndoBar(text: "Removed \(removal.presetName)") {
+                    model.undo(removal)
+                    self.removal = nil
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: removal)
+        // The offer to undo goes away by itself.
+        .task(id: removal) {
+            guard removal != nil else { return }
+            try? await Task.sleep(for: .seconds(6))
+            if !Task.isCancelled { removal = nil }
+        }
+        .onAppear { model.showLoadedSetlist() }
+        .onDisappear(perform: discardUntouchedSetlist)
         .background(Theme.surface)
         .preferredColorScheme(.dark)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
@@ -60,6 +96,72 @@ struct LibrarySheet: View {
             // The setlist being edited was deleted.
             if selected == nil, mode == .editing || mode == .adding { mode = .presets }
         }
+    }
+
+    private func editNewSetlist(_ id: UUID) {
+        newSetlistID = id
+        isNewSetlist = true
+        mode = .editing
+    }
+
+    private func finishEditing() {
+        discardUntouchedSetlist()
+        mode = .presets
+    }
+
+    /// A setlist made in this visit and left unnamed and empty is not kept, and the
+    /// library shows the list it showed before.
+    private func discardUntouchedSetlist() {
+        if let newSetlistID {
+            model.discardSetlistIfUntouched(newSetlistID)
+            if model.library.setlist(id: newSetlistID) == nil, let listBeforeNewSetlist {
+                model.selectFilter(listBeforeNewSetlist)
+            }
+        }
+        newSetlistID = nil
+        listBeforeNewSetlist = nil
+    }
+}
+
+/// Offers to take back the removal that just happened, at the bottom of the sheet.
+private struct UndoBar: View {
+    let text: String
+    let undo: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(text)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Theme.dialWhite)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Button(action: undo) {
+                Text("Undo")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Theme.amber)
+                    .frame(height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 50)
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.line, lineWidth: 1))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+    }
+}
+
+/// The round ⋯ button at the end of a row or in a header; it opens a menu.
+struct MoreButtonLabel: View {
+    var body: some View {
+        Image(systemName: "ellipsis")
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(Theme.dialWhite)
+            .frame(width: 40, height: 40)
+            .background(Theme.surfaceRaised, in: Circle())
+            .contentShape(Circle().inset(by: -2))
     }
 }
 
@@ -136,6 +238,9 @@ private struct PresetListView: View {
     let showFilters: () -> Void
     let edit: () -> Void
     let addPresets: () -> Void
+    /// Makes a setlist that starts with the given preset and opens it for naming.
+    let newSetlist: (UUID) -> Void
+    let removed: (MetronomeModel.SetlistRemoval) -> Void
     let close: () -> Void
 
     @State private var isNewPresetShown = false
@@ -207,45 +312,108 @@ private struct PresetListView: View {
     }
 
     private var list: some View {
-        List {
-            // Only the full library offers it; a setlist lists songs and nothing else.
-            if setlist == nil {
-                NoPresetRow(isSelected: model.loadedPresetID == nil, settings: model.settings) {
-                    model.clearPreset()
-                    close()
-                }
-                .sheetRow()
-            }
-            ForEach(Array(presets.enumerated()), id: \.element.id) { index, preset in
-                PresetRow(
-                    preset: preset,
-                    number: setlist == nil ? nil : index + 1,
-                    isLoaded: preset.id == model.loadedPresetID,
-                    load: {
-                        model.loadPreset(preset.id, from: setlist?.id)
-                        close()
-                    },
-                    play: {
-                        model.loadPreset(preset.id, from: setlist?.id, start: true)
+        ScrollViewReader { proxy in
+            List {
+                // Only the full library offers it; a setlist lists songs and nothing else.
+                if setlist == nil {
+                    NoPresetRow(isSelected: model.loadedPresetID == nil, settings: model.settings) {
+                        model.clearPreset()
                         close()
                     }
-                )
-                .sheetRow()
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    // Renaming and deleting belong to the library; a setlist is changed in Edit.
-                    if setlist == nil {
-                        Button("Delete") { deleting = preset }
-                            .tint(Theme.red)
-                        Button("Rename") {
-                            newName = preset.name
-                            renaming = preset
+                    .sheetRow()
+                }
+                ForEach(Array(presets.enumerated()), id: \.element.id) { index, preset in
+                    PresetRow(
+                        preset: preset,
+                        number: setlist == nil ? nil : index + 1,
+                        isLoaded: preset.id == model.loadedPresetID,
+                        load: {
+                            model.loadPreset(preset.id, from: setlist?.id)
+                            close()
+                        },
+                        menu: { rowMenu(for: preset) }
+                    )
+                    .sheetRow()
+                    // The swipe is a shortcut to the two most common items of the row's menu.
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if let setlist {
+                            Button("Remove") { remove(preset, from: setlist) }
+                                .tint(Color(hex: 0x3A3A3F))
+                        } else {
+                            Button("Delete") { deleting = preset }
+                                .tint(Theme.red)
+                            Button("Rename") { startRenaming(preset) }
+                                .tint(Color(hex: 0x3A3A3F))
                         }
-                        .tint(Color(hex: 0x3A3A3F))
                     }
                 }
+            }
+            .sheetList()
+            // The library opens where the user is: with the loaded preset's row in view.
+            // Without an anchor the list moves only as far as it must, so a row that is
+            // already on screen leaves the list at its top.
+            .onAppear {
+                if let loaded = model.loadedPresetID { proxy.scrollTo(loaded) }
             }
         }
-        .sheetList()
+    }
+
+    /// Everything that can be done with a preset, the same in every list.
+    @ViewBuilder
+    private func rowMenu(for preset: Preset) -> some View {
+        Menu {
+            ForEach(model.library.setlistsByRecency) { candidate in
+                let isIncluded = candidate.presetIDs.contains(preset.id)
+                Button {
+                    if isIncluded {
+                        remove(preset, from: candidate)
+                    } else {
+                        model.setPreset(preset.id, inSetlist: candidate.id, included: true)
+                    }
+                } label: {
+                    if isIncluded {
+                        Label(candidate.name, systemImage: "checkmark")
+                    } else {
+                        Text(candidate.name)
+                    }
+                }
+            }
+            Divider()
+            Button {
+                newSetlist(preset.id)
+            } label: {
+                Label("New setlist", systemImage: "plus")
+            }
+        } label: {
+            Label("Add to setlist", systemImage: "text.badge.plus")
+        }
+        Button {
+            startRenaming(preset)
+        } label: {
+            Label("Rename", systemImage: "pencil")
+        }
+        if let setlist {
+            Button {
+                remove(preset, from: setlist)
+            } label: {
+                // Without the setlist's name: with it the item wraps onto two lines.
+                Label("Remove from setlist", systemImage: "minus.circle")
+            }
+        }
+        Button(role: .destructive) {
+            deleting = preset
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
+    }
+
+    private func startRenaming(_ preset: Preset) {
+        newName = preset.name
+        renaming = preset
+    }
+
+    private func remove(_ preset: Preset, from setlist: Setlist) {
+        if let removal = model.removePreset(preset.id, fromSetlist: setlist.id) { removed(removal) }
     }
 
     private var emptyState: some View {
@@ -264,13 +432,14 @@ private struct PresetListView: View {
     }
 }
 
-/// One preset: name, tempo and time signature, and a play button that loads and starts it.
-private struct PresetRow: View {
+/// One preset: name, tempo and time signature. Tapping it loads it; the ⋯ button at the
+/// end opens the row's menu.
+private struct PresetRow<MenuContent: View>: View {
     let preset: Preset
     let number: Int?
     let isLoaded: Bool
     let load: () -> Void
-    let play: () -> Void
+    @ViewBuilder let menu: MenuContent
 
     var body: some View {
         HStack(spacing: 12) {
@@ -301,16 +470,13 @@ private struct PresetRow: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(preset.spokenDescription + (isLoaded ? ", loaded" : ""))
             .accessibilityAddTraits(.isButton)
-            Button(action: play) {
-                Image(systemName: "play.fill")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(isLoaded ? Theme.ink : Theme.dialWhite)
-                    .frame(width: 40, height: 40)
-                    .background(isLoaded ? Theme.amber : Theme.surfaceRaised, in: Circle())
-                    .contentShape(Circle().inset(by: -2))
+            Menu {
+                menu
+            } label: {
+                MoreButtonLabel()
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("Load and start")
+            .accessibilityLabel("More for \(preset.name)")
         }
         .frame(height: 62)
     }
@@ -341,7 +507,7 @@ private struct NoPresetRow: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                // The same 40 pt lane as the play buttons below, so the rows line up.
+                // The same 40 pt lane as the menu buttons below, so the rows line up.
                 Image(systemName: "checkmark")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Theme.amber)

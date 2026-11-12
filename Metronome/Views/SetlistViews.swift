@@ -1,20 +1,29 @@
 import SwiftUI
 
-/// "Show": chooses what the library lists, all presets or one setlist, and creates setlists.
+/// "Setlists": chooses what the library lists, all presets or one setlist, and creates setlists.
 struct FilterListView: View {
     @Environment(MetronomeModel.self) private var model
+    /// Goes back to the list of presets, with or without a new choice.
     let done: () -> Void
     let newSetlist: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             SheetHeader {
-                SheetTitle(text: "Show")
-            } trailing: {
-                PillButton(text: "New setlist", symbol: "plus", look: .outlined) {
-                    model.createSetlist()
-                    newSetlist()
+                HStack(spacing: 4) {
+                    Button(action: done) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Theme.dialWhite)
+                            .frame(width: 32, height: 44, alignment: .leading)
+                            .contentShape(Rectangle().inset(by: -6))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Back")
+                    SheetTitle(text: "Setlists")
                 }
+            } trailing: {
+                PillButton(text: "New setlist", symbol: "plus", look: .outlined, action: newSetlist)
             }
             List {
                 row(name: "All presets", count: model.library.presets.count, isSelected: model.selectedSetlistID == nil) {
@@ -26,6 +35,15 @@ struct FilterListView: View {
                         model.selectFilter(setlist.id)
                         done()
                     }
+                }
+                // Until there is a setlist, say what one is; the screen is otherwise one row.
+                if model.library.setlists.isEmpty {
+                    Text("A setlist is an ordered selection of presets, for a gig or a practice routine. Make one with New setlist.")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Theme.muted)
+                        .padding(.vertical, 16)
+                        .sheetRow()
+                        .listRowSeparator(.hidden)
                 }
             }
             .sheetList()
@@ -92,6 +110,9 @@ struct SetlistEditor: View {
     /// True for a setlist that was just created: the name field starts empty and focused.
     let focusName: Bool
     let addPresets: () -> Void
+    let removed: (MetronomeModel.SetlistRemoval) -> Void
+    /// The order changed, so an earlier removal can no longer be put back in place.
+    let orderChanged: () -> Void
     let done: () -> Void
 
     @State private var name = ""
@@ -112,13 +133,42 @@ struct SetlistEditor: View {
                     .focused($isNameFocused)
                     .accessibilityLabel("Setlist name")
             } trailing: {
-                PillButton(text: "Done", action: done)
+                HStack(spacing: 8) {
+                    Menu {
+                        // The name is a field that looks like a title, so renaming is also
+                        // offered by name here.
+                        Button {
+                            // The menu takes the focus back as it closes, so the field
+                            // is focused once it has gone.
+                            Task {
+                                try? await Task.sleep(for: .milliseconds(450))
+                                isNameFocused = true
+                            }
+                        } label: {
+                            Label("Rename setlist", systemImage: "pencil")
+                        }
+                        Button {
+                            model.duplicateSetlist(setlistID)
+                        } label: {
+                            Label("Duplicate setlist", systemImage: "plus.square.on.square")
+                        }
+                        Button(role: .destructive) {
+                            isDeleteShown = true
+                        } label: {
+                            Label("Delete setlist", systemImage: "trash")
+                        }
+                    } label: {
+                        MoreButtonLabel()
+                    }
+                    .accessibilityLabel("More for this setlist")
+                    PillButton(text: "Done", action: done)
+                }
             }
             List {
                 ForEach(presets) { preset in
                     HStack(spacing: 12) {
                         Button {
-                            model.setPreset(preset.id, inSetlist: setlistID, included: false)
+                            if let removal = model.removePreset(preset.id, fromSetlist: setlistID) { removed(removal) }
                         } label: {
                             Image(systemName: "minus")
                                 .font(.system(size: 13, weight: .heavy))
@@ -149,18 +199,11 @@ struct SetlistEditor: View {
                     var order = presets.map(\.id)
                     order.move(fromOffsets: source, toOffset: destination)
                     model.reorderSetlist(setlistID, to: order)
+                    orderChanged()
                 }
-                Group {
-                    ActionRow(text: "Add preset", symbol: "plus", action: addPresets)
-                    ActionRow(text: "Duplicate setlist", symbol: "plus.square.on.square") {
-                        model.duplicateSetlist(setlistID)
-                    }
-                    ActionRow(text: "Delete setlist", symbol: "trash", color: Theme.red) {
-                        isDeleteShown = true
-                    }
-                }
-                .sheetRow()
-                .moveDisabled(true)
+                ActionRow(text: "Add preset", symbol: "plus", action: addPresets)
+                    .sheetRow()
+                    .moveDisabled(true)
             }
             .sheetList()
             // Always in edit mode, so every preset row shows its drag handle.
@@ -193,6 +236,7 @@ struct SetlistEditor: View {
 struct AddPresetsView: View {
     @Environment(MetronomeModel.self) private var model
     let setlistID: UUID
+    let removed: (MetronomeModel.SetlistRemoval) -> Void
     let done: () -> Void
 
     @State private var isNewPresetShown = false
@@ -212,7 +256,12 @@ struct AddPresetsView: View {
                 ForEach(model.library.sortedPresets) { preset in
                     let isIncluded = members.contains(preset.id)
                     Button {
-                        model.setPreset(preset.id, inSetlist: setlistID, included: !isIncluded)
+                        if isIncluded {
+                            // Unticking loses the preset's place in the order, so it can be undone.
+                            if let removal = model.removePreset(preset.id, fromSetlist: setlistID) { removed(removal) }
+                        } else {
+                            model.setPreset(preset.id, inSetlist: setlistID, included: true)
+                        }
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: isIncluded ? "checkmark.circle.fill" : "circle")

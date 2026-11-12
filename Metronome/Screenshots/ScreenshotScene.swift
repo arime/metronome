@@ -42,7 +42,9 @@ enum ScreenshotScene: String, CaseIterable {
         libraryStore.save(LibraryState(
             library: sample.library,
             loadedPresetID: sample.loadedPresetID,
-            loadedFromSetlistID: sample.setlistID,
+            // The library opens on the setlist its loaded preset came from, so the scene
+            // that shows all presets has the preset loaded on its own.
+            loadedFromSetlistID: self == .library ? nil : sample.setlistID,
             selectedSetlistID: self == .setlist ? sample.setlistID : nil
         ))
         settingsStore.save(sample.loadedSettings)
