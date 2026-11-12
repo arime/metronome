@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The three save controls in the gap at the bottom of the dial, shown while the loaded
-/// preset has unsaved changes: Revert on the left, Save in the middle, Save as new preset
+/// song has unsaved changes: Revert on the left, Save in the middle, Save as new song
 /// on the right. Save is the only coloured one. On a dial too small for them, the Save
 /// button in the header takes their place (DialGeometry.fitsSaveControls).
 struct DialSaveControls: View {
@@ -26,7 +26,7 @@ struct DialSaveControls: View {
             RoundSaveControl(symbol: "plus.square.on.square", size: button) {
                 isSaveAsShown = true
             }
-            .accessibilityLabel("Save as new preset")
+            .accessibilityLabel("Save as new song")
             .opacity(model.isSaveConfirmed ? 0 : 1)
             .allowsHitTesting(!model.isSaveConfirmed)
             .accessibilityHidden(model.isSaveConfirmed)
@@ -37,7 +37,7 @@ struct DialSaveControls: View {
             if isConfirmed { AccessibilityNotification.Announcement("Saved").post() }
         }
         .sheet(isPresented: $isSaveAsShown) {
-            PresetSheet(purpose: .saveAsNew)
+            SongSheet(purpose: .saveAsNew)
                 .environment(model)
         }
     }

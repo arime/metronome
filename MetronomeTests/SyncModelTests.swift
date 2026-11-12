@@ -55,29 +55,29 @@ struct SyncModelTests {
     }
 
     /// Device A makes "Song" at 100 BPM; B has it after a notice from iCloud.
-    private func twoDevicesSharingASong() -> (a: Device, b: Device, song: Preset) {
+    private func twoDevicesSharingASong() -> (a: Device, b: Device, song: Song) {
         let a = makeDevice(), b = makeDevice()
         clock.advance()
-        let song = a.model.createPreset(name: "Song", settings: settings(100), addingTo: nil)!
+        let song = a.model.createSong(name: "Song", settings: settings(100), addingTo: nil)!
         cloud.send(.changed, toDevice: 1)
         return (a, b, song)
     }
 
-    @Test func aPresetMadeOnOneDeviceAppearsOnTheOther() {
+    @Test func aSongMadeOnOneDeviceAppearsOnTheOther() {
         let (_, b, song) = twoDevicesSharingASong()
-        #expect(b.model.library.preset(id: song.id)?.name == "Song")
-        #expect(b.model.library.preset(id: song.id)?.settings == settings(100))
+        #expect(b.model.library.song(id: song.id)?.name == "Song")
+        #expect(b.model.library.song(id: song.id)?.settings == settings(100))
     }
 
-    @Test func anArrivedTempoMarksTheLoadedPresetEditedAndKeepsTheMetronome() {
+    @Test func anArrivedTempoMarksTheLoadedSongEditedAndKeepsTheMetronome() {
         let (a, b, song) = twoDevicesSharingASong()
         b.model.togglePlayback()
-        b.model.loadPreset(song.id, from: nil)
+        b.model.loadSong(song.id, from: nil)
         let updateBefore = b.engine.lastUpdate
         #expect(updateBefore == settings(100))
 
         clock.advance()
-        a.model.loadPreset(song.id, from: nil)
+        a.model.loadSong(song.id, from: nil)
         a.model.setBPM(180)
         a.model.saveChanges()
         cloud.send(.changed, toDevice: 1)
@@ -96,9 +96,9 @@ struct SyncModelTests {
 
     @Test func saveChangesAfterAnArrivalSendsTheMetronomesVersionBack() {
         let (a, b, song) = twoDevicesSharingASong()
-        b.model.loadPreset(song.id, from: nil)
+        b.model.loadSong(song.id, from: nil)
         clock.advance()
-        a.model.loadPreset(song.id, from: nil)
+        a.model.loadSong(song.id, from: nil)
         a.model.setBPM(180)
         a.model.saveChanges()
         cloud.send(.changed, toDevice: 1)
@@ -107,46 +107,46 @@ struct SyncModelTests {
         b.model.saveChanges()
         a.model.appDidBecomeActive()
 
-        #expect(a.model.library.preset(id: song.id)?.settings.bpm == 100)
+        #expect(a.model.library.song(id: song.id)?.settings.bpm == 100)
         #expect(b.model.isEdited == false)
     }
 
     @Test func anArrivedNameShowsInTheHeaderAtOnce() {
         let (a, b, song) = twoDevicesSharingASong()
-        b.model.loadPreset(song.id, from: nil)
+        b.model.loadSong(song.id, from: nil)
         #expect(b.model.headerTitle == "Song")
 
         clock.advance()
-        a.model.renamePreset(song.id, to: "Ballad")
+        a.model.renameSong(song.id, to: "Ballad")
         cloud.send(.changed, toDevice: 1)
 
         #expect(b.model.headerTitle == "Ballad")
         #expect(b.model.isEdited == false)
     }
 
-    @Test func theLoadedPresetDeletedElsewhereWhilePlayingKeepsPlaying() {
+    @Test func theLoadedSongDeletedElsewhereWhilePlayingKeepsPlaying() {
         let (a, b, song) = twoDevicesSharingASong()
-        b.model.loadPreset(song.id, from: nil, start: true)
+        b.model.loadSong(song.id, from: nil, start: true)
 
         clock.advance()
-        a.model.deletePreset(song.id)
+        a.model.deleteSong(song.id)
         cloud.send(.changed, toDevice: 1)
 
         #expect(b.model.isPlaying)
         #expect(b.model.settings.bpm == 100)
-        #expect(b.model.loadedPreset == nil)
-        #expect(b.model.headerSubtitle == "No preset loaded")
+        #expect(b.model.loadedSong == nil)
+        #expect(b.model.headerSubtitle == "No song loaded")
         #expect(b.engine.stopCount == 0)
     }
 
     @Test func aDeletedSetlistClearsTheFilterAndTheLoadedFromSetlist() {
         let a = makeDevice(), b = makeDevice()
         clock.advance()
-        let song = a.model.createPreset(name: "Song", settings: settings(100), addingTo: nil)!
+        let song = a.model.createSong(name: "Song", settings: settings(100), addingTo: nil)!
         let setlist = a.model.createSetlist()
-        a.model.setPreset(song.id, inSetlist: setlist, included: true)
+        a.model.setSong(song.id, inSetlist: setlist, included: true)
         cloud.send(.changed, toDevice: 1)
-        b.model.loadPreset(song.id, from: setlist)
+        b.model.loadSong(song.id, from: setlist)
         b.model.selectFilter(setlist)
         #expect(b.model.loadedFromSetlistID == setlist)
         #expect(b.model.selectedSetlistID == setlist)
@@ -157,23 +157,23 @@ struct SyncModelTests {
 
         #expect(b.model.selectedSetlistID == nil)
         #expect(b.model.loadedFromSetlistID == nil)
-        #expect(b.model.loadedPresetID == song.id)
+        #expect(b.model.loadedSongID == song.id)
     }
 
     @Test func arrivalsPlayNoHaptic() {
         let (a, b, song) = twoDevicesSharingASong()
-        b.model.loadPreset(song.id, from: nil, start: true)
+        b.model.loadSong(song.id, from: nil, start: true)
         let selections = b.haptics.selectionCount
         let transports = b.haptics.transportCount
         let beats = b.haptics.beats
 
         clock.advance()
-        a.model.renamePreset(song.id, to: "Ballad")
-        _ = a.model.createPreset(name: "Other", settings: settings(90), addingTo: nil)
+        a.model.renameSong(song.id, to: "Ballad")
+        _ = a.model.createSong(name: "Other", settings: settings(90), addingTo: nil)
         cloud.send(.changed, toDevice: 1)
         b.model.appDidBecomeActive()
 
-        #expect(b.model.library.presets.count == 2)
+        #expect(b.model.library.songs.count == 2)
         #expect(b.haptics.selectionCount == selections)
         #expect(b.haptics.transportCount == transports)
         #expect(b.haptics.beats == beats)
@@ -196,7 +196,7 @@ struct SyncModelTests {
     @Test func withSyncOffNothingReachesICloud() {
         let device = makeDevice(on: false)
         cloud.forgetWrites()
-        _ = device.model.createPreset(name: "Song", settings: settings(100), addingTo: nil)
+        _ = device.model.createSong(name: "Song", settings: settings(100), addingTo: nil)
         let setlist = device.model.createSetlist()
         device.model.renameSetlist(setlist, to: "Gig")
         device.model.appDidBecomeActive()

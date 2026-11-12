@@ -7,7 +7,7 @@
 <p align="center">A precise, no-fuss metronome for iPhone.</p>
 
 <p align="center">
-  <img src="screenshots/1-playing.png" width="300" alt="The metronome playing a 7/8 preset at 168 BPM">
+  <img src="screenshots/1-playing.png" width="300" alt="The metronome playing a 7/8 song at 168 BPM">
 </p>
 
 Set a tempo and a time signature, choose which beats are accented, and press Start. Every beat is a click, a flash on screen and a tap you can feel, all on the same instant. Everything can be changed while it plays.
@@ -19,8 +19,8 @@ Set a tempo and a time signature, choose which beats are accented, and press Sta
 - Accent any combination of beats
 - Seven click sounds, all generated in code
 - Haptics on every beat, with a switch to turn them off
-- Presets for your songs, and setlists to step through them in order
-- Optional iCloud sync of presets and setlists between your devices
+- Songs saved with their tempo, time signature and accents, and setlists to step through them in order
+- Optional iCloud sync of songs and setlists between your devices
 - Plays even when the phone is on silent
 - No account, no ads, no tracking
 
@@ -46,14 +46,14 @@ The scripts print a short summary. The full logs go to `build/build.log`, `build
 
 `scripts/screenshots.sh` makes the App Store screenshots in `screenshots/`, at the 6.9" size that App Store Connect requires. Run it before a release when the screens have changed, and commit the result.
 
-It launches a Debug build once per scene with sample presets, no sound and a clean status bar, on a simulator of its own called "Metronome screenshots". The scenes, and the sample presets, are in [ScreenshotScene.swift](Metronome/Screenshots/ScreenshotScene.swift); that code is left out of Release builds. To add a screenshot, add a case there, open its screen when the app launches with that scene, and add the case's name to the list in the script.
+It launches a Debug build once per scene with sample songs, no sound and a clean status bar, on a simulator of its own called "Metronome screenshots". The scenes, and the sample songs, are in [ScreenshotScene.swift](Metronome/Screenshots/ScreenshotScene.swift); that code is left out of Release builds. To add a screenshot, add a case there, open its screen when the app launches with that scene, and add the case's name to the list in the script.
 
 ### Where things are
 
 | Folder                  | Contents                                                           |
 | ----------------------- | ------------------------------------------------------------------ |
 | `Metronome/Engine`      | Audio scheduling, click synthesis, haptics and the iCloud store    |
-| `Metronome/Model`       | Tempo, time signatures, the beat clock, presets, setlists and sync |
+| `Metronome/Model`       | Tempo, time signatures, the beat clock, songs, setlists and sync |
 | `Metronome/Views`       | The SwiftUI screens and sheets                                     |
 | `Metronome/Screenshots` | The screenshot scenes, in Debug builds only                        |
 | `MetronomeTests`        | Unit tests                                                         |
@@ -66,7 +66,7 @@ It launches a Debug build once per scene with sample presets, no sound and a cle
 
 - **Timing.** Clicks are scheduled ahead of time on the audio clock, never by a UI timer. The screen effects and haptics follow the same schedule, so sound, light and touch stay together.
 - **Sounds.** The seven click sounds are synthesised when playback starts, at the output's own sample rate, and are tested for equal loudness, a fast attack and a short length.
-- **Sync.** Presets and setlists sync through iCloud key-value storage. Each part of a preset or setlist carries its own change time, so edits made on different devices are combined rather than overwritten. The same result comes out on every device, whatever order the changes arrive in.
+- **Sync.** Songs and setlists sync through iCloud key-value storage. Each part of a song or setlist carries its own change time, so edits made on different devices are combined rather than overwritten. The same result comes out on every device, whatever order the changes arrive in.
 
 ## Contributing
 

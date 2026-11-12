@@ -122,7 +122,7 @@ struct SettingsSheet: View {
 
     private var iCloudCard: some View {
         card(label: "ICLOUD") {
-            toggleRow("Sync presets and setlists", isOn: Binding(
+            toggleRow("Sync songs and setlists", isOn: Binding(
                 get: { model.syncEnabled },
                 set: { model.setSyncEnabled($0) }
             ))

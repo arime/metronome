@@ -302,12 +302,12 @@ struct MetronomeModelTests {
         #expect(engine.sound == .classic)
     }
 
-    @Test func presetsDoNotCarryTheSound() {
+    @Test func songsDoNotCarryTheSound() {
         let model = makeModel()
         model.selectClickSound(.mallet)
-        let preset = model.createPreset(name: "Song", settings: model.settings, addingTo: nil)!
+        let song = model.createSong(name: "Song", settings: model.settings, addingTo: nil)!
         model.selectClickSound(.digital)
-        model.loadPreset(preset.id, from: nil)
+        model.loadSong(song.id, from: nil)
         #expect(model.clickSound == .digital)
     }
 

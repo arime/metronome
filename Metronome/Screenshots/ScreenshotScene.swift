@@ -1,15 +1,15 @@
 #if DEBUG
 import Foundation
 
-/// A screen set up with sample presets for the App Store screenshots. Debug builds only.
+/// A screen set up with sample songs for the App Store screenshots. Debug builds only.
 ///
 /// `scripts/screenshots.sh` launches the app with `-screenshotScene <name>`. The scene's
 /// library and settings live in their own defaults domain, so the simulator's real data is
 /// never touched, and there is no sound, haptics or iCloud.
 enum ScreenshotScene: String, CaseIterable {
-    /// The metronome playing a preset loaded from a setlist, with an accented beat sounding.
+    /// The metronome playing a song loaded from a setlist, with an accented beat sounding.
     case playing
-    /// The library sheet showing all presets.
+    /// The library sheet showing all songs.
     case library
     /// The library sheet showing a setlist in its order.
     case setlist
@@ -23,7 +23,7 @@ enum ScreenshotScene: String, CaseIterable {
         .string(forKey: "screenshotScene")
         .flatMap(ScreenshotScene.init(rawValue:))
 
-    /// The beat shown sounding in the playing scene; accented in the loaded preset.
+    /// The beat shown sounding in the playing scene; accented in the loaded song.
     private static let soundingBeat = 5
     /// Every change time in the sample library; the date itself never shows.
     private static let date = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -41,9 +41,9 @@ enum ScreenshotScene: String, CaseIterable {
         let sample = SampleLibrary(now: Self.date)
         libraryStore.save(LibraryState(
             library: sample.library,
-            loadedPresetID: sample.loadedPresetID,
-            // The library opens on the setlist its loaded preset came from, so the scene
-            // that shows all presets has the preset loaded on its own.
+            loadedSongID: sample.loadedSongID,
+            // The library opens on the setlist its loaded song came from, so the scene
+            // that shows all songs has the song loaded on its own.
             loadedFromSetlistID: self == .library ? nil : sample.setlistID,
             selectedSetlistID: self == .setlist ? sample.setlistID : nil
         ))
@@ -62,11 +62,11 @@ enum ScreenshotScene: String, CaseIterable {
     }
 }
 
-/// A gig setlist and a few practice presets, with the third song of the setlist loaded.
+/// A gig setlist and a few practice songs, with the third song of the setlist loaded.
 private struct SampleLibrary {
     private(set) var library = Library()
     private(set) var setlistID = UUID()
-    private(set) var loadedPresetID: UUID?
+    private(set) var loadedSongID: UUID?
     private(set) var loadedSettings = MetronomeSettings()
 
     init(now: Date) {
@@ -87,20 +87,20 @@ private struct SampleLibrary {
         ]
         setlistID = library.addSetlist(name: "Friday gig", now: now).id
         for (index, entry) in setlist.enumerated() {
-            guard let preset = add(entry, now: now) else { continue }
-            library.add(preset.id, toSetlist: setlistID, now: now)
+            guard let song = add(entry, now: now) else { continue }
+            library.add(song.id, toSetlist: setlistID, now: now)
             if index == 2 {
-                loadedPresetID = preset.id
-                loadedSettings = preset.settings
+                loadedSongID = song.id
+                loadedSettings = song.settings
             }
         }
         for entry in practice { add(entry, now: now) }
     }
 
     @discardableResult
-    private mutating func add(_ entry: (String, Int, TimeSignature, Set<Int>), now: Date) -> Preset? {
+    private mutating func add(_ entry: (String, Int, TimeSignature, Set<Int>), now: Date) -> Song? {
         let settings = MetronomeSettings(bpm: entry.1, timeSignature: entry.2, accents: entry.3)
-        return library.addPreset(name: entry.0, settings: settings, now: now)
+        return library.addSong(name: entry.0, settings: settings, now: now)
     }
 }
 

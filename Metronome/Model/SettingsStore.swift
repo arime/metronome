@@ -23,7 +23,7 @@ struct SettingsStore: @unchecked Sendable {
         defaults.set(data, forKey: Self.key)
     }
 
-    /// Kept apart from the settings above because presets store those, not the sound.
+    /// Kept apart from the settings above because songs store those, not the sound.
     private static let clickSoundKey = "metronome.clickSound.v1"
 
     /// Digital when nothing, or an unknown sound, is stored.

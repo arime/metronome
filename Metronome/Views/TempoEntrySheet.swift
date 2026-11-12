@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Types a tempo: a bottom sheet with its own number keys. Opened by tapping the BPM
-/// number, on the dial or in the preset sheet. Nothing changes until Set tempo is pressed.
+/// number, on the dial or in the song sheet. Nothing changes until Set tempo is pressed.
 struct TempoEntrySheet: View {
     @Environment(MetronomeModel.self) private var model
     @Environment(\.dismiss) private var dismiss

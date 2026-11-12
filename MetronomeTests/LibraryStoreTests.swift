@@ -17,13 +17,13 @@ struct LibraryStoreTests {
 
     @Test func savedStateComesBack() {
         var state = LibraryState()
-        let preset = state.library.addPreset(
+        let song = state.library.addSong(
             name: "One", settings: MetronomeSettings(bpm: 90, timeSignature: .sixEight, accents: [1, 4]),
             now: Date(timeIntervalSince1970: 40)
         )!
         let gig = state.library.addSetlist(name: "Gig", now: Date(timeIntervalSince1970: 50))
-        state.library.add(preset.id, toSetlist: gig.id, now: Date(timeIntervalSince1970: 60))
-        state.loadedPresetID = preset.id
+        state.library.add(song.id, toSetlist: gig.id, now: Date(timeIntervalSince1970: 60))
+        state.loadedSongID = song.id
         state.loadedFromSetlistID = gig.id
         state.selectedSetlistID = gig.id
         store.save(state)
@@ -32,17 +32,17 @@ struct LibraryStoreTests {
 
     @Test func danglingReferencesAreDroppedOnLoad() {
         var state = LibraryState()
-        let preset = state.library.addPreset(
+        let song = state.library.addSong(
             name: "One", settings: MetronomeSettings(), now: Date(timeIntervalSince1970: 40)
         )!
         let gig = state.library.addSetlist(name: "Gig", now: Date(timeIntervalSince1970: 50))
-        state.loadedPresetID = preset.id
-        // Loaded from a setlist that does not contain the preset.
+        state.loadedSongID = song.id
+        // Loaded from a setlist that does not contain the song.
         state.loadedFromSetlistID = gig.id
         state.selectedSetlistID = UUID()
         store.save(state)
         let loaded = store.load()
-        #expect(loaded.loadedPresetID == preset.id)
+        #expect(loaded.loadedSongID == song.id)
         #expect(loaded.loadedFromSetlistID == nil)
         #expect(loaded.selectedSetlistID == nil)
     }
@@ -67,34 +67,34 @@ struct LibraryStoreTests {
         """
         defaults.set(Data(old.utf8), forKey: "metronome.library.v1")
         let state = LibraryStore(defaults: defaults).load()
-        #expect(state.library.preset(id: p)?.settings.bpm == 96)
-        #expect(state.library.setlist(id: s)?.presetIDs == [p])
-        #expect(state.loadedPresetID == p)
+        #expect(state.library.song(id: p)?.settings.bpm == 96)
+        #expect(state.library.setlist(id: s)?.songIDs == [p])
+        #expect(state.loadedSongID == p)
         #expect(state.loadedFromSetlistID == s)
         #expect(state.selectedSetlistID == s)
-        #expect(state.library.presetRecords[p]?.parts[PresetRecord.tempoKey]?.time == SyncClock.legacy)
+        #expect(state.library.songRecords[p]?.parts[SongRecord.tempoKey]?.time == SyncClock.legacy)
     }
 
     // Review Focus 2
     @Test func anEditOnThePhoneThatUpdatedFirstSurvivesTheOtherPhonesOldCopy() {
-        let old = [Preset(id: UUID(), name: "Song", settings: MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1]))]
-        var first = Library(legacyPresets: old, legacySetlists: [])
-        first.updatePreset(old[0].id, settings: MetronomeSettings(bpm: 150, timeSignature: .fourFour, accents: [1]), now: t(100))
-        var deleted = Library(legacyPresets: old, legacySetlists: [])
-        deleted.deletePreset(old[0].id, now: t(100))
-        let late = Library(legacyPresets: old, legacySetlists: [])
-        first.merge(presets: Array(late.presetRecords.values), setlists: [])
-        deleted.merge(presets: Array(late.presetRecords.values), setlists: [])
-        #expect(first.preset(id: old[0].id)?.settings.bpm == 150)
-        #expect(deleted.presets.isEmpty)
+        let old = [Song(id: UUID(), name: "Song", settings: MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1]))]
+        var first = Library(legacySongs: old, legacySetlists: [])
+        first.updateSong(old[0].id, settings: MetronomeSettings(bpm: 150, timeSignature: .fourFour, accents: [1]), now: t(100))
+        var deleted = Library(legacySongs: old, legacySetlists: [])
+        deleted.deleteSong(old[0].id, now: t(100))
+        let late = Library(legacySongs: old, legacySetlists: [])
+        first.merge(songs: Array(late.songRecords.values), setlists: [])
+        deleted.merge(songs: Array(late.songRecords.values), setlists: [])
+        #expect(first.song(id: old[0].id)?.settings.bpm == 150)
+        #expect(deleted.songs.isEmpty)
     }
 
     @Test func theNewFormatRoundTripsAndWinsOverTheOldKey() {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         defaults.set(Data("not json".utf8), forKey: "metronome.library.v1")
         var library = Library()
-        let preset = library.addPreset(name: "New", settings: MetronomeSettings(), now: t(0))!
-        let state = LibraryState(library: library, loadedPresetID: preset.id)
+        let song = library.addSong(name: "New", settings: MetronomeSettings(), now: t(0))!
+        let state = LibraryState(library: library, loadedSongID: song.id)
         LibraryStore(defaults: defaults).save(state)
         #expect(LibraryStore(defaults: defaults).load() == state)
     }

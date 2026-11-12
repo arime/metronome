@@ -19,7 +19,7 @@ final class MetronomeModel {
     private(set) var lastBeat: BeatEvent?
     /// True while the click is silenced. Not saved: the app always launches with sound on.
     private(set) var isMuted = false
-    /// Applies to the whole app and is remembered; presets do not store it.
+    /// Applies to the whole app and is remembered; songs do not store it.
     private(set) var clickSound: ClickSound
     /// When false the app plays no haptics at all. Applies to the whole app and is remembered.
     private(set) var hapticsEnabled: Bool
@@ -29,10 +29,10 @@ final class MetronomeModel {
     var screenStaysAwake: Bool { isPlaying || keepScreenAwake }
 
     private(set) var library: Library
-    private(set) var loadedPresetID: UUID?
-    /// The setlist the loaded preset was loaded from; always one that contains it.
+    private(set) var loadedSongID: UUID?
+    /// The setlist the loaded song was loaded from; always one that contains it.
     private(set) var loadedFromSetlistID: UUID?
-    /// What the library sheet shows; nil means all presets.
+    /// What the library sheet shows; nil means all songs.
     private(set) var selectedSetlistID: UUID?
 
     /// True while sync with iCloud is switched on.
@@ -73,7 +73,7 @@ final class MetronomeModel {
         engine.setSound(sound)
         let state = libraryStore.load()
         library = state.library
-        loadedPresetID = state.loadedPresetID
+        loadedSongID = state.loadedSongID
         loadedFromSetlistID = state.loadedFromSetlistID
         selectedSetlistID = state.selectedSetlistID
         engine.onBeat = { [weak self] beat in self?.beatSounded(beat) }
@@ -218,22 +218,22 @@ final class MetronomeModel {
         if isPlaying { engine.update(settings, startNewBar: startNewBar) }
     }
 
-    /// Replaces all the settings at once, as loading a preset does.
+    /// Replaces all the settings at once, as loading a song does.
     private func apply(_ newSettings: MetronomeSettings, startNewBar: Bool = true) {
         guard newSettings != settings else { return }
         settings = newSettings
         settingsChanged(startNewBar: startNewBar)
     }
 
-    // MARK: - The loaded preset
+    // MARK: - The loaded song
 
-    var loadedPreset: Preset? {
-        loadedPresetID.flatMap(library.preset(id:))
+    var loadedSong: Song? {
+        loadedSongID.flatMap(library.song(id:))
     }
 
-    /// True when a preset is loaded and the current settings differ from it.
+    /// True when a song is loaded and the current settings differ from it.
     var isEdited: Bool {
-        loadedPreset.map { $0.settings != settings } ?? false
+        loadedSong.map { $0.settings != settings } ?? false
     }
 
     /// Whether the Save button is shown. It follows `isEdited`, except that it stays for a
@@ -266,7 +266,7 @@ final class MetronomeModel {
         }
     }
 
-    /// After anything else that can change whether the preset is edited: saving, reverting,
+    /// After anything else that can change whether the song is edited: saving, reverting,
     /// loading, unloading, or a change arriving from another device. These take effect at once.
     private func syncSaveOffer() {
         saveOfferHide?.cancel()
@@ -291,11 +291,11 @@ final class MetronomeModel {
         }
     }
 
-    /// The loaded preset's place in the setlist it was loaded from.
+    /// The loaded song's place in the setlist it was loaded from.
     var position: (index: Int, count: Int)? {
-        guard let presetID = loadedPresetID, let setlistID = loadedFromSetlistID,
-              let ids = library.setlist(id: setlistID)?.presetIDs,
-              let index = ids.firstIndex(of: presetID)
+        guard let songID = loadedSongID, let setlistID = loadedFromSetlistID,
+              let ids = library.setlist(id: setlistID)?.songIDs,
+              let index = ids.firstIndex(of: songID)
         else { return nil }
         return (index, ids.count)
     }
@@ -308,22 +308,22 @@ final class MetronomeModel {
         position.map { $0.index < $0.count - 1 } ?? false
     }
 
-    /// The preset that Next would load; nil at the end of the setlist or without one.
-    var nextPreset: Preset? {
+    /// The song that Next would load; nil at the end of the setlist or without one.
+    var nextSong: Song? {
         guard let position, position.index + 1 < position.count,
-              let ids = loadedFromSetlistID.flatMap(library.setlist(id:))?.presetIDs
+              let ids = loadedFromSetlistID.flatMap(library.setlist(id:))?.songIDs
         else { return nil }
-        return library.preset(id: ids[position.index + 1])
+        return library.song(id: ids[position.index + 1])
     }
 
     var headerTitle: String {
-        loadedPreset?.name ?? "Library"
+        loadedSong?.name ?? "Library"
     }
 
-    /// The header's second line; nil when the preset's name says it all. It is the same
+    /// The header's second line; nil when the song's name says it all. It is the same
     /// with and without unsaved changes, which the Save button shows.
     var headerSubtitle: String? {
-        guard loadedPreset != nil else { return "No preset loaded" }
+        guard loadedSong != nil else { return "No song loaded" }
         guard let position else { return nil }
         let place = "\(position.index + 1) of \(position.count)"
         let source = loadedFromSetlistID.flatMap(library.setlist(id:))?.name ?? ""
@@ -336,18 +336,18 @@ final class MetronomeModel {
         [headerTitle, isEdited ? "edited" : nil, headerSubtitle].compactMap { $0 }.joined(separator: ", ")
     }
 
-    /// Applies the preset to the metronome. Unsaved edits to the previous preset are dropped.
+    /// Applies the song to the metronome. Unsaved edits to the previous song are dropped.
     /// While playing it keeps playing, with a new bar; `start` also starts a stopped metronome.
-    /// Loaded from all presets (`setlistID` nil), a preset that is in the setlist being
+    /// Loaded from all songs (`setlistID` nil), a song that is in the setlist being
     /// stepped through keeps that setlist, so Previous and Next do not vanish.
-    func loadPreset(_ id: UUID, from setlistID: UUID?, start shouldStart: Bool = false) {
-        guard let preset = library.preset(id: id) else { return }
-        loadedPresetID = id
+    func loadSong(_ id: UUID, from setlistID: UUID?, start shouldStart: Bool = false) {
+        guard let song = library.song(id: id) else { return }
+        loadedSongID = id
         let source = setlistID ?? loadedFromSetlistID
-        let members = source.flatMap(library.setlist(id:))?.presetIDs ?? []
+        let members = source.flatMap(library.setlist(id:))?.songIDs ?? []
         loadedFromSetlistID = members.contains(id) ? source : nil
         if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: now()) }
-        apply(preset.settings)
+        apply(song.settings)
         persistLibrary()
         haptics?.selection()
         if shouldStart, !isPlaying { start() }
@@ -364,77 +364,77 @@ final class MetronomeModel {
     /// Does nothing at either end of the setlist: it does not wrap around.
     private func step(by offset: Int) {
         guard let position, let setlistID = loadedFromSetlistID,
-              let ids = library.setlist(id: setlistID)?.presetIDs,
+              let ids = library.setlist(id: setlistID)?.songIDs,
               ids.indices.contains(position.index + offset)
         else { return }
-        loadPreset(ids[position.index + offset], from: setlistID)
+        loadSong(ids[position.index + offset], from: setlistID)
     }
 
-    /// Writes the current settings into the loaded preset, and confirms it: the Save button
+    /// Writes the current settings into the loaded song, and confirms it: the Save button
     /// reads Saved for a moment, with a success haptic.
     func saveChanges() {
-        guard let id = loadedPresetID, !(isSaveConfirmed && isSaveOffered) else { return }
-        library.updatePreset(id, settings: settings, now: now())
+        guard let id = loadedSongID, !(isSaveConfirmed && isSaveOffered) else { return }
+        library.updateSong(id, settings: settings, now: now())
         persistLibrary()
         confirmSave()
         haptics?.success()
     }
 
-    /// Sets the metronome back to the loaded preset. While playing, the bar carries on
+    /// Sets the metronome back to the loaded song. While playing, the bar carries on
     /// unless the time signature goes back too, as with any other change of tempo or accents.
     func discardChanges() {
-        guard let preset = loadedPreset, isEdited else { return }
-        apply(preset.settings, startNewBar: preset.settings.timeSignature != settings.timeSignature)
+        guard let song = loadedSong, isEdited else { return }
+        apply(song.settings, startNewBar: song.settings.timeSignature != settings.timeSignature)
         syncSaveOffer()
         haptics?.selection()
     }
 
     /// What Revert goes back to, for example "120 BPM · 4/4"; nil when nothing is loaded.
     var revertDescription: String? {
-        loadedPreset.map { "\($0.settings.bpm) BPM · \($0.settings.timeSignature.rawValue)" }
+        loadedSong.map { "\($0.settings.bpm) BPM · \($0.settings.timeSignature.rawValue)" }
     }
 
-    /// Unloads the preset. The metronome keeps its settings, playing or stopped, and the
-    /// preset itself is not changed; unsaved edits simply stay as plain settings.
-    func clearPreset() {
-        guard loadedPresetID != nil else { return }
-        loadedPresetID = nil
+    /// Unloads the song. The metronome keeps its settings, playing or stopped, and the
+    /// song itself is not changed; unsaved edits simply stay as plain settings.
+    func clearSong() {
+        guard loadedSongID != nil else { return }
+        loadedSongID = nil
         loadedFromSetlistID = nil
         persistLibrary()
         haptics?.selection()
     }
 
-    /// Creates a preset and makes it the loaded one. It is in no setlist.
+    /// Creates a song and makes it the loaded one. It is in no setlist.
     @discardableResult
-    func saveAsNewPreset(name: String, settings newSettings: MetronomeSettings) -> Preset? {
-        guard let preset = library.addPreset(name: name, settings: newSettings, now: now()) else { return nil }
-        loadedPresetID = preset.id
+    func saveAsNewSong(name: String, settings newSettings: MetronomeSettings) -> Song? {
+        guard let song = library.addSong(name: name, settings: newSettings, now: now()) else { return nil }
+        loadedSongID = song.id
         loadedFromSetlistID = nil
-        apply(preset.settings)
+        apply(song.settings)
         persistLibrary()
-        return preset
+        return song
     }
 
     // MARK: - The library
 
-    /// Creates a preset, optionally at the end of a setlist. It is not loaded, with one
-    /// exception: when nothing is loaded and the preset holds exactly what the metronome is
-    /// set to, the user has just named the current settings, so it becomes the loaded preset,
+    /// Creates a song, optionally at the end of a setlist. It is not loaded, with one
+    /// exception: when nothing is loaded and the song holds exactly what the metronome is
+    /// set to, the user has just named the current settings, so it becomes the loaded song,
     /// loaded from the setlist it was added to. The metronome itself is not touched.
     @discardableResult
-    func createPreset(name: String, settings newSettings: MetronomeSettings, addingTo setlistID: UUID?) -> Preset? {
+    func createSong(name: String, settings newSettings: MetronomeSettings, addingTo setlistID: UUID?) -> Song? {
         let moment = now()
-        let namesCurrentSettings = loadedPresetID == nil && newSettings == settings
-        guard let preset = library.addPreset(name: name, settings: newSettings, now: moment) else { return nil }
-        if let setlistID { library.add(preset.id, toSetlist: setlistID, now: moment) }
+        let namesCurrentSettings = loadedSongID == nil && newSettings == settings
+        guard let song = library.addSong(name: name, settings: newSettings, now: moment) else { return nil }
+        if let setlistID { library.add(song.id, toSetlist: setlistID, now: moment) }
         if namesCurrentSettings {
-            loadedPresetID = preset.id
-            let members = setlistID.flatMap(library.setlist(id:))?.presetIDs ?? []
-            loadedFromSetlistID = members.contains(preset.id) ? setlistID : nil
+            loadedSongID = song.id
+            let members = setlistID.flatMap(library.setlist(id:))?.songIDs ?? []
+            loadedFromSetlistID = members.contains(song.id) ? setlistID : nil
             if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: moment) }
         }
         persistLibrary()
-        return preset
+        return song
     }
 
     /// A tick for a key in the tempo sheet.
@@ -442,39 +442,39 @@ final class MetronomeModel {
         haptics?.selection()
     }
 
-    func renamePreset(_ id: UUID, to name: String) {
-        library.renamePreset(id, to: name, now: now())
+    func renameSong(_ id: UUID, to name: String) {
+        library.renameSong(id, to: name, now: now())
         persistLibrary()
     }
 
-    /// Writes a new name and settings into a preset, from Edit in the library. Only what
+    /// Writes a new name and settings into a song, from Edit in the library. Only what
     /// changed is written, so an untouched part does not win over another device's change.
-    /// When it is the loaded preset and its settings changed, the metronome takes them, as if
-    /// the preset were loaded again: unsaved changes are dropped, and while playing the bar
+    /// When it is the loaded song and its settings changed, the metronome takes them, as if
+    /// the song were loaded again: unsaved changes are dropped, and while playing the bar
     /// carries on unless the time signature changed. A new name alone leaves the metronome,
     /// and any unsaved changes, as they are.
-    func editPreset(_ id: UUID, name: String, settings newSettings: MetronomeSettings) {
-        guard let preset = library.preset(id: id), Library.cleanName(name) != nil else { return }
+    func editSong(_ id: UUID, name: String, settings newSettings: MetronomeSettings) {
+        guard let song = library.song(id: id), Library.cleanName(name) != nil else { return }
         let moment = now()
-        if Library.cleanName(name) != preset.name {
-            library.renamePreset(id, to: name, now: moment)
+        if Library.cleanName(name) != song.name {
+            library.renameSong(id, to: name, now: moment)
         }
-        let settingsChanged = newSettings.sanitized() != preset.settings
+        let settingsChanged = newSettings.sanitized() != song.settings
         if settingsChanged {
-            library.updatePreset(id, settings: newSettings, now: moment)
+            library.updateSong(id, settings: newSettings, now: moment)
         }
-        if loadedPresetID == id, settingsChanged, let updated = library.preset(id: id) {
+        if loadedSongID == id, settingsChanged, let updated = library.song(id: id) {
             apply(updated.settings, startNewBar: updated.settings.timeSignature != settings.timeSignature)
         }
         syncSaveOffer()
         persistLibrary()
     }
 
-    /// The metronome keeps its settings if the deleted preset was the loaded one.
-    func deletePreset(_ id: UUID) {
-        library.deletePreset(id, now: now())
-        if loadedPresetID == id {
-            loadedPresetID = nil
+    /// The metronome keeps its settings if the deleted song was the loaded one.
+    func deleteSong(_ id: UUID) {
+        library.deleteSong(id, now: now())
+        if loadedSongID == id {
+            loadedSongID = nil
             loadedFromSetlistID = nil
         }
         persistLibrary()
@@ -482,7 +482,7 @@ final class MetronomeModel {
 
     // MARK: - Setlists
 
-    /// Chooses what the library sheet shows; nil means all presets. Loads nothing.
+    /// Chooses what the library sheet shows; nil means all songs. Loads nothing.
     func selectFilter(_ setlistID: UUID?) {
         selectedSetlistID = setlistID.flatMap(library.setlist(id:))?.id
         if let selectedSetlistID { library.touchSetlist(selectedSetlistID, now: now()) }
@@ -503,7 +503,7 @@ final class MetronomeModel {
         persistLibrary()
     }
 
-    /// The presets stay in the library, and a preset loaded from the setlist stays loaded.
+    /// The songs stay in the library, and a song loaded from the setlist stays loaded.
     func deleteSetlist(_ id: UUID) {
         library.deleteSetlist(id, now: now())
         if selectedSetlistID == id { selectedSetlistID = nil }
@@ -520,59 +520,59 @@ final class MetronomeModel {
         return copy.id
     }
 
-    /// Adds the preset at the end of the setlist, or takes it out. It always stays in the library.
-    func setPreset(_ presetID: UUID, inSetlist setlistID: UUID, included: Bool) {
+    /// Adds the song at the end of the setlist, or takes it out. It always stays in the library.
+    func setSong(_ songID: UUID, inSetlist setlistID: UUID, included: Bool) {
         if included {
-            library.add(presetID, toSetlist: setlistID, now: now())
+            library.add(songID, toSetlist: setlistID, now: now())
         } else {
-            library.remove(presetID, fromSetlist: setlistID, now: now())
-            if loadedPresetID == presetID, loadedFromSetlistID == setlistID {
+            library.remove(songID, fromSetlist: setlistID, now: now())
+            if loadedSongID == songID, loadedFromSetlistID == setlistID {
                 loadedFromSetlistID = nil
             }
         }
         persistLibrary()
     }
 
-    /// What is needed to put a preset back where it was in a setlist.
+    /// What is needed to put a song back where it was in a setlist.
     struct SetlistRemoval: Equatable {
-        let presetID: UUID
-        let presetName: String
+        let songID: UUID
+        let songName: String
         let setlistID: UUID
         /// The setlist's order just before the removal.
         let order: [UUID]
-        /// True when the preset was the loaded one, loaded from this setlist.
+        /// True when the song was the loaded one, loaded from this setlist.
         let wasLoadedFromIt: Bool
     }
 
-    /// Takes the preset out of the setlist and returns what `undo` needs to put it back;
+    /// Takes the song out of the setlist and returns what `undo` needs to put it back;
     /// nil when it was not in the setlist.
     @discardableResult
-    func removePreset(_ presetID: UUID, fromSetlist setlistID: UUID) -> SetlistRemoval? {
-        guard let setlist = library.setlist(id: setlistID), setlist.presetIDs.contains(presetID),
-              let preset = library.preset(id: presetID)
+    func removeSong(_ songID: UUID, fromSetlist setlistID: UUID) -> SetlistRemoval? {
+        guard let setlist = library.setlist(id: setlistID), setlist.songIDs.contains(songID),
+              let song = library.song(id: songID)
         else { return nil }
         let removal = SetlistRemoval(
-            presetID: presetID, presetName: preset.name, setlistID: setlistID, order: setlist.presetIDs,
-            wasLoadedFromIt: loadedPresetID == presetID && loadedFromSetlistID == setlistID
+            songID: songID, songName: song.name, setlistID: setlistID, order: setlist.songIDs,
+            wasLoadedFromIt: loadedSongID == songID && loadedFromSetlistID == setlistID
         )
-        setPreset(presetID, inSetlist: setlistID, included: false)
+        setSong(songID, inSetlist: setlistID, included: false)
         return removal
     }
 
-    /// Puts a removed preset back in its place. If the setlist has changed since, the preset
-    /// goes back at the end. Does nothing when the preset or the setlist is gone.
+    /// Puts a removed song back in its place. If the setlist has changed since, the song
+    /// goes back at the end. Does nothing when the song or the setlist is gone.
     func undo(_ removal: SetlistRemoval) {
-        guard library.preset(id: removal.presetID) != nil, library.setlist(id: removal.setlistID) != nil else { return }
+        guard library.song(id: removal.songID) != nil, library.setlist(id: removal.setlistID) != nil else { return }
         let moment = now()
-        library.add(removal.presetID, toSetlist: removal.setlistID, now: moment)
+        library.add(removal.songID, toSetlist: removal.setlistID, now: moment)
         library.reorder(setlist: removal.setlistID, to: removal.order, now: moment)
-        if removal.wasLoadedFromIt, loadedPresetID == removal.presetID, loadedFromSetlistID == nil {
+        if removal.wasLoadedFromIt, loadedSongID == removal.songID, loadedFromSetlistID == nil {
             loadedFromSetlistID = removal.setlistID
         }
         persistLibrary()
     }
 
-    /// Shows the setlist the loaded preset came from, so the library opens where the user is.
+    /// Shows the setlist the loaded song came from, so the library opens where the user is.
     /// Without one, the list chosen last stays.
     func showLoadedSetlist() {
         guard let setlistID = loadedFromSetlistID, selectedSetlistID != setlistID else { return }
@@ -584,7 +584,7 @@ final class MetronomeModel {
     /// they have just created without doing anything with it.
     func discardSetlistIfUntouched(_ id: UUID) {
         guard let setlist = library.setlist(id: id),
-              setlist.name == Library.defaultSetlistName, setlist.presetIDs.isEmpty
+              setlist.name == Library.defaultSetlistName, setlist.songIDs.isEmpty
         else { return }
         deleteSetlist(id)
     }
@@ -604,7 +604,7 @@ final class MetronomeModel {
     private var currentLibraryState: LibraryState {
         LibraryState(
             library: library,
-            loadedPresetID: loadedPresetID,
+            loadedSongID: loadedSongID,
             loadedFromSetlistID: loadedFromSetlistID,
             selectedSetlistID: selectedSetlistID
         )
@@ -637,7 +637,7 @@ final class MetronomeModel {
 
     /// Combines the library with iCloud and keeps what the user has open. It never touches the
     /// metronome: no settings are applied, the engine hears nothing and no haptic plays. A loaded
-    /// preset that arrived changed shows as edited, because the settings no longer match it.
+    /// song that arrived changed shows as edited, because the settings no longer match it.
     /// It saves directly, so it cannot start itself again through `persistLibrary()`, and only
     /// when the exchange changed something, since this runs on every library change.
     private func exchangeWithCloud() {
@@ -648,7 +648,7 @@ final class MetronomeModel {
         state = state.sanitized()
         guard state != before else { return }
         library = state.library
-        loadedPresetID = state.loadedPresetID
+        loadedSongID = state.loadedSongID
         loadedFromSetlistID = state.loadedFromSetlistID
         selectedSetlistID = state.selectedSetlistID
         libraryStore.save(state)

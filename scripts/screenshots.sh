@@ -2,7 +2,7 @@
 # Takes the App Store screenshots on a 6.9" iPhone simulator.
 #
 # Builds the app in Debug, launches it once per screenshot scene (see
-# Metronome/Screenshots/ScreenshotScene.swift) with sample presets and a clean
+# Metronome/Screenshots/ScreenshotScene.swift) with sample songs and a clean
 # status bar, and saves one PNG per scene in screenshots/, numbered in App Store
 # order, without an alpha channel. Old PNGs in screenshots/ are removed first.
 #

@@ -8,7 +8,8 @@ enum SyncStatus: Equatable, Sendable {
 /// its own and writes back what iCloud lacks or has older.
 @MainActor
 final class LibrarySync {
-    static let format = 1, maxItems = 1000
+    /// 2 moved songs from the `p.` keys to `song.` keys; versions on 1 would no longer see them.
+    static let format = 2, maxItems = 1000
     static let markerLifetime: TimeInterval = 365 * 86_400
     /// A device entry younger than this means the device still uses iCloud.
     static let deviceLifetime: TimeInterval = 180 * 86_400
@@ -22,7 +23,10 @@ final class LibrarySync {
     private static let deviceRefreshedKey = "metronome.sync.deviceRefreshed"
     private static let lastSyncedKey = "metronome.sync.lastSynced"
     private static let formatKey = "format"
-    private static let presetPrefix = "p.", setlistPrefix = "s.", devicePrefix = "d."
+    private static let songPrefix = "song.", setlistPrefix = "s.", devicePrefix = "d."
+    /// Where songs were kept in format 1, when they were called presets. Each one read there
+    /// is combined in, written under songPrefix and then removed.
+    private static let legacySongPrefix = "p."
 
     private let cloud: CloudStore
     private let defaults: UserDefaults
@@ -295,10 +299,11 @@ final class LibrarySync {
             writeDeviceEntry(now: now)
         }
 
-        let heldPresets = cloudRecords(PresetRecord.self, prefix: Self.presetPrefix)
+        let heldSongs = cloudRecords(SongRecord.self, prefix: Self.songPrefix)
+        let legacySongs = cloudRecords(SongRecord.self, prefix: Self.legacySongPrefix)
         let heldSetlists = cloudRecords(SetlistRecord.self, prefix: Self.setlistPrefix)
         var result = library
-        result.merge(presets: Array(heldPresets.values), setlists: Array(heldSetlists.values))
+        result.merge(songs: Array(heldSongs.values) + Array(legacySongs.values), setlists: Array(heldSetlists.values))
         var changed = result != library
 
         let purged = result.purgeMarkers(before: now.addingTimeInterval(-Self.markerLifetime))
@@ -316,10 +321,10 @@ final class LibrarySync {
         // to the same bytes, and it is to be left as it is.
         var encoded: [String: Data] = [:]
         var differing: Set<String> = []
-        for (id, record) in result.presetRecords {
-            let key = Self.presetPrefix + id.uuidString
+        for (id, record) in result.songRecords {
+            let key = Self.songPrefix + id.uuidString
             encoded[key] = try? encoder.encode(record)
-            if heldPresets[key] != record { differing.insert(key) }
+            if heldSongs[key] != record { differing.insert(key) }
         }
         for (id, record) in result.setlistRecords {
             let key = Self.setlistPrefix + id.uuidString
@@ -334,11 +339,20 @@ final class LibrarySync {
         let restricted = !fits || quotaFull
 
         for (key, data) in encoded where differing.contains(key) {
-            guard !restricted || cloud.data(forKey: key) != nil else { continue }
+            // When full, only items already there are written, or moved from their old key.
+            let isMove = legacyKey(for: key).flatMap(cloud.data(forKey:)) != nil
+            guard !restricted || cloud.data(forKey: key) != nil || isMove else { continue }
             cloud.set(data, forKey: key)
             changed = true
         }
-        if cloud.data(forKey: Self.formatKey) == nil {
+        // An old key goes only once its song is safe under the new one; one that cannot be read stays.
+        for key in legacySongs.keys {
+            let newKey = Self.songPrefix + key.dropFirst(Self.legacySongPrefix.count)
+            guard cloud.data(forKey: newKey) != nil else { continue }
+            cloud.remove(key)
+            changed = true
+        }
+        if cloud.data(forKey: Self.formatKey) == nil || cloudFormat.map({ $0 < Self.format }) == true {
             cloud.set(Data(String(Self.format).utf8), forKey: Self.formatKey)
             changed = true
         }
@@ -347,6 +361,12 @@ final class LibrarySync {
         if changed { defaults.set(now, forKey: Self.lastSyncedKey) }
         found = restricted ? .full : .upToDate(lastSynced: lastSynced)
         return result
+    }
+
+    /// The format 1 key of a song key; nil for other keys.
+    private func legacyKey(for key: String) -> String? {
+        guard key.hasPrefix(Self.songPrefix) else { return nil }
+        return Self.legacySongPrefix + key.dropFirst(Self.songPrefix.count)
     }
 
     /// Smaller by item count or bytes; any size counts as smaller when none was known at the notice.
@@ -373,12 +393,12 @@ final class LibrarySync {
         return records
     }
 
-    /// The returned ids do not say whether they were presets or setlists, so both keys go.
+    /// The returned ids do not say whether they were songs or setlists, so both keys go.
     /// True when a key was there to remove.
     private func removeKeys(for ids: [UUID]) -> Bool {
         var removed = false
         for id in ids {
-            for prefix in [Self.presetPrefix, Self.setlistPrefix] {
+            for prefix in [Self.songPrefix, Self.legacySongPrefix, Self.setlistPrefix] {
                 let key = prefix + id.uuidString
                 guard cloud.data(forKey: key) != nil else { continue }
                 cloud.remove(key)

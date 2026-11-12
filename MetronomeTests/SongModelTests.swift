@@ -3,7 +3,7 @@ import Testing
 @testable import Metronome
 
 @MainActor
-struct PresetModelTests {
+struct SongModelTests {
     private let engine = FakeClickEngine()
     private let haptics = FakeHaptics()
     private let store = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
@@ -17,40 +17,40 @@ struct PresetModelTests {
         MetronomeSettings(bpm: bpm, timeSignature: signature, accents: [1])
     }
 
-    /// A model with three presets in a setlist, in the order slow, mid, fast.
-    private func modelWithSetlist() -> (model: MetronomeModel, presets: [Preset], setlist: UUID) {
+    /// A model with three songs in a setlist, in the order slow, mid, fast.
+    private func modelWithSetlist() -> (model: MetronomeModel, songs: [Song], setlist: UUID) {
         let model = makeModel()
-        let presets = [("Slow", 60), ("Mid", 100), ("Fast", 180)].map {
-            model.createPreset(name: $0.0, settings: settings($0.1), addingTo: nil)!
+        let songs = [("Slow", 60), ("Mid", 100), ("Fast", 180)].map {
+            model.createSong(name: $0.0, settings: settings($0.1), addingTo: nil)!
         }
         let setlist = model.createSetlist()
-        presets.forEach { model.setPreset($0.id, inSetlist: setlist, included: true) }
-        return (model, presets, setlist)
+        songs.forEach { model.setSong($0.id, inSetlist: setlist, included: true) }
+        return (model, songs, setlist)
     }
 
     @Test func nothingIsLoadedAtFirst() {
         let model = makeModel()
-        #expect(model.loadedPreset == nil)
+        #expect(model.loadedSong == nil)
         #expect(model.isEdited == false)
         #expect(model.headerTitle == "Library")
-        #expect(model.headerSubtitle == "No preset loaded")
+        #expect(model.headerSubtitle == "No song loaded")
         #expect(model.position == nil)
     }
 
-    @Test func creatingAPresetFromTheLibraryDoesNotLoadIt() {
+    @Test func creatingASongFromTheLibraryDoesNotLoadIt() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)
-        #expect(preset != nil)
-        #expect(model.loadedPreset == nil)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)
+        #expect(song != nil)
+        #expect(model.loadedSong == nil)
         #expect(model.settings.bpm == 120)
     }
 
-    @Test func namingTheCurrentSettingsLoadsTheNewPreset() {
+    @Test func namingTheCurrentSettingsLoadsTheNewSong() {
         let model = makeModel()
         model.setBPM(132)
         engine.lastUpdate = nil
-        let preset = model.createPreset(name: "Song", settings: model.settings, addingTo: nil)
-        #expect(model.loadedPreset == preset)
+        let song = model.createSong(name: "Song", settings: model.settings, addingTo: nil)
+        #expect(model.loadedSong == song)
         #expect(model.loadedFromSetlistID == nil)
         #expect(model.headerTitle == "Song")
         #expect(model.isEdited == false)
@@ -59,92 +59,92 @@ struct PresetModelTests {
 
     @Test func namingTheCurrentSettingsInASetlistLoadsItFromThatSetlist() {
         let (model, _, setlist) = modelWithSetlist()
-        let preset = model.createPreset(name: "Song", settings: model.settings, addingTo: setlist)!
-        #expect(model.loadedPreset == preset)
+        let song = model.createSong(name: "Song", settings: model.settings, addingTo: setlist)!
+        #expect(model.loadedSong == song)
         #expect(model.loadedFromSetlistID == setlist)
         #expect(model.position?.index == 3)
         #expect(model.position?.count == 4)
     }
 
-    @Test func aNewPresetIsNotLoadedWhileAnotherIsLoaded() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[0].id, from: setlist)
-        model.createPreset(name: "Song", settings: model.settings, addingTo: nil)
-        #expect(model.loadedPreset?.id == presets[0].id)
+    @Test func aNewSongIsNotLoadedWhileAnotherIsLoaded() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
+        model.createSong(name: "Song", settings: model.settings, addingTo: nil)
+        #expect(model.loadedSong?.id == songs[0].id)
     }
 
-    @Test func nextPresetIsTheOneNextWouldLoad() {
-        let (model, presets, setlist) = modelWithSetlist()
-        #expect(model.nextPreset == nil)
-        model.loadPreset(presets[0].id, from: setlist)
-        #expect(model.nextPreset?.id == presets[1].id)
-        model.loadPreset(presets[2].id, from: setlist)
-        #expect(model.nextPreset == nil)
-        model.clearPreset()
-        model.loadPreset(presets[0].id, from: nil)
-        #expect(model.nextPreset == nil)
+    @Test func nextSongIsTheOneNextWouldLoad() {
+        let (model, songs, setlist) = modelWithSetlist()
+        #expect(model.nextSong == nil)
+        model.loadSong(songs[0].id, from: setlist)
+        #expect(model.nextSong?.id == songs[1].id)
+        model.loadSong(songs[2].id, from: setlist)
+        #expect(model.nextSong == nil)
+        model.clearSong()
+        model.loadSong(songs[0].id, from: nil)
+        #expect(model.nextSong == nil)
     }
 
-    @Test func loadingFromAllPresetsKeepsTheSetlistBeingSteppedThrough() {
-        let (model, presets, setlist) = modelWithSetlist()
-        let other = model.createPreset(name: "Other", settings: settings(70), addingTo: nil)!
-        model.loadPreset(presets[0].id, from: setlist)
-        model.loadPreset(presets[2].id, from: nil)
+    @Test func loadingFromAllSongsKeepsTheSetlistBeingSteppedThrough() {
+        let (model, songs, setlist) = modelWithSetlist()
+        let other = model.createSong(name: "Other", settings: settings(70), addingTo: nil)!
+        model.loadSong(songs[0].id, from: setlist)
+        model.loadSong(songs[2].id, from: nil)
         #expect(model.loadedFromSetlistID == setlist)
         #expect(model.position?.index == 2)
-        // A preset that is not in the setlist leaves it.
-        model.loadPreset(other.id, from: nil)
+        // A song that is not in the setlist leaves it.
+        model.loadSong(other.id, from: nil)
         #expect(model.loadedFromSetlistID == nil)
         #expect(model.position == nil)
     }
 
-    @Test func removingAPresetFromASetlistCanBeUndoneInPlace() {
-        let (model, presets, setlist) = modelWithSetlist()
-        let removal = model.removePreset(presets[1].id, fromSetlist: setlist)
-        #expect(removal?.presetName == "Mid")
-        #expect(model.library.presets(inSetlist: setlist).map(\.name) == ["Slow", "Fast"])
+    @Test func removingASongFromASetlistCanBeUndoneInPlace() {
+        let (model, songs, setlist) = modelWithSetlist()
+        let removal = model.removeSong(songs[1].id, fromSetlist: setlist)
+        #expect(removal?.songName == "Mid")
+        #expect(model.library.songs(inSetlist: setlist).map(\.name) == ["Slow", "Fast"])
         model.undo(removal!)
-        #expect(model.library.presets(inSetlist: setlist).map(\.name) == ["Slow", "Mid", "Fast"])
+        #expect(model.library.songs(inSetlist: setlist).map(\.name) == ["Slow", "Mid", "Fast"])
     }
 
-    @Test func undoingARemovalBringsBackTheLoadedPresetsPlace() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[1].id, from: setlist)
-        let removal = model.removePreset(presets[1].id, fromSetlist: setlist)!
+    @Test func undoingARemovalBringsBackTheLoadedSongsPlace() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
+        let removal = model.removeSong(songs[1].id, fromSetlist: setlist)!
         #expect(model.position == nil)
         model.undo(removal)
         #expect(model.position?.index == 1)
         #expect(model.position?.count == 3)
     }
 
-    @Test func undoAfterTheSetlistChangedPutsThePresetAtTheEnd() {
-        let (model, presets, setlist) = modelWithSetlist()
-        let removal = model.removePreset(presets[0].id, fromSetlist: setlist)!
-        model.removePreset(presets[1].id, fromSetlist: setlist)
+    @Test func undoAfterTheSetlistChangedPutsTheSongAtTheEnd() {
+        let (model, songs, setlist) = modelWithSetlist()
+        let removal = model.removeSong(songs[0].id, fromSetlist: setlist)!
+        model.removeSong(songs[1].id, fromSetlist: setlist)
         model.undo(removal)
-        #expect(model.library.presets(inSetlist: setlist).map(\.name) == ["Fast", "Slow"])
+        #expect(model.library.songs(inSetlist: setlist).map(\.name) == ["Fast", "Slow"])
     }
 
-    @Test func removingAPresetThatIsNotInTheSetlistGivesNothingToUndo() {
+    @Test func removingASongThatIsNotInTheSetlistGivesNothingToUndo() {
         let (model, _, setlist) = modelWithSetlist()
-        let other = model.createPreset(name: "Other", settings: settings(70), addingTo: nil)!
-        #expect(model.removePreset(other.id, fromSetlist: setlist) == nil)
+        let other = model.createSong(name: "Other", settings: settings(70), addingTo: nil)!
+        #expect(model.removeSong(other.id, fromSetlist: setlist) == nil)
     }
 
-    @Test func theLibraryShowsTheSetlistTheLoadedPresetCameFrom() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[0].id, from: setlist)
+    @Test func theLibraryShowsTheSetlistTheLoadedSongCameFrom() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
         model.selectFilter(nil)
         model.showLoadedSetlist()
         #expect(model.selectedSetlistID == setlist)
     }
 
     @Test func withoutALoadedSetlistTheLibraryKeepsTheListChosenLast() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.clearPreset()
+        let (model, songs, setlist) = modelWithSetlist()
+        model.clearSong()
         model.selectFilter(setlist)
-        model.loadPreset(presets[0].id, from: nil)
-        model.clearPreset()
+        model.loadSong(songs[0].id, from: nil)
+        model.clearSong()
         model.showLoadedSetlist()
         #expect(model.selectedSetlistID == setlist)
         model.selectFilter(nil)
@@ -167,14 +167,14 @@ struct PresetModelTests {
         #expect(model.selectedSetlistID == nil)
     }
 
-    @Test func aSetlistWithANameOrAPresetIsNotDiscarded() {
+    @Test func aSetlistWithANameOrASongIsNotDiscarded() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
         let named = model.createSetlist()
         model.renameSetlist(named, to: "Friday gig")
         model.discardSetlistIfUntouched(named)
         let filled = model.createSetlist()
-        model.setPreset(preset.id, inSetlist: filled, included: true)
+        model.setSong(song.id, inSetlist: filled, included: true)
         model.discardSetlistIfUntouched(filled)
         #expect(model.library.setlists.count == 2)
     }
@@ -189,66 +189,66 @@ struct PresetModelTests {
 
     @Test func loadingAppliesTheSettingsWithoutStarting() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90, .sixEight), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
-        #expect(model.settings == preset.settings)
+        let song = model.createSong(name: "Song", settings: settings(90, .sixEight), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        #expect(model.settings == song.settings)
         #expect(model.isPlaying == false)
         #expect(model.headerTitle == "Song")
         #expect(model.headerSubtitle == nil)
-        #expect(store.load() == preset.settings)
+        #expect(store.load() == song.settings)
     }
 
-    @Test func clearingThePresetKeepsTheSettingsAndPlayback() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[1].id, from: setlist, start: true)
+    @Test func clearingTheSongKeepsTheSettingsAndPlayback() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist, start: true)
         model.nudgeBPM(by: 4)
         let edited = model.settings
         engine.lastUpdate = nil
-        model.clearPreset()
-        #expect(model.loadedPreset == nil)
+        model.clearSong()
+        #expect(model.loadedSong == nil)
         #expect(model.loadedFromSetlistID == nil)
         #expect(model.position == nil)
         #expect(model.isEdited == false)
-        #expect(model.headerSubtitle == "No preset loaded")
+        #expect(model.headerSubtitle == "No song loaded")
         #expect(model.settings == edited)
         #expect(model.isPlaying)
         // The click does not change, so the engine hears nothing.
         #expect(engine.lastUpdate == nil)
-        // The preset itself is untouched.
-        #expect(model.library.preset(id: presets[1].id)?.settings.bpm == 100)
+        // The song itself is untouched.
+        #expect(model.library.song(id: songs[1].id)?.settings.bpm == 100)
     }
 
-    @Test func clearingThePresetIsRemembered() {
+    @Test func clearingTheSongIsRemembered() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
-        model.clearPreset()
-        #expect(makeModel().loadedPreset == nil)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        model.clearSong()
+        #expect(makeModel().loadedSong == nil)
     }
 
     @Test func thePlayButtonLoadsAndStarts() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil, start: true)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil, start: true)
         #expect(model.isPlaying)
         #expect(engine.startCount == 1)
     }
 
     @Test func loadingWhilePlayingKeepsPlayingAndStartsANewBar() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90, .threeFour), addingTo: nil)!
+        let song = model.createSong(name: "Song", settings: settings(90, .threeFour), addingTo: nil)!
         model.togglePlayback()
-        model.loadPreset(preset.id, from: nil, start: true)
+        model.loadSong(song.id, from: nil, start: true)
         #expect(model.isPlaying)
         #expect(engine.startCount == 1)
         #expect(engine.stopCount == 0)
-        #expect(engine.lastUpdate == preset.settings)
+        #expect(engine.lastUpdate == song.settings)
         #expect(engine.lastUpdateStartedNewBar == true)
     }
 
-    @Test func changingASettingMarksThePresetEdited() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[1].id, from: setlist)
+    @Test func changingASettingMarksTheSongEdited() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
         #expect(model.isEdited == false)
         #expect(model.headerSubtitle == "Untitled · 2 of 3")
         model.setBPM(104)
@@ -260,65 +260,65 @@ struct PresetModelTests {
         #expect(model.headerAccessibilityLabel == "Mid, Untitled · 2 of 3")
     }
 
-    @Test func aPresetLoadedOnItsOwnHasNoSecondLineEvenWhenEdited() {
+    @Test func aSongLoadedOnItsOwnHasNoSecondLineEvenWhenEdited() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         model.setBPM(96)
         #expect(model.isEdited)
         #expect(model.headerSubtitle == nil)
         #expect(model.headerAccessibilityLabel == "Song, edited")
     }
 
-    @Test func saveChangesWritesIntoThePreset() {
+    @Test func saveChangesWritesIntoTheSong() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         model.setBPM(96)
         model.saveChanges()
         #expect(model.isEdited == false)
-        #expect(model.library.preset(id: preset.id)?.settings.bpm == 96)
+        #expect(model.library.song(id: song.id)?.settings.bpm == 96)
     }
 
-    @Test func editingAPresetWritesItsNameAndSettings() {
+    @Test func editingASongWritesItsNameAndSettings() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.editPreset(preset.id, name: "Ballad", settings: settings(72, .threeFour))
-        let edited = model.library.preset(id: preset.id)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.editSong(song.id, name: "Ballad", settings: settings(72, .threeFour))
+        let edited = model.library.song(id: song.id)
         #expect(edited?.name == "Ballad")
         #expect(edited?.settings.bpm == 72)
         #expect(edited?.settings.timeSignature == .threeFour)
         // Not loaded: the metronome is not touched.
         #expect(model.settings.bpm != 72)
-        #expect(model.loadedPreset == nil)
+        #expect(model.loadedSong == nil)
     }
 
     @Test func editingKeepsTheOldNameWhenTheNewOneIsEmpty() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.editPreset(preset.id, name: "  ", settings: settings(72))
-        #expect(model.library.preset(id: preset.id)?.name == "Song")
-        #expect(model.library.preset(id: preset.id)?.settings.bpm == 90)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.editSong(song.id, name: "  ", settings: settings(72))
+        #expect(model.library.song(id: song.id)?.name == "Song")
+        #expect(model.library.song(id: song.id)?.settings.bpm == 90)
     }
 
-    @Test func editingTheLoadedPresetSetsTheMetronomeToIt() {
+    @Test func editingTheLoadedSongSetsTheMetronomeToIt() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         model.setBPM(96)
         #expect(model.isSaveOffered)
-        model.editPreset(preset.id, name: "Song", settings: settings(110))
+        model.editSong(song.id, name: "Song", settings: settings(110))
         #expect(model.settings.bpm == 110)
         #expect(model.isEdited == false)
         #expect(model.isSaveOffered == false)
     }
 
-    @Test func renamingTheLoadedPresetInEditKeepsUnsavedChanges() {
+    @Test func renamingTheLoadedSongInEditKeepsUnsavedChanges() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         model.setBPM(96)
-        model.editPreset(preset.id, name: "Ballad", settings: preset.settings)
+        model.editSong(song.id, name: "Ballad", settings: song.settings)
         #expect(model.headerTitle == "Ballad")
         #expect(model.settings.bpm == 96)
         #expect(model.isEdited)
@@ -327,51 +327,51 @@ struct PresetModelTests {
 
     @Test func editingTheTempoAloneKeepsTheBarWhilePlaying() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil, start: true)
-        model.editPreset(preset.id, name: "Song", settings: settings(100))
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil, start: true)
+        model.editSong(song.id, name: "Song", settings: settings(100))
         #expect(model.settings.bpm == 100)
         #expect(engine.lastUpdateStartedNewBar == false)
     }
 
-    @Test func discardChangesRestoresThePreset() {
+    @Test func discardChangesRestoresTheSong() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         model.setBPM(96)
         model.toggleAccent(beat: 3)
         model.discardChanges()
-        #expect(model.settings == preset.settings)
+        #expect(model.settings == song.settings)
         #expect(model.isEdited == false)
     }
 
     @Test func revertingTempoAndAccentsKeepsTheBarWhilePlaying() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil, start: true)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil, start: true)
         model.setBPM(96)
         model.toggleAccent(beat: 3)
         model.discardChanges()
-        #expect(engine.lastUpdate == preset.settings)
+        #expect(engine.lastUpdate == song.settings)
         #expect(engine.lastUpdateStartedNewBar == false)
         #expect(model.isPlaying)
     }
 
     @Test func revertingTheTimeSignatureStartsANewBar() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil, start: true)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil, start: true)
         model.selectTimeSignature(.sixEight)
         model.discardChanges()
-        #expect(engine.lastUpdate == preset.settings)
+        #expect(engine.lastUpdate == song.settings)
         #expect(engine.lastUpdateStartedNewBar == true)
     }
 
     @Test func revertDescriptionNamesTheSavedValues() {
         let model = makeModel()
         #expect(model.revertDescription == nil)
-        let preset = model.createPreset(name: "Song", settings: settings(90, .sixEight), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(90, .sixEight), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         model.setBPM(96)
         #expect(model.revertDescription == "90 BPM · 6/8")
     }
@@ -386,8 +386,8 @@ struct PresetModelTests {
 
     @Test func saveStaysOfferedWhileTheTempoPassesTheSavedValue() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(130), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(130), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         #expect(model.isSaveOffered == false)
         model.setBPM(129)
         #expect(model.isSaveOffered)
@@ -400,8 +400,8 @@ struct PresetModelTests {
 
     @Test func saveStopsBeingOfferedOnceTheSettingsRestOnTheSavedValues() async throws {
         let model = modelWithShortSaveOfferDelay()
-        let preset = model.createPreset(name: "Song", settings: settings(130), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(130), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         model.setBPM(129)
         model.setBPM(130)
         #expect(model.isSaveOffered)
@@ -415,8 +415,8 @@ struct PresetModelTests {
 
     @Test func movingOnBeforeTheWaitIsOverKeepsSaveOffered() async throws {
         let model = modelWithShortSaveOfferDelay()
-        let preset = model.createPreset(name: "Song", settings: settings(130), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(130), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         model.setBPM(129)
         model.setBPM(130)
         model.setBPM(131)
@@ -429,11 +429,11 @@ struct PresetModelTests {
             engine: engine, store: store, haptics: haptics, libraryStore: libraryStore,
             saveConfirmationTime: .milliseconds(20)
         )
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         model.setBPM(96)
         model.saveChanges()
-        #expect(model.library.preset(id: preset.id)?.settings.bpm == 96)
+        #expect(model.library.song(id: song.id)?.settings.bpm == 96)
         #expect(model.isSaveConfirmed)
         #expect(model.isSaveOffered)
         #expect(haptics.successCount == 1)
@@ -454,8 +454,8 @@ struct PresetModelTests {
 
     @Test func aChangeDuringTheConfirmationBringsSaveBack() {
         let model = makeModel()
-        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadPreset(preset.id, from: nil)
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
         model.setBPM(96)
         model.saveChanges()
         model.setBPM(97)
@@ -465,8 +465,8 @@ struct PresetModelTests {
     }
 
     @Test func revertingAndLoadingTakeTheSaveOfferAwayAtOnce() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[0].id, from: setlist)
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
         model.setBPM(70)
         model.discardChanges()
         #expect(model.isSaveOffered == false)
@@ -474,90 +474,90 @@ struct PresetModelTests {
         model.goToNext()
         #expect(model.isSaveOffered == false)
         model.setBPM(104)
-        model.clearPreset()
+        model.clearSong()
         #expect(model.isSaveOffered == false)
     }
 
-    @Test func loadingAnotherPresetDropsUnsavedEdits() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[0].id, from: setlist)
+    @Test func loadingAnotherSongDropsUnsavedEdits() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
         model.setBPM(66)
-        model.loadPreset(presets[1].id, from: setlist)
-        #expect(model.library.preset(id: presets[0].id)?.settings.bpm == 60)
+        model.loadSong(songs[1].id, from: setlist)
+        #expect(model.library.song(id: songs[0].id)?.settings.bpm == 60)
         #expect(model.settings.bpm == 100)
         #expect(model.isEdited == false)
     }
 
-    @Test func saveAsNewPresetLoadsTheNewOne() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[0].id, from: setlist)
+    @Test func saveAsNewSongLoadsTheNewOne() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
         model.setBPM(66)
-        let made = model.saveAsNewPreset(name: "Slow, faster", settings: model.settings)
+        let made = model.saveAsNewSong(name: "Slow, faster", settings: model.settings)
         #expect(made != nil)
-        #expect(model.loadedPreset?.id == made?.id)
+        #expect(model.loadedSong?.id == made?.id)
         #expect(model.isEdited == false)
         #expect(model.position == nil)
         #expect(model.headerSubtitle == nil)
-        #expect(model.library.preset(id: presets[0].id)?.settings.bpm == 60)
+        #expect(model.library.song(id: songs[0].id)?.settings.bpm == 60)
     }
 
     @Test func previousAndNextStepThroughTheSetlistAndStopAtTheEnds() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[0].id, from: setlist)
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
         #expect(model.position?.index == 0)
         #expect(model.position?.count == 3)
         #expect(model.canGoPrevious == false)
         #expect(model.canGoNext)
         model.goToPrevious()
-        #expect(model.loadedPreset?.id == presets[0].id)
+        #expect(model.loadedSong?.id == songs[0].id)
         model.goToNext()
         model.goToNext()
-        #expect(model.loadedPreset?.id == presets[2].id)
+        #expect(model.loadedSong?.id == songs[2].id)
         #expect(model.settings.bpm == 180)
         #expect(model.canGoNext == false)
         model.goToNext()
-        #expect(model.loadedPreset?.id == presets[2].id)
+        #expect(model.loadedSong?.id == songs[2].id)
         model.goToPrevious()
-        #expect(model.loadedPreset?.id == presets[1].id)
+        #expect(model.loadedSong?.id == songs[1].id)
     }
 
-    @Test func aPresetLoadedFromAllPresetsHasNoPosition() {
-        let (model, presets, _) = modelWithSetlist()
-        model.loadPreset(presets[1].id, from: nil)
+    @Test func aSongLoadedFromAllSongsHasNoPosition() {
+        let (model, songs, _) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: nil)
         #expect(model.position == nil)
         #expect(model.canGoNext == false)
     }
 
-    @Test func deletingTheLoadedPresetKeepsTheSettings() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[2].id, from: setlist)
-        model.deletePreset(presets[2].id)
-        #expect(model.loadedPreset == nil)
+    @Test func deletingTheLoadedSongKeepsTheSettings() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[2].id, from: setlist)
+        model.deleteSong(songs[2].id)
+        #expect(model.loadedSong == nil)
         #expect(model.settings.bpm == 180)
         #expect(model.headerTitle == "Library")
-        #expect(model.library.presets(inSetlist: setlist).count == 2)
+        #expect(model.library.songs(inSetlist: setlist).count == 2)
     }
 
-    @Test func removingTheLoadedPresetFromItsSetlistFallsBackToAllPresets() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[1].id, from: setlist)
-        model.setPreset(presets[1].id, inSetlist: setlist, included: false)
-        #expect(model.loadedPreset?.id == presets[1].id)
+    @Test func removingTheLoadedSongFromItsSetlistFallsBackToAllSongs() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
+        model.setSong(songs[1].id, inSetlist: setlist, included: false)
+        #expect(model.loadedSong?.id == songs[1].id)
         #expect(model.position == nil)
         #expect(model.headerSubtitle == nil)
     }
 
-    @Test func aNewPresetCanGoStraightIntoASetlist() {
+    @Test func aNewSongCanGoStraightIntoASetlist() {
         let (model, _, setlist) = modelWithSetlist()
-        let made = model.createPreset(name: "Encore", settings: settings(130), addingTo: setlist)!
-        #expect(model.library.presets(inSetlist: setlist).last?.id == made.id)
+        let made = model.createSong(name: "Encore", settings: settings(130), addingTo: setlist)!
+        #expect(model.library.songs(inSetlist: setlist).last?.id == made.id)
     }
 
     @Test func setlistsCanBeRenamedReorderedDuplicatedAndDeleted() {
-        let (model, presets, setlist) = modelWithSetlist()
+        let (model, songs, setlist) = modelWithSetlist()
         model.renameSetlist(setlist, to: "Friday gig")
-        model.reorderSetlist(setlist, to: [presets[2].id, presets[0].id, presets[1].id])
-        #expect(model.library.presets(inSetlist: setlist).map(\.name) == ["Fast", "Slow", "Mid"])
+        model.reorderSetlist(setlist, to: [songs[2].id, songs[0].id, songs[1].id])
+        #expect(model.library.songs(inSetlist: setlist).map(\.name) == ["Fast", "Slow", "Mid"])
         let copy = model.duplicateSetlist(setlist)
         #expect(copy != nil)
         #expect(model.selectedSetlistID == copy)
@@ -565,29 +565,29 @@ struct PresetModelTests {
         model.deleteSetlist(copy!)
         #expect(model.selectedSetlistID == nil)
         #expect(model.library.setlists.count == 1)
-        #expect(model.library.presets.count == 3)
+        #expect(model.library.songs.count == 3)
     }
 
-    @Test func deletingTheLoadedFromSetlistKeepsThePresetLoaded() {
-        let (model, presets, setlist) = modelWithSetlist()
-        model.loadPreset(presets[1].id, from: setlist)
+    @Test func deletingTheLoadedFromSetlistKeepsTheSongLoaded() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
         model.deleteSetlist(setlist)
-        #expect(model.loadedPreset?.id == presets[1].id)
+        #expect(model.loadedSong?.id == songs[1].id)
         #expect(model.position == nil)
     }
 
     @Test func everythingIsRestoredAfterRelaunch() {
-        let (model, presets, setlist) = modelWithSetlist()
+        let (model, songs, setlist) = modelWithSetlist()
         model.selectFilter(setlist)
-        model.loadPreset(presets[1].id, from: setlist)
+        model.loadSong(songs[1].id, from: setlist)
         let relaunched = makeModel()
         #expect(relaunched.library == model.library)
-        #expect(relaunched.loadedPreset?.id == presets[1].id)
+        #expect(relaunched.loadedSong?.id == songs[1].id)
         #expect(relaunched.position?.index == 1)
         #expect(relaunched.selectedSetlistID == setlist)
         #expect(relaunched.settings.bpm == 100)
         #expect(relaunched.isPlaying == false)
         relaunched.goToNext()
-        #expect(relaunched.loadedPreset?.id == presets[2].id)
+        #expect(relaunched.loadedSong?.id == songs[2].id)
     }
 }

@@ -1,16 +1,16 @@
 import SwiftUI
 
-/// Creates or edits a preset. A new preset starts from the metronome's current settings;
+/// Creates or edits a song. A new song starts from the metronome's current settings;
 /// an edited one from its own. The tempo, time signature and accents in the sheet can be
 /// changed without touching the metronome.
-struct PresetSheet: View {
+struct SongSheet: View {
     enum Purpose {
-        /// From Edit in a preset row's menu: the preset's name and settings are changed.
-        case edit(Preset)
-        /// From the library: the preset is created but not loaded. With a setlist,
+        /// From Edit in a song row's menu: the song's name and settings are changed.
+        case edit(Song)
+        /// From the library: the song is created but not loaded. With a setlist,
         /// a switch offers to add it there.
         case library(setlistID: UUID?)
-        /// From the title menu: the preset is created and becomes the loaded one.
+        /// From the title menu: the song is created and becomes the loaded one.
         case saveAsNew
     }
 
@@ -32,8 +32,8 @@ struct PresetSheet: View {
         return nil
     }
 
-    private var editedPreset: Preset? {
-        if case .edit(let preset) = purpose { return preset }
+    private var editedSong: Song? {
+        if case .edit(let song) = purpose { return song }
         return nil
     }
 
@@ -42,7 +42,7 @@ struct PresetSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text(editedPreset == nil ? "New preset" : "Edit preset")
+                Text(editedSong == nil ? "New song" : "Edit song")
                     .font(.system(size: 26, weight: .heavy))
                     .tracking(-0.52)
                     .foregroundStyle(Theme.dialWhite)
@@ -55,7 +55,7 @@ struct PresetSheet: View {
                     .padding(.horizontal, 18)
                     .frame(height: 56)
                     .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .accessibilityLabel("Preset name")
+                    .accessibilityLabel("Song name")
                 tempo
                 signature
                 VStack(alignment: .leading, spacing: 14) {
@@ -72,7 +72,7 @@ struct PresetSheet: View {
                     .tint(Theme.amber)
                 }
                 Button(action: save) {
-                    Text(editedPreset == nil ? "Save preset" : "Save changes")
+                    Text(editedSong == nil ? "Save song" : "Save changes")
                         .font(.system(size: 18, weight: .heavy))
                         // Until there is a name it is grey with muted text: still readable,
                         // but plainly not ready. Dimmed amber made the text almost vanish.
@@ -104,11 +104,11 @@ struct PresetSheet: View {
         .presentationCornerRadius(28)
         .presentationBackground(Theme.surface)
         .onAppear {
-            if let editedPreset {
-                // Editing starts from the preset itself. The keyboard waits for a tap on
+            if let editedSong {
+                // Editing starts from the song itself. The keyboard waits for a tap on
                 // the name, as the change is more often to the tempo or accents.
-                name = editedPreset.name
-                draft = editedPreset.settings
+                name = editedSong.name
+                draft = editedSong.settings
             } else {
                 draft = model.settings
                 isNameFocused = true
@@ -224,12 +224,12 @@ struct PresetSheet: View {
 
     private func save() {
         switch purpose {
-        case .edit(let preset):
-            model.editPreset(preset.id, name: name, settings: draft)
+        case .edit(let song):
+            model.editSong(song.id, name: name, settings: draft)
         case .saveAsNew:
-            model.saveAsNewPreset(name: name, settings: draft)
+            model.saveAsNewSong(name: name, settings: draft)
         case .library:
-            model.createPreset(name: name, settings: draft, addingTo: addToSetlist ? setlist?.id : nil)
+            model.createSong(name: name, settings: draft, addingTo: addToSetlist ? setlist?.id : nil)
         }
         dismiss()
     }

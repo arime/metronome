@@ -57,7 +57,7 @@ struct MetronomeScreen: View {
     private func header(savesInDial: Bool) -> some View {
         let savesInHeader = !savesInDial && model.isSaveOffered
         return HStack(spacing: 8) {
-            PresetTitle(showsChevron: !savesInHeader) { isLibraryShown = true }
+            SongTitle(showsChevron: !savesInHeader) { isLibraryShown = true }
             if savesInHeader {
                 SaveButton()
                     .transition(.opacity)
@@ -77,23 +77,23 @@ struct MetronomeScreen: View {
         }
     }
 
-    /// Previous and Next sit beside Start only for a preset loaded from a setlist, with the
+    /// Previous and Next sit beside Start only for a song loaded from a setlist, with the
     /// next-up line above them. The footer changes with the setlist, never between Ready
     /// and Playing.
     private func footer(showsNextLine: Bool) -> some View {
         VStack(spacing: ScreenLayout.nextLineGap) {
             if showsNextLine {
-                NextUpLine(next: model.nextPreset)
+                NextUpLine(next: model.nextSong)
             }
             HStack(spacing: 12) {
                 if model.position != nil {
-                    FooterRoundButton(symbol: "chevron.left", label: "Previous preset", isEnabled: model.canGoPrevious) {
+                    FooterRoundButton(symbol: "chevron.left", label: "Previous song", isEnabled: model.canGoPrevious) {
                         model.goToPrevious()
                     }
                 }
                 StartStopButton()
                 if model.position != nil {
-                    FooterRoundButton(symbol: "chevron.right", label: "Next preset", isEnabled: model.canGoNext) {
+                    FooterRoundButton(symbol: "chevron.right", label: "Next song", isEnabled: model.canGoNext) {
                         model.goToNext()
                     }
                 }
@@ -102,10 +102,10 @@ struct MetronomeScreen: View {
     }
 }
 
-/// Says what Next leads to, above the transport row. At the last preset it says so, and
+/// Says what Next leads to, above the transport row. At the last song it says so, and
 /// keeps its height, so the footer does not move from song to song.
 struct NextUpLine: View {
-    let next: Preset?
+    let next: Song?
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -124,7 +124,7 @@ struct NextUpLine: View {
                     .foregroundStyle(Theme.muted)
                     .fixedSize()
             } else {
-                Text("Last preset in the setlist")
+                Text("Last song in the setlist")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
@@ -136,7 +136,7 @@ struct NextUpLine: View {
         .accessibilityLabel(
             next.map {
                 "Next: \($0.name), \($0.settings.bpm) beats per minute, \($0.settings.timeSignature.rawValue)"
-            } ?? "Last preset in the setlist"
+            } ?? "Last song in the setlist"
         )
     }
 }

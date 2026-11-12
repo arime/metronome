@@ -8,7 +8,7 @@ protocol HapticsPlaying {
     func selection()
     /// Start and Stop.
     func transport()
-    /// The loaded preset was saved.
+    /// The loaded song was saved.
     func success()
 }
 

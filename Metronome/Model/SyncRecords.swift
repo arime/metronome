@@ -84,8 +84,8 @@ enum SyncClock {
     }
 }
 
-/// A preset together with the time each of its parts last changed, so two copies can be combined.
-struct PresetRecord: Codable, Equatable, Sendable, Identifiable {
+/// A song together with the time each of its parts last changed, so two copies can be combined.
+struct SongRecord: Codable, Equatable, Sendable, Identifiable {
     static let nameKey = "name", tempoKey = "tempo", meterKey = "meter"
 
     let id: UUID
@@ -115,7 +115,7 @@ struct PresetRecord: Codable, Equatable, Sendable, Identifiable {
     }
 
     /// nil when deleted, or when a known part is missing or unreadable.
-    var preset: Preset? {
+    var song: Song? {
         guard deleted == nil,
               let name = parts[Self.nameKey]?.value.decoded(String.self),
               let bpm = parts[Self.tempoKey]?.value.decoded(Int.self),
@@ -123,7 +123,7 @@ struct PresetRecord: Codable, Equatable, Sendable, Identifiable {
               let signature = meter["signature"]?.decoded(TimeSignature.self),
               let accents = meter["accents"]?.decoded([Int].self)
         else { return nil }
-        return Preset(id: id, name: name, settings: MetronomeSettings(bpm: bpm, timeSignature: signature, accents: Set(accents)))
+        return Song(id: id, name: name, settings: MetronomeSettings(bpm: bpm, timeSignature: signature, accents: Set(accents)))
     }
 
     /// The latest part time; `created` when there are no parts.
@@ -153,12 +153,12 @@ struct PresetRecord: Codable, Equatable, Sendable, Identifiable {
         deleted = SyncClock.stamp(now, after: lastChange)
     }
 
-    /// An edit later than the marker brings the preset back.
+    /// An edit later than the marker brings the song back.
     private mutating func dropMarkerIfEdited() {
         if let marker = deleted, marker <= lastChange { deleted = nil }
     }
 
-    func merged(with other: PresetRecord) -> PresetRecord {
+    func merged(with other: SongRecord) -> SongRecord {
         var result = self
         result.created = min(created, other.created)
         result.parts = Part.merge(parts, other.parts)
@@ -168,7 +168,7 @@ struct PresetRecord: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
-/// Whether a preset is in a setlist, since when, and when it was first put there.
+/// Whether a song is in a setlist, since when, and when it was first put there.
 struct Membership: Codable, Equatable, Sendable {
     var time: Date
     var isIn: Bool
@@ -188,19 +188,19 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
 
     let id: UUID
     var parts: [String: Part]
-    /// Keyed by the preset id's uuidString.
+    /// Keyed by the song id's uuidString.
     var members: [String: Membership]
     var lastUsed: Date
     var deleted: Date?
 
-    init(id: UUID, name: String, presetIDs: [UUID], now: Date) {
+    init(id: UUID, name: String, songIDs: [UUID], now: Date) {
         self.id = id
         self.parts = [
             Self.nameKey: Part(time: now, value: .string(name)),
-            Self.orderKey: Part(time: now, value: Self.orderValue(presetIDs)),
+            Self.orderKey: Part(time: now, value: Self.orderValue(songIDs)),
         ]
         self.members = Dictionary(
-            presetIDs.map { ($0.uuidString, Membership(time: now, isIn: true, added: now)) },
+            songIDs.map { ($0.uuidString, Membership(time: now, isIn: true, added: now)) },
             uniquingKeysWith: { first, _ in first }
         )
         self.lastUsed = now
@@ -216,8 +216,8 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
 
     /// The order part first, then the other members by `added`, then uuidString; only members that are in and alive.
     /// A position in the order part counts only for a member added no later than the order part's time,
-    /// so a preset added again goes to the end.
-    func presetIDs(alive: Set<UUID>) -> [UUID] {
+    /// so a song added again goes to the end.
+    func songIDs(alive: Set<UUID>) -> [UUID] {
         func isShown(_ id: UUID) -> Bool {
             alive.contains(id) && members[id.uuidString]?.isIn == true
         }
@@ -250,8 +250,8 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
     }
 
     /// Does not touch the order part.
-    mutating func add(_ presetID: UUID, now: Date) {
-        let key = presetID.uuidString
+    mutating func add(_ songID: UUID, now: Date) {
+        let key = songID.uuidString
         guard members[key]?.isIn != true else { return }
         // Later than the order part and every other member's added time, so it lands last even when a clock is ahead.
         let latest = [members[key]?.time, parts[Self.orderKey]?.time, members.values.map(\.added).max()]
@@ -260,8 +260,8 @@ struct SetlistRecord: Codable, Equatable, Sendable, Identifiable {
         dropMarkerIfEdited()
     }
 
-    mutating func remove(_ presetID: UUID, now: Date) {
-        let key = presetID.uuidString
+    mutating func remove(_ songID: UUID, now: Date) {
+        let key = songID.uuidString
         guard var member = members[key], member.isIn else { return }
         member.time = SyncClock.stamp(now, after: member.time)
         member.isIn = false

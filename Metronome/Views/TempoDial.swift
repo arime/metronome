@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The tempo gauge: tick ring, draggable knob, and the BPM number in the middle. While the
-/// preset has unsaved changes, the save controls stand in the gap at the bottom of the ring.
+/// song has unsaved changes, the save controls stand in the gap at the bottom of the ring.
 struct TempoDial: View {
     @Environment(MetronomeModel.self) private var model
     let diameter: CGFloat

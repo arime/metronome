@@ -3,7 +3,7 @@ import SwiftUI
 /// The Setlists tab: every setlist, most recently used first. Tapping one opens it.
 struct SetlistsTab: View {
     @Environment(MetronomeModel.self) private var model
-    let showPresets: () -> Void
+    let showSongs: () -> Void
     let open: (UUID) -> Void
     let newSetlist: () -> Void
 
@@ -14,7 +14,7 @@ struct SetlistsTab: View {
         VStack(spacing: 0) {
             SheetHeader {
                 LibraryTabs(selected: .setlists) { tab in
-                    if tab == .presets { showPresets() }
+                    if tab == .songs { showSongs() }
                 }
             } trailing: {
                 // While there are no setlists the button is in the middle instead. Its place
@@ -25,7 +25,7 @@ struct SetlistsTab: View {
             if model.library.setlists.isEmpty {
                 EmptyListMessage(
                     title: "No setlists yet",
-                    text: "A setlist is an ordered selection of presets, for a gig or a practice routine."
+                    text: "A setlist is an ordered selection of songs, for a gig or a practice routine."
                 ) {
                     PillButton(text: "New setlist", symbol: "plus", size: .large, action: newSetlist)
                 }
@@ -43,14 +43,14 @@ struct SetlistsTab: View {
             Button("Delete", role: .destructive) { model.deleteSetlist(setlist.id) }
             Button("Cancel", role: .cancel) {}
         } message: { _ in
-            Text("Its presets stay in the library.")
+            Text("Its songs stay in the library.")
         }
     }
 
-    /// The setlist the loaded preset came from is amber, so the user sees where they are.
+    /// The setlist the loaded song came from is amber, so the user sees where they are.
     private func row(_ setlist: Setlist) -> some View {
-        let holdsLoaded = model.loadedPresetID != nil && model.loadedFromSetlistID == setlist.id
-        let count = setlist.presetIDs.count
+        let holdsLoaded = model.loadedSongID != nil && model.loadedFromSetlistID == setlist.id
+        let count = setlist.songIDs.count
         return Button {
             open(setlist.id)
         } label: {
@@ -73,8 +73,8 @@ struct SetlistsTab: View {
         .buttonStyle(.borderless)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(setlist.name), \(count == 1 ? "1 preset" : "\(count) presets")"
-                + (holdsLoaded ? ", has the loaded preset" : "")
+            "\(setlist.name), \(count == 1 ? "1 song" : "\(count) songs")"
+                + (holdsLoaded ? ", has the loaded song" : "")
         )
         .accessibilityAddTraits(.isButton)
         .sheetRow()
@@ -219,17 +219,17 @@ struct SetlistHeader: View {
     }
 }
 
-/// Ticks the library's presets in or out of a setlist, and creates new ones on the spot.
-struct AddPresetsView: View {
+/// Ticks the library's songs in or out of a setlist, and creates new ones on the spot.
+struct AddSongsView: View {
     @Environment(MetronomeModel.self) private var model
     let setlistID: UUID
     let done: () -> Void
 
-    @State private var isNewPresetShown = false
+    @State private var isNewSongShown = false
 
     private var setlistName: String { model.library.setlist(id: setlistID)?.name ?? "setlist" }
-    private var members: [UUID] { model.library.setlist(id: setlistID)?.presetIDs ?? [] }
-    private var presets: [Preset] { model.library.sortedPresets }
+    private var members: [UUID] { model.library.setlist(id: setlistID)?.songIDs ?? [] }
+    private var songs: [Song] { model.library.sortedSongs }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -242,47 +242,47 @@ struct AddPresetsView: View {
                 .accessibilityLabel("Add to \(setlistName)")
                 .accessibilityAddTraits(.isHeader)
             } trailing: {
-                // Grey while the library is empty, so New preset is the one amber button.
-                PillButton(text: "Done", look: presets.isEmpty ? .neutral : .filled, action: done)
+                // Grey while the library is empty, so New song is the one amber button.
+                PillButton(text: "Done", look: songs.isEmpty ? .neutral : .filled, action: done)
             }
-            if presets.isEmpty {
+            if songs.isEmpty {
                 EmptyListMessage(
-                    title: "No presets in library yet",
+                    title: "No songs in library yet",
                     text: "Create one here, and it goes straight into \(setlistName)."
                 ) {
-                    PillButton(text: "New preset", symbol: "plus", size: .large) { isNewPresetShown = true }
+                    PillButton(text: "New song", symbol: "plus", size: .large) { isNewSongShown = true }
                 }
             } else {
                 list
             }
         }
-        .sheet(isPresented: $isNewPresetShown) {
-            PresetSheet(purpose: .library(setlistID: setlistID))
+        .sheet(isPresented: $isNewSongShown) {
+            SongSheet(purpose: .library(setlistID: setlistID))
                 .environment(model)
         }
     }
 
     private var list: some View {
         List {
-            ActionRow(text: "New preset", symbol: "plus") { isNewPresetShown = true }
+            ActionRow(text: "New song", symbol: "plus") { isNewSongShown = true }
                 .sheetRow()
-            ForEach(presets) { preset in
-                let isIncluded = members.contains(preset.id)
+            ForEach(songs) { song in
+                let isIncluded = members.contains(song.id)
                 Button {
                     if isIncluded {
                         // No Undo here: ticking it again puts it back, at the end.
-                        _ = model.removePreset(preset.id, fromSetlist: setlistID)
+                        _ = model.removeSong(song.id, fromSetlist: setlistID)
                     } else {
-                        model.setPreset(preset.id, inSetlist: setlistID, included: true)
+                        model.setSong(song.id, inSetlist: setlistID, included: true)
                     }
                 } label: {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(preset.name)
+                            Text(song.name)
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(Theme.dialWhite)
                                 .lineLimit(1)
-                            Text(preset.detail)
+                            Text(song.detail)
                                 .font(.system(size: 13))
                                 .foregroundStyle(Theme.muted)
                         }
@@ -297,7 +297,7 @@ struct AddPresetsView: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(preset.spokenDescription)
+                .accessibilityLabel(song.spokenDescription)
                 .accessibilityValue(isIncluded ? "in the setlist" : "not in the setlist")
                 .accessibilityAddTraits(.isButton)
                 .sheetRow()

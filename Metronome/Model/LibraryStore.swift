@@ -1,24 +1,24 @@
 import Foundation
 
-/// The library plus what is loaded and shown: everything about presets that is kept between launches.
+/// The library plus what is loaded and shown: everything about songs that is kept between launches.
 struct LibraryState: Codable, Equatable, Sendable {
     var library = Library()
-    var loadedPresetID: UUID?
-    /// The setlist the loaded preset was loaded from. Always one that contains it.
+    var loadedSongID: UUID?
+    /// The setlist the loaded song was loaded from. Always one that contains it.
     var loadedFromSetlistID: UUID?
-    /// What the library sheet shows; nil means all presets.
+    /// What the library sheet shows; nil means all songs.
     var selectedSetlistID: UUID?
 
-    /// Drops anything that points at a preset or setlist that is no longer there.
+    /// Drops anything that points at a song or setlist that is no longer there.
     func sanitized() -> LibraryState {
         var copy = self
         copy.library = library.sanitized()
-        if let id = copy.loadedPresetID, copy.library.preset(id: id) == nil {
-            copy.loadedPresetID = nil
+        if let id = copy.loadedSongID, copy.library.song(id: id) == nil {
+            copy.loadedSongID = nil
         }
         if let id = copy.loadedFromSetlistID {
-            let members = copy.library.setlist(id: id)?.presetIDs ?? []
-            if copy.loadedPresetID.map(members.contains) != true {
+            let members = copy.library.setlist(id: id)?.songIDs ?? []
+            if copy.loadedSongID.map(members.contains) != true {
                 copy.loadedFromSetlistID = nil
             }
         }
@@ -29,23 +29,33 @@ struct LibraryState: Codable, Equatable, Sendable {
     }
 }
 
-/// The library as the app stored it before records carried change times.
+/// The library as the app stored it before records carried change times, when songs were called presets.
 private struct StoredLegacyState: Decodable {
     struct Contents: Decodable {
-        var presets: [Preset]
+        var songs: [Song]
         var setlists: [Setlist]
+
+        private enum CodingKeys: String, CodingKey {
+            case setlists
+            case songs = "presets"
+        }
     }
 
     var library: Contents
-    var loadedPresetID: UUID?
+    var loadedSongID: UUID?
     var loadedFromSetlistID: UUID?
     var selectedSetlistID: UUID?
+
+    private enum CodingKeys: String, CodingKey {
+        case library, loadedFromSetlistID, selectedSetlistID
+        case loadedSongID = "loadedPresetID"
+    }
 
     /// The same library as records, every part at SyncClock.legacy.
     var converted: LibraryState {
         LibraryState(
-            library: Library(legacyPresets: library.presets, legacySetlists: library.setlists),
-            loadedPresetID: loadedPresetID,
+            library: Library(legacySongs: library.songs, legacySetlists: library.setlists),
+            loadedSongID: loadedSongID,
             loadedFromSetlistID: loadedFromSetlistID,
             selectedSetlistID: selectedSetlistID
         )

@@ -1,34 +1,34 @@
 import SwiftUI
 
-/// The library: a tall sheet over the metronome that lists presets, either all of
+/// The library: a tall sheet over the metronome that lists songs, either all of
 /// them or one setlist's, and leads to the setlist screens.
 struct LibrarySheet: View {
     @Environment(MetronomeModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
-    /// The top level has two tabs, all the presets and the list of setlists. A setlist opens
-    /// from its tab, and is changed in its own view; adding presets opens from there.
+    /// The top level has two tabs, all the songs and the list of setlists. A setlist opens
+    /// from its tab, and is changed in its own view; adding songs opens from there.
     enum Mode {
-        case presets, setlists, setlist, adding
+        case songs, setlists, setlist, adding
     }
 
-    @State private var mode = Mode.presets
+    @State private var mode = Mode.songs
     /// The setlist just made with New setlist, until its view has asked for a name once.
     @State private var namingID: UUID?
     /// The setlist just made with New setlist, until the user leaves it. Left Untitled and
     /// empty, with ‹ or by closing the library, it is not kept.
     @State private var creatingID: UUID?
-    /// The last preset taken out of a setlist, while it can still be put back.
+    /// The last song taken out of a setlist, while it can still be put back.
     @State private var removal: MetronomeModel.SetlistRemoval?
 
     var body: some View {
         VStack(spacing: 0) {
             switch mode {
-            case .presets:
-                presetList(setlistID: nil)
+            case .songs:
+                songList(setlistID: nil)
             case .setlists:
                 SetlistsTab(
-                    showPresets: { mode = .presets },
+                    showSongs: { mode = .songs },
                     open: { id in
                         model.selectFilter(id)
                         mode = .setlist
@@ -37,11 +37,11 @@ struct LibrarySheet: View {
                 )
             case .setlist:
                 if let id = model.selectedSetlistID {
-                    presetList(setlistID: id)
+                    songList(setlistID: id)
                 }
             case .adding:
                 if let id = model.selectedSetlistID {
-                    AddPresetsView(setlistID: id) { mode = .setlist }
+                    AddSongsView(setlistID: id) { mode = .setlist }
                 }
             }
         }
@@ -49,7 +49,7 @@ struct LibrarySheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .overlay(alignment: .bottom) {
             if let removal {
-                UndoBar(text: "Removed \(removal.presetName)") {
+                UndoBar(text: "Removed \(removal.songName)") {
                     model.undo(removal)
                     self.removal = nil
                 }
@@ -63,8 +63,8 @@ struct LibrarySheet: View {
             try? await Task.sleep(for: .seconds(6))
             if !Task.isCancelled { removal = nil }
         }
-        // The library opens on all the presets, so a song can be picked at once. When the
-        // loaded preset came from a setlist it opens inside that setlist, where the user is.
+        // The library opens on all the songs, so a song can be picked at once. When the
+        // loaded song came from a setlist it opens inside that setlist, where the user is.
         .onAppear {
             if model.loadedFromSetlistID != nil {
                 model.showLoadedSetlist()
@@ -85,8 +85,8 @@ struct LibrarySheet: View {
         }
     }
 
-    private func presetList(setlistID: UUID?) -> some View {
-        PresetListView(
+    private func songList(setlistID: UUID?) -> some View {
+        SongListView(
             setlistID: setlistID,
             focusesName: setlistID != nil && setlistID == namingID,
             isNew: setlistID != nil && setlistID == creatingID,
@@ -95,11 +95,11 @@ struct LibrarySheet: View {
                 leaveNewSetlist()
                 mode = .setlists
             },
-            addPresets: {
+            addSongs: {
                 namingID = nil
                 mode = .adding
             },
-            newSetlist: { presetID in startCreating(with: presetID) },
+            newSetlist: { songID in startCreating(with: songID) },
             removed: { removal = $0 },
             orderChanged: { removal = nil },
             close: { dismiss() }
@@ -108,10 +108,10 @@ struct LibrarySheet: View {
         .id(setlistID)
     }
 
-    /// Makes a setlist, optionally starting with one preset, and opens it for naming.
-    private func startCreating(with presetID: UUID?) {
+    /// Makes a setlist, optionally starting with one song, and opens it for naming.
+    private func startCreating(with songID: UUID?) {
         let id = model.createSetlist()
-        if let presetID { model.setPreset(presetID, inSetlist: id, included: true) }
+        if let songID { model.setSong(songID, inSetlist: id, included: true) }
         namingID = id
         creatingID = id
         mode = .setlist
@@ -126,16 +126,16 @@ struct LibrarySheet: View {
     }
 }
 
-/// The switch at the top of the library: all the presets, or the list of setlists.
+/// The switch at the top of the library: all the songs, or the list of setlists.
 struct LibraryTabs: View {
-    enum Tab { case presets, setlists }
+    enum Tab { case songs, setlists }
 
     let selected: Tab
     let select: (Tab) -> Void
 
     var body: some View {
         HStack(spacing: 0) {
-            tab("Presets", .presets)
+            tab("Songs", .songs)
             tab("Setlists", .setlists)
         }
         .padding(3)
@@ -334,38 +334,38 @@ struct PillButton: View {
     }
 }
 
-/// The list of presets: all of them A–Z on the Presets tab, or one setlist's in its own order.
-private struct PresetListView: View {
+/// The list of songs: all of them A–Z on the Songs tab, or one setlist's in its own order.
+private struct SongListView: View {
     @Environment(MetronomeModel.self) private var model
-    /// The setlist to show; nil for all the presets.
+    /// The setlist to show; nil for all the songs.
     let setlistID: UUID?
     /// True for a setlist just made with New setlist: its name is ready for typing.
     let focusesName: Bool
     /// True for a setlist just made with New setlist: until named it shows no title, only
     /// the grey Untitled placeholder.
     let isNew: Bool
-    /// Goes to the Setlists tab: from the Presets tab, or back up from a setlist.
+    /// Goes to the Setlists tab: from the Songs tab, or back up from a setlist.
     let showSetlists: () -> Void
-    let addPresets: () -> Void
-    /// Makes a setlist that starts with the given preset and opens it for naming.
+    let addSongs: () -> Void
+    /// Makes a setlist that starts with the given song and opens it for naming.
     let newSetlist: (UUID) -> Void
     let removed: (MetronomeModel.SetlistRemoval) -> Void
     /// The setlist's order changed, so an earlier removal can no longer be put back in place.
     let orderChanged: () -> Void
     let close: () -> Void
 
-    @State private var isNewPresetShown = false
-    /// The preset open in the Edit preset sheet.
-    @State private var editingPreset: Preset?
-    @State private var deleting: Preset?
+    @State private var isNewSongShown = false
+    /// The song open in the Edit song sheet.
+    @State private var editingSong: Song?
+    @State private var deleting: Song?
     @State private var isDeleteSetlistShown = false
 
     private var setlist: Setlist? {
         setlistID.flatMap(model.library.setlist(id:))
     }
 
-    private var presets: [Preset] {
-        setlist.map { model.library.presets(inSetlist: $0.id) } ?? model.library.sortedPresets
+    private var songs: [Song] {
+        setlist.map { model.library.songs(inSetlist: $0.id) } ?? model.library.sortedSongs
     }
 
     var body: some View {
@@ -385,42 +385,42 @@ private struct PresetListView: View {
             } else {
                 // The top level: the tabs take the title's place.
                 SheetHeader {
-                    LibraryTabs(selected: .presets) { tab in
+                    LibraryTabs(selected: .songs) { tab in
                         if tab == .setlists { showSetlists() }
                     }
                 } trailing: {
                     // While the library is empty the button is in the middle instead. Its
                     // place stays, so the tabs keep their width.
-                    PillButton(text: "New preset", symbol: "plus") { isNewPresetShown = true }
-                        .hiddenInPlace(presets.isEmpty)
+                    PillButton(text: "New song", symbol: "plus") { isNewSongShown = true }
+                        .hiddenInPlace(songs.isEmpty)
                 }
             }
             // An empty setlist says so in the middle of the screen; a count of 0 adds nothing.
-            if setlist != nil, !presets.isEmpty {
-                SectionLabel(text: presets.count == 1 ? "1 PRESET" : "\(presets.count) PRESETS")
+            if setlist != nil, !songs.isEmpty {
+                SectionLabel(text: songs.count == 1 ? "1 SONG" : "\(songs.count) SONGS")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 8)
             }
-            if presets.isEmpty {
+            if songs.isEmpty {
                 emptyState
             } else {
                 list
             }
         }
-        .sheet(isPresented: $isNewPresetShown) {
-            PresetSheet(purpose: .library(setlistID: setlist?.id))
+        .sheet(isPresented: $isNewSongShown) {
+            SongSheet(purpose: .library(setlistID: setlist?.id))
                 .environment(model)
         }
-        .sheet(item: $editingPreset) { preset in
-            PresetSheet(purpose: .edit(preset))
+        .sheet(item: $editingSong) { song in
+            SongSheet(purpose: .edit(song))
                 .environment(model)
         }
-        .alert("Delete “\(deleting?.name ?? "")”?", isPresented: isPresented($deleting), presenting: deleting) { preset in
-            Button("Delete", role: .destructive) { model.deletePreset(preset.id) }
+        .alert("Delete “\(deleting?.name ?? "")”?", isPresented: isPresented($deleting), presenting: deleting) { song in
+            Button("Delete", role: .destructive) { model.deleteSong(song.id) }
             Button("Cancel", role: .cancel) {}
-        } message: { preset in
-            Text(deleteMessage(for: preset))
+        } message: { song in
+            Text(deleteMessage(for: song))
         }
         .alert("Delete “\(setlist?.name ?? "")”?", isPresented: $isDeleteSetlistShown) {
             Button("Delete", role: .destructive) {
@@ -428,12 +428,12 @@ private struct PresetListView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Its presets stay in the library.")
+            Text("Its songs stay in the library.")
         }
     }
 
-    private func deleteMessage(for preset: Preset) -> String {
-        let count = model.library.setlistCount(containing: preset.id)
+    private func deleteMessage(for song: Song) -> String {
+        let count = model.library.setlistCount(containing: song.id)
         switch count {
         case 0: return "It is not in any setlist."
         case 1: return "It will also be removed from 1 setlist."
@@ -444,35 +444,35 @@ private struct PresetListView: View {
     private var list: some View {
         ScrollViewReader { proxy in
             List {
-                // Only the full library offers it, and only while there is a preset to unload.
-                if setlist == nil, model.loadedPreset != nil {
-                    NoPresetRow(settings: model.settings) {
-                        model.clearPreset()
+                // Only the full library offers it, and only while there is a song to unload.
+                if setlist == nil, model.loadedSong != nil {
+                    NoSongRow(settings: model.settings) {
+                        model.clearSong()
                         close()
                     }
                     .sheetRow()
                 }
-                ForEach(Array(presets.enumerated()), id: \.element.id) { index, preset in
-                    PresetRow(
-                        preset: preset,
+                ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
+                    SongRow(
+                        song: song,
                         number: setlist == nil ? nil : index + 1,
-                        isLoaded: preset.id == model.loadedPresetID,
+                        isLoaded: song.id == model.loadedSongID,
                         load: {
-                            model.loadPreset(preset.id, from: setlist?.id)
+                            model.loadSong(song.id, from: setlist?.id)
                             close()
                         },
-                        menu: { rowMenu(for: preset) }
+                        menu: { rowMenu(for: song) }
                     )
                     .sheetRow()
                     // The swipe is a shortcut to the two most common items of the row's menu.
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if let setlist {
-                            Button("Remove") { remove(preset, from: setlist) }
+                            Button("Remove") { remove(song, from: setlist) }
                                 .tint(Color(hex: 0x3A3A3F))
                         } else {
-                            Button("Delete") { deleting = preset }
+                            Button("Delete") { deleting = song }
                                 .tint(Theme.red)
-                            Button("Edit") { editingPreset = preset }
+                            Button("Edit") { editingSong = song }
                                 .tint(Color(hex: 0x3A3A3F))
                         }
                     }
@@ -480,7 +480,7 @@ private struct PresetListView: View {
                 // Only a setlist has an order of its own to change.
                 .onMove(perform: moveAction)
                 if setlist != nil {
-                    ActionRow(text: "Add preset", symbol: "plus", action: addPresets)
+                    ActionRow(text: "Add song", symbol: "plus", action: addSongs)
                         .sheetRow()
                         .moveDisabled(true)
                 }
@@ -488,26 +488,26 @@ private struct PresetListView: View {
             .sheetList()
             // A setlist's rows always show their drag handles; there is no separate edit mode.
             .environment(\.editMode, editMode)
-            // The library opens where the user is: with the loaded preset's row in view.
+            // The library opens where the user is: with the loaded song's row in view.
             // Without an anchor the list moves only as far as it must, so a row that is
             // already on screen leaves the list at its top.
             .onAppear {
-                if let loaded = model.loadedPresetID { proxy.scrollTo(loaded) }
+                if let loaded = model.loadedSongID { proxy.scrollTo(loaded) }
             }
         }
     }
 
-    /// Everything that can be done with a preset, the same in every list.
+    /// Everything that can be done with a song, the same in every list.
     @ViewBuilder
-    private func rowMenu(for preset: Preset) -> some View {
+    private func rowMenu(for song: Song) -> some View {
         Menu {
             ForEach(model.library.setlistsByRecency) { candidate in
-                let isIncluded = candidate.presetIDs.contains(preset.id)
+                let isIncluded = candidate.songIDs.contains(song.id)
                 Button {
                     if isIncluded {
-                        remove(preset, from: candidate)
+                        remove(song, from: candidate)
                     } else {
-                        model.setPreset(preset.id, inSetlist: candidate.id, included: true)
+                        model.setSong(song.id, inSetlist: candidate.id, included: true)
                     }
                 } label: {
                     if isIncluded {
@@ -519,7 +519,7 @@ private struct PresetListView: View {
             }
             Divider()
             Button {
-                newSetlist(preset.id)
+                newSetlist(song.id)
             } label: {
                 Label("New setlist", systemImage: "plus")
             }
@@ -528,27 +528,27 @@ private struct PresetListView: View {
         }
         // Edit holds the name too, so there is no separate Rename.
         Button {
-            editingPreset = preset
+            editingSong = song
         } label: {
             Label("Edit", systemImage: "pencil")
         }
         if let setlist {
             Button {
-                remove(preset, from: setlist)
+                remove(song, from: setlist)
             } label: {
                 // Without the setlist's name: with it the item wraps onto two lines.
                 Label("Remove from setlist", systemImage: "minus.circle")
             }
         }
         Button(role: .destructive) {
-            deleting = preset
+            deleting = song
         } label: {
             Label("Delete", systemImage: "trash")
         }
     }
 
-    private func remove(_ preset: Preset, from setlist: Setlist) {
-        if let removal = model.removePreset(preset.id, fromSetlist: setlist.id) { removed(removal) }
+    private func remove(_ song: Song, from setlist: Setlist) {
+        if let removal = model.removeSong(song.id, fromSetlist: setlist.id) { removed(removal) }
     }
 
     private var editMode: Binding<EditMode> {
@@ -561,7 +561,7 @@ private struct PresetListView: View {
 
     private func move(from source: IndexSet, to destination: Int) {
         guard let setlist else { return }
-        var order = presets.map(\.id)
+        var order = songs.map(\.id)
         order.move(fromOffsets: source, toOffset: destination)
         model.reorderSetlist(setlist.id, to: order)
         orderChanged()
@@ -572,28 +572,28 @@ private struct PresetListView: View {
             if setlist == nil {
                 // Making one is the only thing to do, so the button is here, not in the header.
                 EmptyListMessage(
-                    title: "No presets yet",
-                    text: "A preset is a tempo, time signature and accents saved under a name, usually one per song."
+                    title: "No songs yet",
+                    text: "A song is a tempo, time signature and accents saved under a name."
                 ) {
-                    PillButton(text: "New preset", symbol: "plus", size: .large) { isNewPresetShown = true }
+                    PillButton(text: "New song", symbol: "plus", size: .large) { isNewSongShown = true }
                 }
             } else {
                 // Adding is the only thing to do here, so its button is the amber one.
                 EmptyListMessage(
-                    title: "No presets in this setlist",
-                    text: "Add the presets you want to play, in the order you want them."
+                    title: "No songs in this setlist",
+                    text: "Add the songs you want to play, in the order you want them."
                 ) {
-                    PillButton(text: "Add preset", symbol: "plus", size: .large, action: addPresets)
+                    PillButton(text: "Add song", symbol: "plus", size: .large, action: addSongs)
                 }
             }
         }
     }
 }
 
-/// One preset: name, tempo and time signature. Tapping it loads it; the ⋯ button at the
+/// One song: name, tempo and time signature. Tapping it loads it; the ⋯ button at the
 /// end opens the row's menu.
-private struct PresetRow<MenuContent: View>: View {
-    let preset: Preset
+private struct SongRow<MenuContent: View>: View {
+    let song: Song
     let number: Int?
     let isLoaded: Bool
     let load: () -> Void
@@ -610,11 +610,11 @@ private struct PresetRow<MenuContent: View>: View {
                             .frame(width: 24, alignment: .leading)
                     }
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(preset.name)
+                        Text(song.name)
                             .font(.system(size: 17, weight: isLoaded ? .bold : .semibold))
                             .foregroundStyle(isLoaded ? Theme.amber : Theme.dialWhite)
                             .lineLimit(1)
-                        Text(preset.detail + (isLoaded ? " · loaded" : ""))
+                        Text(song.detail + (isLoaded ? " · loaded" : ""))
                             .font(.system(size: 13))
                             .foregroundStyle(Theme.muted)
                             .lineLimit(1)
@@ -626,7 +626,7 @@ private struct PresetRow<MenuContent: View>: View {
             }
             .buttonStyle(.borderless)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(preset.spokenDescription + (isLoaded ? ", loaded" : ""))
+            .accessibilityLabel(song.spokenDescription + (isLoaded ? ", loaded" : ""))
             .accessibilityAddTraits(.isButton)
             Menu {
                 menu
@@ -634,26 +634,26 @@ private struct PresetRow<MenuContent: View>: View {
                 MoreButtonLabel()
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("More for \(preset.name)")
+            .accessibilityLabel("More for \(song.name)")
         }
         .frame(height: 62)
     }
 }
 
-/// The first row of the Presets tab, shown only while a preset is loaded. Tapping it unloads
-/// the preset and keeps the settings. It has no menu button, so it does not pass for a preset.
-private struct NoPresetRow: View {
+/// The first row of the Songs tab, shown only while a song is loaded. Tapping it unloads
+/// the song and keeps the settings. It has no menu button, so it does not pass for a song.
+private struct NoSongRow: View {
     let settings: MetronomeSettings
     let choose: () -> Void
 
     var body: some View {
         Button(action: choose) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("No preset")
+                Text("No song")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Theme.dialWhite)
                 // What happens first, then what is kept; a narrow screen cuts the end.
-                Text("Unload current preset, keep \(settings.bpm) BPM · \(settings.timeSignature.rawValue)")
+                Text("Unload current song, keep \(settings.bpm) BPM · \(settings.timeSignature.rawValue)")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
@@ -664,15 +664,15 @@ private struct NoPresetRow: View {
         }
         .buttonStyle(.borderless)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("No preset")
+        .accessibilityLabel("No song")
         .accessibilityHint(
-            "Unloads the current preset and keeps \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)"
+            "Unloads the current song and keeps \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)"
         )
         .accessibilityAddTraits(.isButton)
     }
 }
 
-extension Preset {
+extension Song {
     /// For example "120 BPM · 4/4".
     var detail: String {
         "\(settings.bpm) BPM · \(settings.timeSignature.rawValue)"

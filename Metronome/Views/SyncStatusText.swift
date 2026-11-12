@@ -20,7 +20,7 @@ struct SyncStatusText: Equatable {
     let row: Row?
     let footer: String
 
-    static let generalFooter = "Keeps your presets and setlists the same on every device signed in to your iCloud account. Your settings stay separate on each device."
+    static let generalFooter = "Keeps your songs and setlists the same on every device signed in to your iCloud account. Your settings stay separate on each device."
 
     /// "Today" is decided with `calendar`; the time and date follow the phone's own formats.
     init(status: SyncStatus?, now: Date, calendar: Calendar) {
@@ -43,13 +43,13 @@ struct SyncStatusText: Equatable {
             footer = Self.generalFooter
         case .notSignedIn:
             row = Row(dot: .amber, text: "Not signed in to iCloud", textTone: .amber, detail: nil)
-            footer = "Sign in to iCloud in the Settings app to sync. Until then your presets and setlists stay on this iPhone."
+            footer = "Sign in to iCloud in the Settings app to sync. Until then your songs and setlists stay on this iPhone."
         case .full:
             row = Row(dot: .amber, text: "iCloud storage is full", textTone: .amber, detail: nil)
-            footer = "Delete presets or setlists you no longer need to make room. Until then some changes stay on this iPhone."
+            footer = "Delete songs or setlists you no longer need to make room. Until then some changes stay on this iPhone."
         case .needsUpdate:
             row = Row(dot: .amber, text: "Update the app to keep syncing", textTone: .amber, detail: nil)
-            footer = "Another of your devices has a newer version of the app. Until this one is updated, your presets and setlists stay on this iPhone."
+            footer = "Another of your devices has a newer version of the app. Until this one is updated, your songs and setlists stay on this iPhone."
         }
     }
 }

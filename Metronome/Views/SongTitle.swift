@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// The loaded preset's name in the header. Tapping it always opens the library; saving
+/// The loaded song's name in the header. Tapping it always opens the library; saving
 /// and reverting unsaved changes belong to the save controls in the dial's gap (or, on a
 /// small dial, to the Save button beside the title).
-struct PresetTitle: View {
+struct SongTitle: View {
     @Environment(MetronomeModel.self) private var model
     /// False while the Save button is beside the title: it takes width from the name, and
     /// the chevron's place gives some of it back.
@@ -45,10 +45,10 @@ struct PresetTitle: View {
     }
 }
 
-/// The amber split pill in the header while the loaded preset has unsaved changes, on a
+/// The amber split pill in the header while the loaded song has unsaved changes, on a
 /// dial too small for the save controls in its gap (iPhone SE and the like). Its
-/// Save part writes them into the preset in one tap; its ˅ part opens a menu with the
-/// other two ways out: saving as a new preset, and going back to the saved one.
+/// Save part writes them into the song in one tap; its ˅ part opens a menu with the
+/// other two ways out: saving as a new song, and going back to the saved one.
 struct SaveButton: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isSaveAsShown = false
@@ -76,7 +76,7 @@ struct SaveButton: View {
                 Button {
                     isSaveAsShown = true
                 } label: {
-                    Label("Save as new preset", systemImage: "plus.square.on.square")
+                    Label("Save as new song", systemImage: "plus.square.on.square")
                 }
                 Button {
                     model.discardChanges()
@@ -135,7 +135,7 @@ struct SaveButton: View {
         .background(model.isSaveConfirmed ? Theme.green.opacity(0.16) : Theme.amber, in: Capsule())
         .clipShape(Capsule())
         .sheet(isPresented: $isSaveAsShown) {
-            PresetSheet(purpose: .saveAsNew)
+            SongSheet(purpose: .saveAsNew)
                 .environment(model)
         }
     }
