@@ -6,6 +6,7 @@ enum ClickSound: String, CaseIterable, Codable, Sendable {
     case mallet
     case glass
     case tick
+    /// Shown as Pendulum. Keeps its earlier name so a saved choice still loads.
     case classic
 
     static let `default` = ClickSound.digital
@@ -18,7 +19,7 @@ enum ClickSound: String, CaseIterable, Codable, Sendable {
         case .mallet: "Mallet"
         case .glass: "Glass"
         case .tick: "Tick"
-        case .classic: "Classic"
+        case .classic: "Pendulum"
         }
     }
 }

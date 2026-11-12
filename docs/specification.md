@@ -319,7 +319,7 @@ A bottom sheet over a dimmed screen, styled like the New song sheet: a grabber, 
 **Click sound** is one surface-raised card with 16 pt corners:
 
 - A header line: `CLICK SOUND` (13 pt, semibold, capitals, wide letter spacing, muted) and, at the right, `Tap to hear it` (13 pt, muted dim).
-- One 44 pt row per sound, in this order: Digital, Soft beep, Woodblock, Mallet, Glass, Tick, Classic. Each row shows only the name (16 pt, dial white). Thin line-coloured dividers separate the rows and start at the text edge.
+- One 44 pt row per sound, in this order: Digital, Soft beep, Woodblock, Mallet, Glass, Tick, Pendulum. Each row shows only the name (16 pt, dial white). Thin line-coloured dividers separate the rows and start at the text edge.
 - The selected sound's name is amber and semibold, with an amber tick at the right. The tick has a fixed slot, so names line up in every row.
 
 Below the card: `Use your phone's volume buttons to set how loud the click is.` (13 pt, muted).
@@ -678,21 +678,23 @@ Titled `Edit song`, with `Save changes`. Opened with Edit in a song's row menu, 
 
 ### 11.1 Click sounds
 
-"Decay" is the time constant of an exponential fade. Levels in brackets are relative to the sound's first component. The noise in Woodblock, Tick and Classic comes from a fixed seed, so a sound is identical every time.
+"Decay" is the time constant of an exponential fade. Levels in brackets are relative to the sound's first component. "Saturated" means passed through tanh(d · x / peak) / tanh(d) with the drive d given, which fills out the body and adds harmonics. The noise in Woodblock and Tick comes from a fixed seed, so a sound is identical every time.
 
 | Sound | How it is made | Accented | Normal |
 |---|---|---|---|
-| Digital | A sine burst that starts at its peak, 5 ms decay, 30 ms long. | 1760 Hz | 1175 Hz |
-| Soft beep | A sine with a 1 ms fade-in. | 1568 Hz, 22 ms decay, 90 ms long | 1047 Hz, 18 ms decay, 80 ms long |
-| Woodblock | Sines at f (14 ms decay), 2.65 f (0.45, 6 ms) and 4.1 f (0.15, 3 ms), plus a noise strike (0.8 ms decay) band-passed at 3 f (0.6). 70 ms long. | f = 1180 Hz | f = 880 Hz |
-| Mallet | Sines at f (45 ms decay), 4 f (0.30, 12 ms) and 9.9 f (0.06, 4 ms), 0.7 ms fade-in. 140 ms long. | f = 1047 Hz | f = 784 Hz |
-| Glass | An FM bell: carrier f, modulator 3.5 f, modulation index 2.2 with 12 ms decay, amplitude decay 38 ms, 0.6 ms fade-in. 140 ms long. | f = 1760 Hz | f = 1319 Hz |
-| Tick | Noise, high-passed at 6 kHz, plus the same noise through a band-pass (Q 4, 0.8). 60 ms long. | 8 ms decay, band-pass at 5.2 kHz | 5 ms decay, band-pass at 7.5 kHz |
-| Classic | A noise burst (2.5 ms decay, 50 ms long) through band-passes at 2.4 kHz (Q 6) and 950 Hz (Q 8, 0.7), plus a high-passed layer at 4 kHz (0.25). | Both band-passes 1.2 × higher | As described |
+| Digital | A sine burst that starts at its peak, 30 ms decay, 150 ms long. | 1760 Hz | 1175 Hz |
+| Soft beep | A sine held flat: 1 ms raised-cosine fade-in, 35 ms hold, then 8 ms decay. 70 ms long. | 1568 Hz | 1047 Hz |
+| Woodblock | Sines at f (20 ms decay), 0.5 f (0.6, 25 ms), 2.65 f (0.4, 6 ms) and 4.1 f (0.15, 3 ms) with a 0.5 ms fade-in, plus a noise strike band-passed at 3 f (Q 2) and then faded (1.2 ms decay, 0.5). Saturated, drive 2.5. 80 ms long. | f = 1180 Hz | f = 880 Hz |
+| Mallet | Sines at f (45 ms decay), 4 f (0.4, 15 ms) and 10 f (0.1, 4 ms), 0.8 ms fade-in. Saturated, drive 2. 120 ms long. | f = 1047 Hz | f = 784 Hz |
+| Glass | An FM bell: carrier f, modulator 3.5 f, modulation index 2.2 with 25 ms decay, amplitude decay 45 ms, 0.6 ms fade-in. 140 ms long. | f = 1760 Hz | f = 1319 Hz |
+| Tick | A watch tick. Sines at f (6 ms decay), 1.48 f (0.7, 4 ms) and 2.3 f (0.4, 3 ms) with a 0.3 ms fade-in, 40 ms long, plus a strike (0.5): 6 ms of noise band-passed at 1.8 f (Q 1.5), then faded (0.5 ms decay). Saturated, drive 2. | f = 4000 Hz | f = 3000 Hz |
+| Pendulum | A clock's escapement. A ping of sines at 3200 p (4 ms decay), 4750 p (0.6, 3 ms) and 7300 p (0.3, 2 ms), 30 ms long, at 0.7, over a body of sines at 700 p (14 ms decay) and 1350 p (0.6, 9 ms), 70 ms long; both with a 0.3 ms fade-in. Saturated, drive 2. | p = 1.33 | p = 1 |
 
 Rules for every sound:
 
-- **Loudness.** The click must hold its own against music played at the same system volume, since the phone has one media volume for both. The normal variants of all seven sounds are at −11 dBFS, measured as RMS over their first 20 ms. Each accented variant is 4 dB louder than its normal variant. To get there without clipping, each sound goes through a soft limiter: samples below half of full scale are untouched, and louder ones bend smoothly (tanh) towards a ceiling of 0.95, so no peak reaches full scale.
+- **Loudness.** The click must hold its own against music played at the same system volume, since the phone has one media volume for both. Loudness is measured on the scale music is mastered to (ITU-R BS.1770, LUFS, K-weighted, the click on both channels) over the first 100 ms of the sound, about as long as the ear takes to judge a short sound. The accented variant is raised to −2 LUFS and the normal variant to −6 LUFS. To get there without clipping, each sound goes through a soft limiter: samples below half of full scale are untouched, and louder ones bend smoothly (tanh) towards a ceiling of 0.95, so no peak reaches full scale.
+- **No crushing.** A sound's peak is never pushed more than 6 dB past the limiter's ceiling (8 dB for Digital, a pure tone that was judged by ear to take it). A dry, short sound that cannot reach its target within that stays quieter instead, and its normal variant then sits 4 dB under its accent. Today that is Woodblock (accent −3.9, normal −7.9 LUFS), Pendulum (−7.6, −11.6) and Tick (−7.8, −11.8); Digital, Soft beep, Mallet and Glass reach the full level.
+- **Accent.** Each accented variant is 4 dB louder than its normal variant.
 - **Attack.** The click must be heard at its scheduled time: every sound reaches half of its peak within 1 ms of its start.
 - **Length.** No sound is longer than 150 ms, so each one ends well before the next beat at 300 BPM (200 ms). The last 3 ms fade to silence.
 

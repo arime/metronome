@@ -14,13 +14,11 @@ struct ClickSynthTests {
         return (0..<Int(buffer.frameLength)).map { channel[$0] }
     }
 
-    private func rmsOfFirst20ms(_ samples: [Float], sampleRate: Double = 48_000) -> Double {
-        let count = Int(0.020 * sampleRate)
-        let sum = samples.prefix(count).reduce(0.0) { $0 + Double($1) * Double($1) }
-        return (sum / Double(count)).squareRoot()
+    private func loudness(_ sound: ClickSound, accented: Bool, sampleRate: Double = 48_000) -> Double {
+        let click = samples(sound, accented: accented, sampleRate: sampleRate).map(Double.init)
+        let padded = click + Array(repeating: 0, count: Int(ClickSynth.loudnessWindow * sampleRate))
+        return ClickSynth.loudness(padded, sampleRate: sampleRate)
     }
-
-    private func decibels(_ ratio: Double) -> Double { 20 * log10(ratio) }
 
     @Test(arguments: ClickSound.allCases, sampleRates)
     func noSoundIsLongerThan150ms(sound: ClickSound, sampleRate: Double) {
@@ -56,24 +54,31 @@ struct ClickSynthTests {
         }
     }
 
-    @Test(arguments: ClickSound.allCases, sampleRates)
-    func normalClicksAreAllEquallyLoud(sound: ClickSound, sampleRate: Double) {
-        let reference = rmsOfFirst20ms(samples(.digital, accented: false, sampleRate: sampleRate), sampleRate: sampleRate)
-        let level = rmsOfFirst20ms(samples(sound, accented: false, sampleRate: sampleRate), sampleRate: sampleRate)
-        #expect(abs(decibels(level / reference)) < 0.1)
+    /// The sounds with enough body to reach the full level without being crushed.
+    @Test(arguments: [ClickSound.digital, .softBeep, .mallet, .glass], sampleRates)
+    func fullBodiedNormalClicksAreAtMinus6LUFS(sound: ClickSound, sampleRate: Double) {
+        let level = loudness(sound, accented: false, sampleRate: sampleRate)
+        #expect(abs(level + 6) < 0.1, "\(sound) is at \(level) LUFS")
     }
 
     @Test(arguments: ClickSound.allCases, sampleRates)
-    func normalClicksAreAtMinus11dBFS(sound: ClickSound, sampleRate: Double) {
-        let level = rmsOfFirst20ms(samples(sound, accented: false, sampleRate: sampleRate), sampleRate: sampleRate)
-        #expect(abs(decibels(level) + 11) < 0.1, "\(sound) is at \(decibels(level)) dBFS")
+    func noClickIsLouderThanItsTarget(sound: ClickSound, sampleRate: Double) {
+        #expect(loudness(sound, accented: false, sampleRate: sampleRate) < -5.9)
+        #expect(loudness(sound, accented: true, sampleRate: sampleRate) < -1.9)
     }
 
     @Test(arguments: ClickSound.allCases)
     func accentsAre4dBLouder(sound: ClickSound) {
-        let accented = rmsOfFirst20ms(samples(sound, accented: true))
-        let normal = rmsOfFirst20ms(samples(sound, accented: false))
-        #expect(abs(decibels(accented / normal) - 4) < 0.1)
+        let difference = loudness(sound, accented: true) - loudness(sound, accented: false)
+        #expect(abs(difference - 4) < 0.1)
+    }
+
+    /// The loudness scale is the one music is measured on: a full-scale 997 Hz sine on both
+    /// channels is 0 LUFS in ITU-R BS.1770.
+    @Test(arguments: sampleRates)
+    func loudnessMatchesTheBroadcastReference(sampleRate: Double) {
+        let sine = (0..<Int(ClickSynth.loudnessWindow * sampleRate)).map { sin(2 * .pi * 997 * Double($0) / sampleRate) }
+        #expect(abs(ClickSynth.loudness(sine, sampleRate: sampleRate)) < 0.5)
     }
 
     @Test(arguments: ClickSound.allCases)
