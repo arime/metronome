@@ -243,7 +243,8 @@ final class MetronomeModel {
     @ObservationIgnored private var saveOfferHide: Task<Void, Never>?
     @ObservationIgnored private let saveOfferDelay: Duration
 
-    /// True for a moment after Save: the button stays and reads Saved, as the confirmation.
+    /// True from Save on: the button stays for a moment and reads Saved, as the confirmation.
+    /// It stays true while the button fades away and after, until the next change.
     private(set) var isSaveConfirmed = false
     @ObservationIgnored private let saveConfirmationTime: Duration
 
@@ -282,8 +283,11 @@ final class MetronomeModel {
         saveOfferHide = Task { [weak self, saveConfirmationTime] in
             try? await Task.sleep(for: saveConfirmationTime)
             guard !Task.isCancelled, let self else { return }
-            self.isSaveConfirmed = false
             self.isSaveOffered = self.isEdited
+            // While the button fades away it must still read Saved: going back to the
+            // amber Save look at the same moment shows as a flash of amber. The Saved
+            // look is dropped by the next change, before the button is shown again.
+            if self.isSaveOffered { self.isSaveConfirmed = false }
         }
     }
 
@@ -369,7 +373,7 @@ final class MetronomeModel {
     /// Writes the current settings into the loaded preset, and confirms it: the Save button
     /// reads Saved for a moment, with a success haptic.
     func saveChanges() {
-        guard let id = loadedPresetID, !isSaveConfirmed else { return }
+        guard let id = loadedPresetID, !(isSaveConfirmed && isSaveOffered) else { return }
         library.updatePreset(id, settings: settings, now: now())
         persistLibrary()
         confirmSave()

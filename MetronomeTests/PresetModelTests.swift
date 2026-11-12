@@ -374,8 +374,13 @@ struct PresetModelTests {
         for _ in 0..<300 where model.isSaveOffered {
             try await Task.sleep(for: .milliseconds(10))
         }
-        #expect(model.isSaveConfirmed == false)
         #expect(model.isSaveOffered == false)
+        // The button keeps its Saved look while it fades away, and shows Save again
+        // with the next change.
+        #expect(model.isSaveConfirmed)
+        model.setBPM(97)
+        #expect(model.isSaveOffered)
+        #expect(model.isSaveConfirmed == false)
     }
 
     @Test func aChangeDuringTheConfirmationBringsSaveBack() {

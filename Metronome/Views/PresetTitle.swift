@@ -104,13 +104,20 @@ struct SaveButton: View {
         .accessibilityHidden(model.isSaveConfirmed)
         .overlay {
             if model.isSaveConfirmed {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .heavy))
+                // Laid out like the button itself, so that nothing jumps: the word starts
+                // where Save did and only gains a letter, and the tick takes the chevron's
+                // place.
+                HStack(spacing: 0) {
                     Text("Saved")
                         .font(.system(size: 15, weight: .bold))
+                        .fixedSize()
+                        .padding(.leading, 16)
+                    Spacer(minLength: 0)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .heavy))
+                        .frame(width: 44)
                 }
-                .foregroundStyle(Theme.ink)
+                .foregroundStyle(Theme.green)
                 .transition(.opacity)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Saved")
@@ -121,7 +128,8 @@ struct SaveButton: View {
             // The change is silent on screen for VoiceOver, so it is spoken.
             if isConfirmed { AccessibilityNotification.Announcement("Saved").post() }
         }
-        .background(Theme.amber, in: Capsule())
+        // Amber and solid while it is a button; a green tint while it only reports.
+        .background(model.isSaveConfirmed ? Theme.green.opacity(0.16) : Theme.amber, in: Capsule())
         .clipShape(Capsule())
         .sheet(isPresented: $isSaveAsShown) {
             NewPresetSheet(purpose: .saveAsNew)
