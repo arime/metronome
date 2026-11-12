@@ -580,7 +580,8 @@ final class MetronomeModel {
         persistLibrary()
     }
 
-    /// Deletes a setlist that was created and then left alone: still unnamed and empty.
+    /// Deletes a setlist that is still Untitled and empty. Used when the user leaves a setlist
+    /// they have just created without doing anything with it.
     func discardSetlistIfUntouched(_ id: UUID) {
         guard let setlist = library.setlist(id: id),
               setlist.name == Library.defaultSetlistName, setlist.presetIDs.isEmpty

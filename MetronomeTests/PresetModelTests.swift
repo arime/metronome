@@ -152,7 +152,14 @@ struct PresetModelTests {
         #expect(model.selectedSetlistID == nil)
     }
 
-    @Test func aNewSetlistLeftUntouchedIsDiscarded() {
+    @Test func aNewSetlistIsUntitledAndShown() {
+        let model = makeModel()
+        let id = model.createSetlist()
+        #expect(model.library.setlist(id: id)?.name == "Untitled")
+        #expect(model.selectedSetlistID == id)
+    }
+
+    @Test func anUntitledEmptySetlistIsDiscarded() {
         let model = makeModel()
         let untouched = model.createSetlist()
         model.discardSetlistIfUntouched(untouched)
@@ -160,7 +167,7 @@ struct PresetModelTests {
         #expect(model.selectedSetlistID == nil)
     }
 
-    @Test func aNewSetlistWithANameOrAPresetIsKept() {
+    @Test func aSetlistWithANameOrAPresetIsNotDiscarded() {
         let model = makeModel()
         let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
         let named = model.createSetlist()
@@ -170,6 +177,14 @@ struct PresetModelTests {
         model.setPreset(preset.id, inSetlist: filled, included: true)
         model.discardSetlistIfUntouched(filled)
         #expect(model.library.setlists.count == 2)
+    }
+
+    @Test func renamingASetlistToNothingKeepsItsName() {
+        let model = makeModel()
+        let id = model.createSetlist()
+        model.renameSetlist(id, to: "Friday gig")
+        model.renameSetlist(id, to: "   ")
+        #expect(model.library.setlist(id: id)?.name == "Friday gig")
     }
 
     @Test func loadingAppliesTheSettingsWithoutStarting() {
@@ -235,14 +250,14 @@ struct PresetModelTests {
         let (model, presets, setlist) = modelWithSetlist()
         model.loadPreset(presets[1].id, from: setlist)
         #expect(model.isEdited == false)
-        #expect(model.headerSubtitle == "New setlist · 2 of 3")
+        #expect(model.headerSubtitle == "Untitled · 2 of 3")
         model.setBPM(104)
         #expect(model.isEdited)
-        #expect(model.headerSubtitle == "New setlist · 2 of 3")
-        #expect(model.headerAccessibilityLabel == "Mid, edited, New setlist · 2 of 3")
+        #expect(model.headerSubtitle == "Untitled · 2 of 3")
+        #expect(model.headerAccessibilityLabel == "Mid, edited, Untitled · 2 of 3")
         model.setBPM(100)
         #expect(model.isEdited == false)
-        #expect(model.headerAccessibilityLabel == "Mid, New setlist · 2 of 3")
+        #expect(model.headerAccessibilityLabel == "Mid, Untitled · 2 of 3")
     }
 
     @Test func aPresetLoadedOnItsOwnHasNoSecondLineEvenWhenEdited() {

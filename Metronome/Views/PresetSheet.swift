@@ -74,11 +74,12 @@ struct PresetSheet: View {
                 Button(action: save) {
                     Text(editedPreset == nil ? "Save preset" : "Save changes")
                         .font(.system(size: 18, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
+                        // Until there is a name it is grey with muted text: still readable,
+                        // but plainly not ready. Dimmed amber made the text almost vanish.
+                        .foregroundStyle(canSave ? Theme.ink : Theme.muted)
                         .frame(maxWidth: .infinity)
                         .frame(height: 60)
-                        .background(Theme.amber, in: Capsule())
-                        .opacity(canSave ? 1 : 0.35)
+                        .background(canSave ? Theme.amber : Theme.surfaceRaised, in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .disabled(!canSave)

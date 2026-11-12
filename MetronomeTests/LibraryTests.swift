@@ -105,7 +105,7 @@ struct LibraryTests {
         var library = Library()
         let one = library.addPreset(name: "One", settings: settings(100), now: now)!
         let gig = library.addSetlist(name: "  ", now: now)
-        #expect(gig.name == "New setlist")
+        #expect(gig.name == "Untitled")
         library.renameSetlist(gig.id, to: "Friday gig", now: now + 1)
         library.renameSetlist(gig.id, to: "  ", now: now + 2)
         #expect(library.setlist(id: gig.id)?.name == "Friday gig")

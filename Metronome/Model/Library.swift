@@ -19,7 +19,8 @@ struct Setlist: Codable, Equatable, Identifiable, Sendable {
 /// so a copy from another device can be combined with this one.
 struct Library: Codable, Equatable, Sendable {
     static let maxNameLength = 60
-    static let defaultSetlistName = "New setlist"
+    /// A setlist given no name. A new setlist left Untitled and empty is not kept.
+    static let defaultSetlistName = "Untitled"
 
     /// Every preset record by id, deleted ones included, so a delete marker can be passed on.
     private(set) var presetRecords: [UUID: PresetRecord] = [:]
