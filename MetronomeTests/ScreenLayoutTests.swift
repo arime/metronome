@@ -7,9 +7,12 @@ import Testing
 /// of tiles, 440 pt and 424 pt with two rows.
 struct ScreenLayoutTests {
     private func layout(
-        width: CGFloat = 375, height: CGFloat, hasBottomInset: Bool = false, beats: Int = 4
+        width: CGFloat = 375, height: CGFloat, hasBottomInset: Bool = false, beats: Int = 4,
+        hasSetlist: Bool = false
     ) -> ScreenLayout {
-        ScreenLayout(width: width, height: height, hasBottomInset: hasBottomInset, beats: beats)
+        ScreenLayout(
+            width: width, height: height, hasBottomInset: hasBottomInset, beats: beats, hasSetlist: hasSetlist
+        )
     }
 
     private func isRoomy(_ layout: ScreenLayout) -> Bool {
@@ -25,12 +28,48 @@ struct ScreenLayoutTests {
         layout.fixedHeight + layout.dialDiameter + layout.bottomPadding <= height
     }
 
-    @Test func tallPhoneGetsTheFullDesign() {
+    @Test func tallPhoneGetsTheFullDesignWithALargerDial() {
         let layout = layout(width: 402, height: 778, hasBottomInset: true)
-        #expect(layout.dialDiameter == 300)
+        #expect(layout.dialDiameter == 340)
         #expect(isRoomy(layout))
         #expect(layout.bottomPadding == 0)
         #expect(layout.fixedHeight == 418)
+    }
+
+    @Test func dialGrowsOnlyAsFarAsTheSpareHeight() {
+        #expect(layout(width: 402, height: 718, hasBottomInset: true).dialDiameter == 300)
+        #expect(layout(width: 402, height: 738, hasBottomInset: true).dialDiameter == 320)
+    }
+
+    @Test func dialNeverGrowsWiderThanTheSpaceBetweenTheMargins() {
+        #expect(layout(width: 375, height: 900, hasBottomInset: true).dialDiameter == 327)
+        #expect(layout(width: 320, height: 900).dialDiameter == 300)
+    }
+
+    @Test func aSetlistAddsTheNextUpLine() {
+        let layout = layout(width: 402, height: 778, hasBottomInset: true, hasSetlist: true)
+        #expect(layout.showsNextLine)
+        #expect(layout.fixedHeight == 450)
+        #expect(layout.dialDiameter == 328)
+        #expect(fits(layout, in: 778))
+    }
+
+    @Test func noSetlistNoNextUpLine() {
+        #expect(layout(width: 402, height: 778, hasBottomInset: true).showsNextLine == false)
+    }
+
+    @Test func iPhoneSEKeepsTheNextUpLineWithASmallerDial() {
+        let layout = layout(height: 647, hasSetlist: true)
+        #expect(layout.showsNextLine)
+        #expect(layout.dialDiameter == 217)
+        #expect(fits(layout, in: 647))
+    }
+
+    @Test func nextUpLineIsLeftOutWhenTheDialWouldGoBelow200() {
+        let layout = layout(height: 647, beats: 12, hasSetlist: true)
+        #expect(layout.showsNextLine == false)
+        #expect(layout.dialDiameter == 207)
+        #expect(fits(layout, in: 647))
     }
 
     @Test func dialShrinksFirstDownTo240() {

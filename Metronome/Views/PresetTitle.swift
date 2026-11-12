@@ -1,45 +1,23 @@
 import SwiftUI
 
-/// The loaded preset's name in the header. Tapping it opens the library, or,
-/// when the preset has unsaved changes, a menu for saving or discarding them.
+/// The loaded preset's name in the header. Tapping it always opens the library; saving
+/// and reverting unsaved changes belong to the Save button beside it.
 struct PresetTitle: View {
     @Environment(MetronomeModel.self) private var model
     let openLibrary: () -> Void
 
-    @State private var isSaveAsShown = false
-
     var body: some View {
-        Group {
-            if model.isEdited {
-                Menu {
-                    Button("Save changes") { model.saveChanges() }
-                    Button("Save as new preset") { isSaveAsShown = true }
-                    Button("Discard changes") { model.discardChanges() }
-                    Button("Open library", action: openLibrary)
-                } label: {
-                    label
-                }
-            } else {
-                Button(action: openLibrary) { label }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel([model.headerTitle, model.headerSubtitle].compactMap { $0 }.joined(separator: ", "))
-        .accessibilityHint(model.isEdited ? "Opens save options" : "Opens the library")
-        .accessibilityAddTraits(.isButton)
-        .sheet(isPresented: $isSaveAsShown) {
-            NewPresetSheet(purpose: .saveAsNew)
-                .environment(model)
-        }
+        Button(action: openLibrary) { label }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(model.headerAccessibilityLabel)
+            .accessibilityHint("Opens the library")
+            .accessibilityAddTraits(.isButton)
     }
 
     private var label: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
-                if model.isPlaying {
-                    Circle().fill(Theme.amber).frame(width: 8, height: 8)
-                }
                 Text(model.headerTitle)
                     .font(.system(size: 20, weight: .heavy))
                     .tracking(-0.2)
@@ -51,13 +29,73 @@ struct PresetTitle: View {
             }
             if let subtitle = model.headerSubtitle {
                 Text(subtitle)
-                    .font(.system(size: 13, weight: model.isEdited ? .semibold : .medium))
-                    .foregroundStyle(model.isEdited ? Theme.amber : Theme.muted)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Theme.muted)
                     .lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+}
+
+/// The amber split pill in the header while the loaded preset has unsaved changes. Its
+/// Save part writes them into the preset in one tap; its ˅ part opens a menu with the
+/// other two ways out: saving as a new preset, and going back to the saved one.
+struct SaveButton: View {
+    @Environment(MetronomeModel.self) private var model
+    @State private var isSaveAsShown = false
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Button {
+                model.saveChanges()
+            } label: {
+                Text("Save")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Theme.ink)
+                    .padding(.leading, 16)
+                    .padding(.trailing, 12)
+                    .frame(height: 40)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Save changes")
+            Rectangle()
+                .fill(Theme.ink.opacity(0.28))
+                .frame(width: 1, height: 22)
+            Menu {
+                Button {
+                    isSaveAsShown = true
+                } label: {
+                    Label("Save as new preset", systemImage: "plus.square.on.square")
+                }
+                Button {
+                    model.discardChanges()
+                } label: {
+                    // A title with the saved values on a second line; on one line the
+                    // item wraps in the system menu.
+                    Text("Revert")
+                    if let saved = model.revertDescription {
+                        Text(saved)
+                    }
+                    Image(systemName: "arrow.uturn.backward")
+                }
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .heavy))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 34, height: 40)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("More save options")
+        }
+        .background(Theme.amber, in: Capsule())
+        .clipShape(Capsule())
+        .sheet(isPresented: $isSaveAsShown) {
+            NewPresetSheet(purpose: .saveAsNew)
+                .environment(model)
+        }
     }
 }
 

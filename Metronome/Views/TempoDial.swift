@@ -6,6 +6,9 @@ struct TempoDial: View {
     let diameter: CGFloat
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isEntryShown = false
+    /// The drag in progress, with the touch it belongs to.
+    @State private var drag: (start: CGPoint, turn: DialDrag)?
 
     /// Everything is drawn for a 300 pt dial and scaled.
     private var scale: CGFloat { diameter / 300 }
@@ -15,6 +18,8 @@ struct TempoDial: View {
             BeatGlow(lastBeat: model.lastBeat, bpm: model.settings.bpm, diameter: diameter)
             DialRing(fraction: Tempo.arcFraction(for: model.settings.bpm))
             readout
+                .contentShape(Rectangle())
+                .onTapGesture { isEntryShown = true }
         }
         .frame(width: diameter, height: diameter)
         .contentShape(Circle().scale(1.1))
@@ -28,6 +33,11 @@ struct TempoDial: View {
             case .decrement: model.nudgeBPM(by: -1)
             @unknown default: break
             }
+        }
+        .accessibilityAction(named: "Type a tempo") { isEntryShown = true }
+        .sheet(isPresented: $isEntryShown) {
+            TempoEntrySheet()
+                .environment(model)
         }
     }
 
@@ -82,21 +92,34 @@ struct TempoDial: View {
         }
     }
 
+    /// Turns the dial by the angle the finger travels. The drag only begins once the finger
+    /// has moved a little, so a tap or a brush against the ring changes nothing.
     private var ringDrag: some Gesture {
-        DragGesture(minimumDistance: 0)
+        DragGesture(minimumDistance: 4)
             .onChanged { value in
                 let centre = diameter / 2
-                // Classified from the start location on every change rather than remembered,
-                // so a cancelled gesture cannot leave a stale answer for the next touch.
-                let startedOnRing = DialGeometry.startsDrag(
-                    dx: value.startLocation.x - centre,
-                    dy: value.startLocation.y - centre,
-                    dialDiameter: diameter
-                )
-                guard startedOnRing else { return }
-                let fraction = DialGeometry.arcFraction(dx: value.location.x - centre, dy: value.location.y - centre)
+                let dx = value.location.x - centre
+                let dy = value.location.y - centre
+                // A drag is told apart by where its touch began rather than by an "ended"
+                // flag, so a cancelled gesture cannot leave a stale drag for the next touch.
+                guard var current = drag, current.start == value.startLocation else {
+                    let startedOnRing = DialGeometry.startsDrag(
+                        dx: value.startLocation.x - centre,
+                        dy: value.startLocation.y - centre,
+                        dialDiameter: diameter
+                    )
+                    guard startedOnRing else { return }
+                    // Measured from here, not from where the touch began, so the first
+                    // movement does not arrive as a jump.
+                    let turn = DialDrag(startFraction: Tempo.arcFraction(for: model.settings.bpm), dx: dx, dy: dy)
+                    drag = (value.startLocation, turn)
+                    return
+                }
+                let fraction = current.turn.move(dx: dx, dy: dy)
+                drag = current
                 model.setBPM(Tempo.bpm(forArcFraction: fraction))
             }
+            .onEnded { _ in drag = nil }
     }
 }
 
@@ -132,7 +155,7 @@ private struct DialRing: View {
                 path.addLine(to: point(at: tickFraction, radius: isMajor ? 124 : 129))
                 context.stroke(
                     path,
-                    with: .color(tickFraction <= fraction + 0.0001 ? Theme.amber : Theme.line),
+                    with: .color(tickFraction <= fraction + 0.0001 ? Theme.amber : Theme.tick),
                     style: StrokeStyle(lineWidth: (isMajor ? 3 : 2) * scale, lineCap: .round)
                 )
             }

@@ -2,7 +2,7 @@
 
 This is the single specification for the app. It describes how version 1.0 is meant to work and is kept up to date as decisions change. Parts that are specified here but not built yet are listed in section 15.
 
-Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Presets & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen.
+Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Presets & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen. The page *Main view UX review (draft)* holds the tempo sheet (board A), the split Save button in the header and its menu (boards D and E; board B is the earlier one-part button they replaced) and the next-up line (board C).
 
 ## 1. Summary
 
@@ -14,7 +14,7 @@ Settings can be saved as named **presets**, usually one per song or practice set
 
 Included:
 
-- Tempo from 30 to 250 BPM, set by ring drag, − / + buttons or tap tempo.
+- Tempo from 30 to 250 BPM, set by ring drag, − / + buttons, tap tempo or typing the number.
 - Eight time signatures: 2/4, 3/4, 4/4, 5/4, 6/8, 7/8, 9/8, 12/8.
 - Per-beat accents; any combination of beats, including none.
 - Start / Stop with click sound, visual beat effects and haptics.
@@ -84,7 +84,7 @@ Not kept:
 
 Derived:
 
-- **Edited:** a preset is loaded and the current tempo, time signature or accents differ from it.
+- **Edited:** a preset is loaded and the current tempo, time signature or accents differ from it. On screen this is shown by the Save button (6.1); the word itself is not displayed.
 - **Position:** the loaded preset's place in the loaded-from setlist, such as 3 of 8.
 
 Reopening the app restores the settings, the loaded preset and its setlist, so the position in the setlist is restored too and the user can carry on with Next. The app always launches stopped and with sound on.
@@ -162,9 +162,18 @@ One screen with two states, Ready (stopped) and Playing. The layout is identical
 | Nothing loaded | `Library` | `No preset loaded` |
 | Loaded from All presets | preset name | none |
 | Loaded from a setlist | preset name | setlist name · `3 of 8` |
-| Edited | preset name | `Edited` in amber, followed by · `3 of 8` when from a setlist |
 
-While playing, an amber dot sits before line 1.
+The title does not change when the loaded preset is edited: unsaved changes are shown by the Save button alone. So the setlist name stays in view while a song is being adjusted, and a title without a second line does not gain one and shift.
+
+The title looks the same stopped and playing. Nothing is added in front of it while playing, so it does not move when Start is pressed; the dial, the tiles and the Stop button show that the metronome is running.
+
+**Save button**, shown only while the loaded preset is edited, between the title and the mute button: a 40 pt tall amber pill in two parts, about 99 pt wide.
+
+- The left part reads `Save` (15 pt, bold, ink), with 16 pt of padding before it and 12 pt after. One tap saves the changes (7.6).
+- A 1 pt, 22 pt tall divider in ink at 28 % separates the parts.
+- The right part is 34 pt wide with an ink ˅. It opens the Save menu (7.6).
+
+The button fades in and out, and the title gives up its width to it. Everything that can be done with unsaved changes is in this one control, which is there only while there are changes; the title never changes what it does.
 
 **Mute button**, 40 pt round:
 
@@ -173,14 +182,15 @@ While playing, an amber dot sits before line 1.
 
 **Settings button**, at the far right: a 20 pt dial-white gear with no fill, in a 32 pt wide slot aligned to the right margin. It is lighter than the round buttons because it is used far less often. Its touch area is 44 × 44 pt. It opens the settings sheet (6.10).
 
-The header has only these two buttons, so the title always gets about 240 pt. Previous and Next sit beside the Start / Stop button (6.7).
+The header has only these buttons, so the title gets about 240 pt, or about 135 pt while the Save button is shown: room for about 11 characters of the name, which comes back in full once the changes are saved or reverted. Previous and Next sit beside the Start / Stop button (6.7).
 
 ### 6.2 Tempo dial
 
-- 300 pt gauge. 48 tick marks on a 270° arc that starts at the lower left (the 7:30 position), runs clockwise over the top and ends at the lower right (4:30), leaving a 90° gap at the bottom. Every fourth tick is longer and thicker.
-- Ticks from the start of the arc up to the current tempo are amber; the rest are unlit. Position along the arc is linear: `(bpm − 30) / 220`.
+- 300 pt gauge in the design; on a tall screen it grows, up to 340 pt (6.8), and everything in it scales with it. 48 tick marks on a 270° arc that starts at the lower left (the 7:30 position), runs clockwise over the top and ends at the lower right (4:30), leaving a 90° gap at the bottom. Every fourth tick is longer and thicker.
+- Ticks from the start of the arc up to the current tempo are amber; the rest are unlit, in the tick colour, which is light enough against the background (3 : 1) that the rest of the range can be seen. Position along the arc is linear: `(bpm − 30) / 220`.
 - A 28 pt amber knob with a dark 5 pt border and an amber glow sits at the end of the lit arc.
 - Centre: the BPM number (112 pt, heavy, digits set slightly tight, dial white). Three-digit tempos are drawn at 88 % of that size so they stay clear of the knob. Below the number: `BPM` in amber, a dot, and the tempo name in muted italic.
+- Tapping the number or the line below it opens the tempo sheet (6.11).
 
 Tempo names:
 
@@ -200,6 +210,8 @@ Tempo names:
 ### 6.3 Tempo controls
 
 A row of three: − (56 pt round), `Tap tempo` (outlined pill with a hand icon), + (56 pt round).
+
+While a tap tempo series is open, from a tap until 2 seconds after the last one, the pill's outline is amber (1.5 pt) and its label reads `Tap again`. The pill keeps its width when the label changes.
 
 ### 6.4 Time signature row
 
@@ -239,17 +251,25 @@ A 68 pt pill pinned to the bottom with 24 pt side margins.
 
 **Previous and Next** are shown only when the preset was loaded from a setlist (see 7.6). They are 56 pt round buttons on a surface fill with a dial-white ‹ and › (20 pt), one on each side of the pill, 12 pt from it and centred on it. The pill takes the width that is left, about 206 pt. Putting them here keeps song changes under the thumb, next to Start.
 
+**Next-up line**, shown with Previous and Next, centred 14 pt above the row and 18 pt tall. It says what Next leads to: `NEXT` (11 pt, semibold, capitals, wide letter spacing, muted), the next preset's name (14 pt, semibold, dial white) and its tempo and time signature, for example `168 BPM · 7/8` (14 pt, muted). A long name is cut with an ellipsis; the tempo and time signature are always shown in full. At the last preset of the setlist it reads `Last preset in the setlist` (14 pt, muted) and keeps its height, so the footer does not move from song to song. It is not a button. On short screens it can be left out (6.8).
+
 The footer changes only when the loaded preset's setlist changes, never between Ready and Playing, so nothing moves when Start is pressed.
 
 ### 6.8 Small screens
 
-The design is drawn for a 390 × 844 pt screen. On shorter screens the layout adapts in this order and stops as soon as everything fits:
+The design is drawn for a 390 × 844 pt screen.
+
+On taller screens the dial takes the spare height: it grows from 300 pt up to 340 pt, and never wider than the space between the side margins. An iPhone 17 Pro gets 340 pt, or 328 pt with the next-up line. Height that is still left over stays between the accent tiles and the footer.
+
+On shorter screens the layout adapts in this order and stops as soon as everything fits:
 
 1. The dial shrinks, down to 240 pt.
 2. The gaps above and below the time signature row drop to 16 pt, and single-row accent tiles drop to 56 pt tall with a smaller number.
 3. The dial shrinks further, as far as it needs to. The screen never scrolls.
 
-In practice only an iPhone SE with Display Zoom (320 × 568 pt) goes below 200 pt: its dial is about 150 pt, or about 108 pt in 9/8 and 12/8. An iPhone SE without Display Zoom gets about 249 pt, or 207 pt in 9/8 and 12/8.
+The next-up line (6.7) takes 32 pt with its gap. It is fitted by the same steps, and is left out when it would push the dial below 200 pt. Previous and Next stay.
+
+In practice only an iPhone SE with Display Zoom (320 × 568 pt) goes below 200 pt: its dial is about 150 pt, or about 108 pt in 9/8 and 12/8. An iPhone SE without Display Zoom gets about 249 pt, or 207 pt in 9/8 and 12/8; with the next-up line it gets about 217 pt, and in 9/8 and 12/8 the line is left out.
 
 A small dial is simplified so that it stays legible:
 
@@ -269,7 +289,8 @@ When accent tiles are narrower than 44 pt (seven beats in a row), each tile's to
 | ink | `#0B0B0C` | background; text on amber and white |
 | surface | `#17171A` | rows, round buttons, idle tiles, sheets |
 | surface raised | `#222226` | picker options, fields and rows inside sheets |
-| line | `#2A2A2E` | unlit ticks, outlines |
+| line | `#2A2A2E` | outlines, dividers |
+| tick | `#606066` | unlit ticks on the dial |
 | dial white | `#F3EEE6` | primary text; sounding unaccented tile |
 | muted | `#8A8780` | labels, secondary text |
 | muted dim | `#6B6963` | idle unaccented tile numbers, position numbers |
@@ -329,15 +350,34 @@ The status line is the device's own view. iCloud does not tell the app when a ch
 
 New settings are added as further rows or cards in the same sheet.
 
+### 6.11 Tempo sheet
+
+A bottom sheet over a dimmed screen, sized to its content, opened by tapping the BPM number (6.2). From top to bottom:
+
+- A grabber, the title `Tempo` (26 pt heavy, dial white) and, at the right, the range `30 to 250 BPM` (13 pt, muted).
+- **The field:** a 92 pt tall surface-raised card with 20 pt corners and a 1.5 pt amber outline. It shows the typed digits (64 pt, heavy, dial white), an amber caret and `BPM` in amber. Before the first key it shows the current tempo in muted dim, as a reminder of where the tempo is now.
+- **The keys:** the digits 1 to 9 in three rows of three, then a last row with an empty place, 0 and a delete key. Each key is 54 pt tall with 8 pt gaps; digit keys are surface raised with 16 pt corners and a 26 pt bold digit, and the delete key is an icon with no fill. The sheet has its own keys, not the system keyboard, so they are large, match the app and appear with the sheet.
+- **Set tempo:** a 56 pt amber pill.
+
+## 7. Metronome behaviour
+
 ## 7. Metronome behaviour
 
 ### 7.1 Tempo
 
-All three tempo controls work when stopped and when playing.
+All four ways of setting the tempo work when stopped and when playing.
 
-- **Ring.** Dragging the knob or swiping on the ring sets the tempo. The knob follows the angle of the finger around the dial centre, mapped linearly over the 270° arc, rounded to whole BPM. Angles in the gap at the bottom clamp to the nearer end. Only touches that begin on the ring, between 0.35 and 0.55 dial diameters from the centre (105 pt and 165 pt on the full-size dial), start a drag, so a touch on the number does nothing.
-- **− / +.** One tap changes the tempo by 1 BPM. Holding repeats: after 400 ms, 10 steps per second.
-- **Tap tempo.** From the second tap on, the tempo is set to the average of the last four intervals between taps (fewer if fewer exist). A pause longer than 2 seconds starts a new series.
+- **Ring.** Dragging on the ring turns the dial: the tempo changes by the angle the finger travels around the dial centre, 270° for the whole range, rounded to whole BPM. It makes no difference where on the ring the drag begins, so the knob can be grabbed and moved, and a drag anywhere else on the ring turns it by the same amount.
+  - The tempo never jumps to where the finger lands. A touch that does not move changes nothing, and the drag begins only after the finger has moved 4 pt, so a tap or a brush against the ring is ignored.
+  - The tempo stops at 30 and 250. Turning back from an end takes effect at once.
+  - Only touches that begin on the ring, between 0.35 and 0.55 dial diameters from the centre (105 pt and 165 pt on the 300 pt dial), start a drag.
+- **Typing.** Tapping the number opens the tempo sheet (6.11).
+  - A digit key adds a digit, up to three; a leading zero is ignored. The delete key removes the last digit.
+  - `Set tempo` sets the tempo and closes the sheet. It is dimmed and does nothing until the digits are a tempo from 30 to 250.
+  - When the digits are above 250, the range at the top right turns amber.
+  - Swiping the sheet down or tapping outside it closes it without changes. Nothing changes before `Set tempo`.
+- **− / +.** One tap changes the tempo by 1 BPM. Holding repeats: after 400 ms, 10 steps per second. The repeat ends the moment the finger lifts, however quickly taps follow each other.
+- **Tap tempo.** From the second tap on, the tempo is set to the average of the last four intervals between taps (fewer if fewer exist). A pause longer than 2 seconds starts a new series. While a series is open the pill reads `Tap again` (6.3), so the first tap, which cannot set a tempo yet, is still seen to register.
 - All inputs clamp to 30…250.
 - While playing, a tempo change takes effect from the next beat. The beat that is already scheduled is not moved, and the bar position is kept.
 
@@ -370,25 +410,31 @@ All three tempo controls work when stopped and when playing.
 
 ### 7.6 Presets on the metronome screen
 
-**Loading** a preset applies its tempo, time signature and accents to the metronome. It happens from the library, from Previous / Next, and from Discard changes.
+**Loading** a preset applies its tempo, time signature and accents to the metronome. It happens from the library and from Previous / Next.
 
 - Unsaved edits to the previously loaded preset are dropped without asking.
 - When stopped, the metronome stays stopped.
 - When playing, it keeps playing: the next beat is beat 1 of a new bar with the new settings.
 
-**Tapping the title:**
+**Tapping the title** always opens the library sheet (section 8), edited or not. Unsaved edits are kept while the library is open.
 
-- Not edited: opens the library sheet (section 8).
-- Edited: opens a menu with, in this order:
-  - **Save changes:** writes the current settings into the loaded preset.
-  - **Save as new preset:** opens the New preset sheet (section 10) filled with the current settings. After saving, the new preset is the loaded one.
-  - **Discard changes:** sets the metronome back to the preset's settings.
-  - **Open library:** opens the library sheet. The edits are kept.
+**Unsaved changes** are handled with the Save button (6.1), which is shown while the preset is edited. There are three things to do with them:
+
+- **Save:** tapping `Save` writes the current settings into the loaded preset, with a selection tick. The preset is then no longer edited and the button goes away.
+- **Save as new preset:** in the Save menu. It opens the New preset sheet (section 10) filled with the current settings. After saving, the new preset is the loaded one, and the preset that was edited is left as it was.
+- **Revert:** in the Save menu, as `Revert` with the saved preset's tempo and time signature on a second, smaller line, for example `120 BPM · 4/4`, so that it is clear what comes back. It sets the metronome back to the preset's tempo, time signature and accents, with a selection tick.
+  - While playing, the bar carries on when only the tempo or the accents go back, as with any other change of tempo or accents (7.1, 7.3). When the time signature goes back, the next beat is beat 1 of a new bar (7.2).
+  - There is no confirmation and no undo.
+
+The Save menu is the system menu, opened by the ˅ part of the button, with these two items in this order. Tapping outside it closes it.
+
+Edits also go away without the button: loading another preset, with Previous / Next or from the library, drops them without asking, and **No preset** in the library (8.2) keeps them as plain settings.
 
 **Previous and Next** load the previous or next preset in the loaded-from setlist's order.
 
 - At the first preset Previous is dimmed and does nothing; at the last, Next. They do not wrap around.
 - They work when stopped and when playing.
+- The next-up line (6.7) names the preset that Next would load, and updates with every change to the setlist or to that preset.
 
 ### 7.7 Interruptions and volume
 
@@ -444,7 +490,7 @@ The switch works when stopped and when playing, applies to this device only and 
 **When changes arrive:**
 
 - The metronome never changes by itself: tempo, time signature and accents stay as they are, playing or stopped.
-- If the loaded preset's settings changed, the header shows `Edited`, because what is in the metronome now differs from the preset. Discard changes takes the arrived version; Save changes keeps the metronome's and sends it to the other devices.
+- If the loaded preset's settings changed, the preset counts as edited and the Save button appears, because what is in the metronome now differs from the preset. Revert takes the arrived version; Save keeps the metronome's and sends it to the other devices.
 - If the loaded preset's name changed, the header shows the new name at once.
 - If the loaded preset, the loaded-from setlist or the selected filter's setlist was deleted, the rules in section 5 apply.
 - An open library sheet, filter list or setlist editor updates in place. An editor whose setlist was deleted closes and the library shows All presets.
@@ -534,7 +580,15 @@ A short sheet with:
 
 All three settings start from the metronome's current values, so the quickest way to make a preset is to set the metronome first.
 
-Changing values in the sheet does not affect the metronome, playing or stopped. Saving a new preset from the library does not load it; only **Save as new preset** from the title menu (7.6) makes the new preset the loaded one.
+Changing values in the sheet does not affect the metronome, playing or stopped.
+
+Saving a new preset from the library does not load it, with one exception: **naming the current settings.** When no preset is loaded and the preset is saved with the same tempo, time signature and accents as the metronome has, the new preset becomes the loaded one, so the header shows its name at once and later changes bring up the Save button.
+
+- The metronome is not touched: it keeps playing or stays stopped, and no new bar starts.
+- If the preset was added to a setlist (9.3, with "Add to <setlist>" on), it counts as loaded from that setlist, so the header shows its position and Previous / Next appear. Otherwise it is loaded on its own.
+- In every other case the preset is only created: when a preset is already loaded, or when the values were changed in the sheet.
+
+**Save as new preset** from the Save menu (7.6) always makes the new preset the loaded one.
 
 ## 11. Audio and timing
 
@@ -579,7 +633,7 @@ Each beat fires all of the following at the moment of its click.
 
 There are no other beat visuals; in particular nothing ripples or moves outside the dial.
 
-Other haptics: a selection tick for each 1 BPM change from the ring or − / +, for each tap-tempo tap, for each accent toggle, and for each tap on the mute button. Beat haptics continue while muted. A medium impact on Start and Stop.
+Other haptics: a selection tick for each 1 BPM change from the ring or − / +, for each tap-tempo tap, for each key in the tempo sheet and for `Set tempo` when it changes the tempo, for each accent toggle, for Save and Revert, and for each tap on the mute button. Beat haptics continue while muted. A medium impact on Start and Stop.
 
 The Haptics switch in settings (7.8) turns all of these off.
 
@@ -587,7 +641,11 @@ The Haptics switch in settings (7.8) turns all of these off.
 
 - **Reduce Motion:** the number pulse is disabled. Tile changes and the glow remain.
 - **VoiceOver:**
-  - The dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM.
+  - The dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. It has the action "Type a tempo", which opens the tempo sheet.
+  - In the tempo sheet the field reads as "Tempo" with the typed digits, each key as its digit, and the delete key as "Delete".
+  - The Save button's two parts read as "Save changes" and "More save options".
+  - The tap tempo pill reads as "Tap tempo" also while it shows `Tap again`.
+  - The next-up line reads as one element, for example "Next: Seven Bridges, 168 beats per minute, 7/8", or "Last preset in the setlist".
   - Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action.
   - The mute button reads as "Click sound, on" or "Click sound, muted".
   - The settings button reads as "Settings".
@@ -595,7 +653,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The haptics switch reads as "Haptic feedback, on" or "Haptic feedback, off".
   - The screen switch reads as "Keep screen awake, on" or "Keep screen awake, off".
   - The sync switch reads as "Sync presets and setlists, on" or "Sync presets and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
-  - The header title reads the preset name and its second line, and says that it opens the library.
+  - The header title reads the preset name and its second line, and says that it opens the library. While the preset is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the Save button appearing cannot be heard.
   - A preset row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its play button reads "Load and start".
   - In setlist editing, rows can be moved up and down with VoiceOver actions as well as by dragging.
   - Beat changes during playback are not announced.
@@ -609,6 +667,11 @@ A ticked line has been verified in the simulator, by unit tests or on a phone. A
 Metronome:
 
 - [x] Tempo can be set by ring, − / + and tap tempo, when stopped and when playing, and never leaves 30…250. *(A tap tempo series has not been tapped by hand; its rules are unit tested.)*
+- [ ] A drag on the ring turns the dial by the angle travelled, wherever it begins; a tap or a brush against the ring changes nothing. *(The turning rules are unit tested, and a drag and a tap on the ring were tried in the simulator. How it feels under a finger needs a real iPhone.)*
+- [x] Tapping the number opens the tempo sheet; typing a tempo and Set tempo sets it, and only tempos from 30 to 250 can be set. *(The digit rules are unit tested; typing 174 was tried in the simulator.)*
+- [ ] The tap tempo pill reads Tap again with an amber outline during a series and goes back two seconds after the last tap. *(The label and outline were seen in the simulator; going back after two seconds was not watched.)*
+- [x] Unlit ticks are visible against the background, and nothing in the header moves when Start is pressed. *(Seen in the simulator.)*
+- [x] On a tall screen the dial grows up to 340 pt and never wider than the space between the margins. *(Unit tested, and seen on an iPhone 17 Pro.)*
 - [x] The lit arc, knob, number and tempo name always agree.
 - [x] All eight time signatures can be selected; the tile count matches the signature.
 - [x] Changing the signature resets accents to beat 1 and, while playing, continues with a new bar. Reselecting the current signature, or dismissing the sheet, changes nothing.
@@ -627,7 +690,10 @@ Presets and setlists:
 - [x] No preset unloads the loaded preset and keeps the settings and playback; it is only in All presets.
 - [x] Tapping a row loads without starting; the play button loads and starts.
 - [x] The header shows the right title and second line in every state of 6.1.
-- [x] Changing a loaded preset's settings shows Edited; Save changes, Save as new preset and Discard changes do what 7.6 says. *(Save changes is unit tested; the other two were also tried in the simulator.)*
+- [x] Changing a loaded preset's settings shows the Save button and leaves the title as it is; Save, Save as new preset and Revert do what 7.6 says, and the title opens the library also while edited. *(Save and Revert, with the bar carrying on or starting over, are unit tested. Save, the menu and Revert were tried in the simulator, and Save as new preset was seen to open its sheet from the menu.)*
+- [x] Quick taps on − / + each count once and never leave the tempo running on by itself. *(Four quick taps on + were tried in the simulator after two quick taps had left the repeat running up to 250.)*
+- [x] Naming the current settings while nothing is loaded loads the new preset, from the setlist it was added to; in other cases a new preset from the library is not loaded. *(Unit tested.)*
+- [ ] The next-up line names the preset Next would load, says so at the last preset, and is left out when it would push the dial below 200 pt. *(The preset and the layout rule are unit tested, and the line was seen in the simulator. The last preset and a small phone were not seen on screen.)*
 - [x] Opening the library keeps unsaved edits; loading another preset drops them.
 - [x] A setlist can be created, renamed, duplicated and deleted; deleting it leaves its presets in the library.
 - [x] Presets can be added to a setlist, removed from it and reordered; the order is kept.
@@ -654,7 +720,7 @@ iCloud sync:
 - [x] Sync is off on a fresh install, and the switch survives quitting and reopening the app. *(Unit tested.)*
 - [ ] Switching sync on for a second device brings the first device's presets and setlists next to its own, and later changes on either device reach the other. *(Needs two devices on one iCloud account. Only a stand-in for iCloud has been used.)*
 - [x] Copies are combined as in 5.1: per part of a preset, per preset in a setlist, order, an edit after a deletion, and an item missing from iCloud. *(Unit tested against an in-memory stand-in for iCloud.)*
-- [ ] When changes arrive, the metronome keeps its settings, a changed loaded preset shows Edited, and open lists update in place. *(The metronome keeping its settings, Edited, a deleted loaded preset, setlist or filter being cleared, and no haptic are unit tested. Open lists updating in place, and the setlist editor closing when its setlist is deleted elsewhere, need a change arriving from a second device.)*
+- [ ] When changes arrive, the metronome keeps its settings, a changed loaded preset counts as edited, and open lists update in place. *(The metronome keeping its settings, the preset counting as edited, a deleted loaded preset, setlist or filter being cleared, and no haptic are unit tested. Open lists updating in place, and the setlist editor closing when its setlist is deleted elsewhere, need a change arriving from a second device.)*
 - [x] Switching sync off leaves the library on the device and the other devices untouched; switching it on again combines what changed meanwhile. *(Unit tested against an in-memory stand-in for iCloud.)*
 - [ ] The last device to switch sync off empties iCloud, and a syncing device that finds iCloud emptied puts its library back. *(Unit tested against an in-memory stand-in for iCloud. The clean-up reaching real iCloud has not been seen.)*
 - [ ] The status line shows not signed in, iCloud full and newer format as in 6.10. *(Every status text and the line below the card are unit tested, and Not signed in to iCloud was seen in the simulator. iCloud storage is full and Update the app to keep syncing were not seen on screen.)*

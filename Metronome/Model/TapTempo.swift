@@ -3,7 +3,8 @@ import Foundation
 /// Turns a series of taps into a tempo: the average of the last four intervals.
 struct TapTempo {
     private static let maxIntervals = 4
-    private static let seriesTimeout: TimeInterval = 2
+    /// A pause longer than this starts a new series.
+    static let seriesTimeout: TimeInterval = 2
 
     private var times: [TimeInterval] = []
 

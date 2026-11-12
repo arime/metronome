@@ -84,7 +84,8 @@ struct SyncModelTests {
 
         #expect(b.model.settings.bpm == 100)
         #expect(b.model.isEdited)
-        #expect(b.model.headerSubtitle == "Edited")
+        #expect(b.model.headerSubtitle == nil)
+        #expect(b.model.headerAccessibilityLabel.contains("edited"))
         #expect(b.model.isPlaying)
         #expect(b.engine.lastUpdate == updateBefore)
         #expect(b.engine.startCount == 1)

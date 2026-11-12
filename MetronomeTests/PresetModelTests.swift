@@ -45,6 +45,45 @@ struct PresetModelTests {
         #expect(model.settings.bpm == 120)
     }
 
+    @Test func namingTheCurrentSettingsLoadsTheNewPreset() {
+        let model = makeModel()
+        model.setBPM(132)
+        engine.lastUpdate = nil
+        let preset = model.createPreset(name: "Song", settings: model.settings, addingTo: nil)
+        #expect(model.loadedPreset == preset)
+        #expect(model.loadedFromSetlistID == nil)
+        #expect(model.headerTitle == "Song")
+        #expect(model.isEdited == false)
+        #expect(engine.lastUpdate == nil)
+    }
+
+    @Test func namingTheCurrentSettingsInASetlistLoadsItFromThatSetlist() {
+        let (model, _, setlist) = modelWithSetlist()
+        let preset = model.createPreset(name: "Song", settings: model.settings, addingTo: setlist)!
+        #expect(model.loadedPreset == preset)
+        #expect(model.loadedFromSetlistID == setlist)
+        #expect(model.position?.index == 3)
+        #expect(model.position?.count == 4)
+    }
+
+    @Test func aNewPresetIsNotLoadedWhileAnotherIsLoaded() {
+        let (model, presets, setlist) = modelWithSetlist()
+        model.loadPreset(presets[0].id, from: setlist)
+        model.createPreset(name: "Song", settings: model.settings, addingTo: nil)
+        #expect(model.loadedPreset?.id == presets[0].id)
+    }
+
+    @Test func nextPresetIsTheOneNextWouldLoad() {
+        let (model, presets, setlist) = modelWithSetlist()
+        #expect(model.nextPreset == nil)
+        model.loadPreset(presets[0].id, from: setlist)
+        #expect(model.nextPreset?.id == presets[1].id)
+        model.loadPreset(presets[2].id, from: setlist)
+        #expect(model.nextPreset == nil)
+        model.loadPreset(presets[0].id, from: nil)
+        #expect(model.nextPreset == nil)
+    }
+
     @Test func loadingAppliesTheSettingsWithoutStarting() {
         let model = makeModel()
         let preset = model.createPreset(name: "Song", settings: settings(90, .sixEight), addingTo: nil)!
@@ -111,9 +150,21 @@ struct PresetModelTests {
         #expect(model.headerSubtitle == "New setlist · 2 of 3")
         model.setBPM(104)
         #expect(model.isEdited)
-        #expect(model.headerSubtitle == "Edited · 2 of 3")
+        #expect(model.headerSubtitle == "New setlist · 2 of 3")
+        #expect(model.headerAccessibilityLabel == "Mid, edited, New setlist · 2 of 3")
         model.setBPM(100)
         #expect(model.isEdited == false)
+        #expect(model.headerAccessibilityLabel == "Mid, New setlist · 2 of 3")
+    }
+
+    @Test func aPresetLoadedOnItsOwnHasNoSecondLineEvenWhenEdited() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil)
+        model.setBPM(96)
+        #expect(model.isEdited)
+        #expect(model.headerSubtitle == nil)
+        #expect(model.headerAccessibilityLabel == "Song, edited")
     }
 
     @Test func saveChangesWritesIntoThePreset() {
@@ -135,6 +186,37 @@ struct PresetModelTests {
         model.discardChanges()
         #expect(model.settings == preset.settings)
         #expect(model.isEdited == false)
+    }
+
+    @Test func revertingTempoAndAccentsKeepsTheBarWhilePlaying() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil, start: true)
+        model.setBPM(96)
+        model.toggleAccent(beat: 3)
+        model.discardChanges()
+        #expect(engine.lastUpdate == preset.settings)
+        #expect(engine.lastUpdateStartedNewBar == false)
+        #expect(model.isPlaying)
+    }
+
+    @Test func revertingTheTimeSignatureStartsANewBar() {
+        let model = makeModel()
+        let preset = model.createPreset(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil, start: true)
+        model.selectTimeSignature(.sixEight)
+        model.discardChanges()
+        #expect(engine.lastUpdate == preset.settings)
+        #expect(engine.lastUpdateStartedNewBar == true)
+    }
+
+    @Test func revertDescriptionNamesTheSavedValues() {
+        let model = makeModel()
+        #expect(model.revertDescription == nil)
+        let preset = model.createPreset(name: "Song", settings: settings(90, .sixEight), addingTo: nil)!
+        model.loadPreset(preset.id, from: nil)
+        model.setBPM(96)
+        #expect(model.revertDescription == "90 BPM · 6/8")
     }
 
     @Test func loadingAnotherPresetDropsUnsavedEdits() {

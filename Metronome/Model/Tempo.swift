@@ -73,4 +73,60 @@ enum DialGeometry {
         let tolerance = 1e-9
         return distance >= 0.35 * dialDiameter - tolerance && distance <= 0.55 * dialDiameter + tolerance
     }
+
+    /// Degrees clockwise from 12 o'clock, for an offset from the dial centre with y pointing down.
+    static func angle(dx: Double, dy: Double) -> Double {
+        atan2(dx, -dy) * 180 / .pi
+    }
+}
+
+/// A drag on the ring. It turns the dial by the angle the finger travels around the centre,
+/// wherever on the ring it began, so a touch that does not move changes nothing and the
+/// tempo never jumps to where the finger landed.
+struct DialDrag: Equatable {
+    /// Position along the arc, 0…1. Kept as a fraction so slow drags add up between whole BPM.
+    private(set) var fraction: Double
+    private var lastAngle: Double
+
+    init(startFraction: Double, dx: Double, dy: Double) {
+        fraction = min(max(startFraction, 0), 1)
+        lastAngle = DialGeometry.angle(dx: dx, dy: dy)
+    }
+
+    /// Moves the finger and returns the new position. The position stops at the ends of the
+    /// arc, and turning back from an end takes effect at once.
+    @discardableResult
+    mutating func move(dx: Double, dy: Double) -> Double {
+        let angle = DialGeometry.angle(dx: dx, dy: dy)
+        var delta = angle - lastAngle
+        // The shorter way round, so crossing 6 o'clock is a small step and not a full turn.
+        if delta > 180 { delta -= 360 } else if delta < -180 { delta += 360 }
+        lastAngle = angle
+        fraction = min(max(fraction + delta / DialGeometry.arcSweepDegrees, 0), 1)
+        return fraction
+    }
+}
+
+/// The digits typed into the tempo sheet.
+struct TempoEntry: Equatable {
+    private(set) var digits = ""
+
+    var value: Int? { Int(digits) }
+
+    /// True when the digits are a tempo the metronome can play.
+    var isValid: Bool { value.map(Tempo.range.contains) ?? false }
+
+    /// True when the digits are already above the range, so no further key can fix them.
+    var isTooHigh: Bool { value.map { $0 > Tempo.range.upperBound } ?? false }
+
+    /// Up to three digits, and no leading zero.
+    mutating func append(_ digit: Int) {
+        guard (0...9).contains(digit), digits.count < 3 else { return }
+        if digits.isEmpty, digit == 0 { return }
+        digits.append(String(digit))
+    }
+
+    mutating func deleteLast() {
+        if !digits.isEmpty { digits.removeLast() }
+    }
 }

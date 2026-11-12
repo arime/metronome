@@ -211,10 +211,10 @@ final class MetronomeModel {
     }
 
     /// Replaces all the settings at once, as loading a preset does.
-    private func apply(_ newSettings: MetronomeSettings) {
+    private func apply(_ newSettings: MetronomeSettings, startNewBar: Bool = true) {
         guard newSettings != settings else { return }
         settings = newSettings
-        settingsChanged(startNewBar: true)
+        settingsChanged(startNewBar: startNewBar)
     }
 
     // MARK: - The loaded preset
@@ -245,17 +245,32 @@ final class MetronomeModel {
         position.map { $0.index < $0.count - 1 } ?? false
     }
 
+    /// The preset that Next would load; nil at the end of the setlist or without one.
+    var nextPreset: Preset? {
+        guard let position, position.index + 1 < position.count,
+              let ids = loadedFromSetlistID.flatMap(library.setlist(id:))?.presetIDs
+        else { return nil }
+        return library.preset(id: ids[position.index + 1])
+    }
+
     var headerTitle: String {
         loadedPreset?.name ?? "Library"
     }
 
-    /// The header's second line; nil when the preset's name says it all.
+    /// The header's second line; nil when the preset's name says it all. It is the same
+    /// with and without unsaved changes, which the Save button shows.
     var headerSubtitle: String? {
         guard loadedPreset != nil else { return "No preset loaded" }
-        guard let position else { return isEdited ? "Edited" : nil }
+        guard let position else { return nil }
         let place = "\(position.index + 1) of \(position.count)"
-        let source = isEdited ? "Edited" : (loadedFromSetlistID.flatMap(library.setlist(id:))?.name ?? "")
+        let source = loadedFromSetlistID.flatMap(library.setlist(id:))?.name ?? ""
         return "\(source) · \(place)"
+    }
+
+    /// What VoiceOver reads for the header title. Unsaved changes are shown only by the Save
+    /// button appearing, which cannot be heard, so they are said here.
+    var headerAccessibilityLabel: String {
+        [headerTitle, isEdited ? "edited" : nil, headerSubtitle].compactMap { $0 }.joined(separator: ", ")
     }
 
     /// Applies the preset to the metronome. Unsaved edits to the previous preset are dropped.
@@ -294,12 +309,20 @@ final class MetronomeModel {
         guard let id = loadedPresetID else { return }
         library.updatePreset(id, settings: settings, now: now())
         persistLibrary()
+        haptics?.selection()
     }
 
-    /// Sets the metronome back to the loaded preset.
+    /// Sets the metronome back to the loaded preset. While playing, the bar carries on
+    /// unless the time signature goes back too, as with any other change of tempo or accents.
     func discardChanges() {
-        guard let preset = loadedPreset else { return }
-        apply(preset.settings)
+        guard let preset = loadedPreset, isEdited else { return }
+        apply(preset.settings, startNewBar: preset.settings.timeSignature != settings.timeSignature)
+        haptics?.selection()
+    }
+
+    /// What Revert goes back to, for example "120 BPM · 4/4"; nil when nothing is loaded.
+    var revertDescription: String? {
+        loadedPreset.map { "\($0.settings.bpm) BPM · \($0.settings.timeSignature.rawValue)" }
     }
 
     /// Unloads the preset. The metronome keeps its settings, playing or stopped, and the
@@ -325,14 +348,29 @@ final class MetronomeModel {
 
     // MARK: - The library
 
-    /// Creates a preset without loading it, optionally at the end of a setlist.
+    /// Creates a preset, optionally at the end of a setlist. It is not loaded, with one
+    /// exception: when nothing is loaded and the preset holds exactly what the metronome is
+    /// set to, the user has just named the current settings, so it becomes the loaded preset,
+    /// loaded from the setlist it was added to. The metronome itself is not touched.
     @discardableResult
     func createPreset(name: String, settings newSettings: MetronomeSettings, addingTo setlistID: UUID?) -> Preset? {
         let moment = now()
+        let namesCurrentSettings = loadedPresetID == nil && newSettings == settings
         guard let preset = library.addPreset(name: name, settings: newSettings, now: moment) else { return nil }
         if let setlistID { library.add(preset.id, toSetlist: setlistID, now: moment) }
+        if namesCurrentSettings {
+            loadedPresetID = preset.id
+            let members = setlistID.flatMap(library.setlist(id:))?.presetIDs ?? []
+            loadedFromSetlistID = members.contains(preset.id) ? setlistID : nil
+            if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: moment) }
+        }
         persistLibrary()
         return preset
+    }
+
+    /// A tick for a key in the tempo sheet.
+    func keypadTapped() {
+        haptics?.selection()
     }
 
     func renamePreset(_ id: UUID, to name: String) {

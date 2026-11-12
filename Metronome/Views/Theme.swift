@@ -16,6 +16,9 @@ enum Theme {
     /// The sync status dot when up to date, and nothing else.
     static let green = Color(hex: 0x4CC38A)
 
+    /// Unlit ticks on the dial: 3:1 against ink, so the rest of the range can be seen.
+    static let tick = Color(hex: 0x606066)
+
     /// The small dot on an idle, unaccented tile.
     static let tileDot = Color(hex: 0x3A3A3F)
     /// Hint text on the selected (amber) picker option.
