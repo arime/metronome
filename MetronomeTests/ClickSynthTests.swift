@@ -63,6 +63,12 @@ struct ClickSynthTests {
         #expect(abs(decibels(level / reference)) < 0.1)
     }
 
+    @Test(arguments: ClickSound.allCases, sampleRates)
+    func normalClicksAreAtMinus11dBFS(sound: ClickSound, sampleRate: Double) {
+        let level = rmsOfFirst20ms(samples(sound, accented: false, sampleRate: sampleRate), sampleRate: sampleRate)
+        #expect(abs(decibels(level) + 11) < 0.1, "\(sound) is at \(decibels(level)) dBFS")
+    }
+
     @Test(arguments: ClickSound.allCases)
     func accentsAre4dBLouder(sound: ClickSound) {
         let accented = rmsOfFirst20ms(samples(sound, accented: true))

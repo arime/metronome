@@ -2,24 +2,28 @@ import AVFoundation
 
 /// Generates the click sounds (specification 11.1) at the output's own sample rate.
 ///
-/// Each sound is built from decaying sines, an FM bell or filtered noise, then scaled so
-/// that every normal click is equally loud and every accented click is 4 dB louder.
+/// Each sound is built from decaying sines, an FM bell or filtered noise, then raised to a
+/// fixed loudness through a soft limiter, so that every normal click is equally loud, every
+/// accented click is 4 dB louder, and the clicks hold their own against music played at the
+/// same system volume.
 enum ClickSynth {
-    /// RMS of every normal click over its first 20 ms, about −21 dBFS. Chosen so the
-    /// loudest peak of any sound stays below full scale.
-    static let normalLevel = 0.089
+    /// RMS of every normal click over its first 20 ms, in dBFS.
+    static let normalLevelDecibels = -11.0
     static let accentGainDecibels = 4.0
+    /// The limiter leaves samples below the knee alone and bends everything above it
+    /// smoothly towards the ceiling, which no sample reaches.
+    static let limiterKnee = 0.5
+    static let limiterCeiling = 0.95
     private static let loudnessWindow = 0.020
     private static let tailFade = 0.003
 
     static func click(_ sound: ClickSound, accented: Bool, format: AVAudioFormat) -> AVAudioPCMBuffer {
         let synth = Synth(sampleRate: format.sampleRate)
-        var samples = synth.make(sound, accented: accented)
-        fadeTail(&samples, frames: synth.frames(tailFade))
+        var raw = synth.make(sound, accented: accented)
+        fadeTail(&raw, frames: synth.frames(tailFade))
 
-        let target = normalLevel * (accented ? pow(10, accentGainDecibels / 20) : 1)
-        let level = rms(samples.prefix(synth.frames(loudnessWindow)))
-        let gain = level > 0 ? target / level : 0
+        let decibels = normalLevelDecibels + (accented ? accentGainDecibels : 0)
+        let samples = louden(raw, to: pow(10, decibels / 20), window: synth.frames(loudnessWindow))
 
         let frames = AVAudioFrameCount(samples.count)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames),
@@ -28,10 +32,42 @@ enum ClickSynth {
         buffer.frameLength = frames
         for channel in 0..<Int(format.channelCount) {
             for (index, sample) in samples.enumerated() {
-                channels[channel][index] = Float(sample * gain)
+                channels[channel][index] = Float(sample)
             }
         }
         return buffer
+    }
+
+    /// Finds the gain that, after limiting, brings the RMS over the window to the target.
+    /// Limiting only ever lowers a sample, so the level rises with the gain and a bisection
+    /// on the gain in decibels finds it.
+    private static func louden(_ samples: [Double], to target: Double, window: Int) -> [Double] {
+        let measured = samples.prefix(window)
+        let level = rms(measured)
+        guard level > 0 else { return samples }
+        var low = 20 * log10(target / level)
+        var high = low + 40
+        for _ in 0..<40 {
+            let middle = (low + high) / 2
+            let gain = pow(10, middle / 20)
+            if rms(measured.map { limit($0 * gain) }[...]) < target {
+                low = middle
+            } else {
+                high = middle
+            }
+        }
+        let gain = pow(10, (low + high) / 40)
+        return samples.map { limit($0 * gain) }
+    }
+
+    /// Unity below the knee; above it a tanh curve with the same slope at the knee that
+    /// approaches the ceiling.
+    static func limit(_ sample: Double) -> Double {
+        let magnitude = abs(sample)
+        guard magnitude > limiterKnee else { return sample }
+        let range = limiterCeiling - limiterKnee
+        let bent = limiterKnee + range * tanh((magnitude - limiterKnee) / range)
+        return sample < 0 ? -bent : bent
     }
 
     private static func fadeTail(_ samples: inout [Double], frames: Int) {

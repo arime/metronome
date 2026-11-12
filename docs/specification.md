@@ -691,7 +691,7 @@ Titled `Edit preset`, with `Save changes`. Opened with Edit in a preset's row me
 
 Rules for every sound:
 
-- **Loudness.** The normal variants of all seven sounds are equally loud, measured as RMS over their first 20 ms. Each accented variant is 4 dB louder than its normal variant. The loudest peak of any sound stays below full scale.
+- **Loudness.** The click must hold its own against music played at the same system volume, since the phone has one media volume for both. The normal variants of all seven sounds are at −11 dBFS, measured as RMS over their first 20 ms. Each accented variant is 4 dB louder than its normal variant. To get there without clipping, each sound goes through a soft limiter: samples below half of full scale are untouched, and louder ones bend smoothly (tanh) towards a ceiling of 0.95, so no peak reaches full scale.
 - **Attack.** The click must be heard at its scheduled time: every sound reaches half of its peak within 1 ms of its start.
 - **Length.** No sound is longer than 150 ms, so each one ends well before the next beat at 300 BPM (200 ms). The last 3 ms fade to silence.
 
