@@ -6,17 +6,20 @@ struct LibrarySheet: View {
     @Environment(MetronomeModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
+    /// The top level has two tabs, all the presets and the list of setlists. A setlist opens
+    /// from its tab, and editing and adding open from the setlist.
     enum Mode {
-        case presets, filters, editing, adding
+        case presets, setlists, setlist, editing, adding
     }
 
     @State private var mode = Mode.presets
     /// True right after "New setlist", so the name field is ready for typing.
-    @State private var isNewSetlist = false
-    /// The setlist made with "New setlist" in this visit; discarded if it is left untouched.
-    @State private var newSetlistID: UUID?
-    /// The list that was shown before "New setlist", to go back to if the new one is discarded.
-    @State private var listBeforeNewSetlist: UUID?
+    @State private var focusesName = false
+    /// The setlist being created, from New setlist until Done or Cancel.
+    @State private var creatingID: UUID?
+    /// Where Cancel goes back to: the screen New setlist was chosen on, and the setlist it showed.
+    @State private var creatingReturnsTo = Mode.setlists
+    @State private var setlistBeforeCreating: UUID?
     /// Where Done on the add screen goes back to: the screen it was opened from.
     @State private var addingReturnsTo = Mode.editing
     /// The last preset taken out of a setlist, while it can still be put back.
@@ -26,38 +29,30 @@ struct LibrarySheet: View {
         VStack(spacing: 0) {
             switch mode {
             case .presets:
-                PresetListView(
-                    showFilters: { mode = .filters },
-                    edit: { isNewSetlist = false; mode = .editing },
-                    addPresets: { addingReturnsTo = .presets; mode = .adding },
-                    newSetlist: { presetID in
-                        listBeforeNewSetlist = model.selectedSetlistID
-                        let id = model.createSetlist()
-                        model.setPreset(presetID, inSetlist: id, included: true)
-                        editNewSetlist(id)
+                presetList(setlistID: nil)
+            case .setlists:
+                SetlistsTab(
+                    showPresets: { mode = .presets },
+                    open: { id in
+                        model.selectFilter(id)
+                        mode = .setlist
                     },
-                    removed: { removal = $0 },
-                    close: { dismiss() }
+                    newSetlist: { startCreating(with: nil) }
                 )
-            case .filters:
-                FilterListView(
-                    done: { mode = .presets },
-                    newSetlist: {
-                        listBeforeNewSetlist = model.selectedSetlistID
-                        editNewSetlist(model.createSetlist())
-                    }
-                )
+            case .setlist:
+                if let id = model.selectedSetlistID {
+                    presetList(setlistID: id)
+                }
             case .editing:
                 if let id = model.selectedSetlistID {
                     SetlistEditor(
-                        setlistID: id, focusName: isNewSetlist,
-                        addPresets: { isNewSetlist = false; addingReturnsTo = .editing; mode = .adding },
+                        setlistID: id, isNew: creatingID == id, focusName: focusesName,
+                        addPresets: { focusesName = false; addingReturnsTo = .editing; mode = .adding },
                         removed: { removal = $0 },
                         orderChanged: { removal = nil },
+                        cancel: cancelCreating,
                         done: finishEditing
                     )
-                    // A duplicate takes the editor's place, with its own name.
-                    .id(id)
                 }
             case .adding:
                 if let id = model.selectedSetlistID {
@@ -83,8 +78,19 @@ struct LibrarySheet: View {
             try? await Task.sleep(for: .seconds(6))
             if !Task.isCancelled { removal = nil }
         }
-        .onAppear { model.showLoadedSetlist() }
-        .onDisappear(perform: discardUntouchedSetlist)
+        // The library opens on all the presets, so a song can be picked at once. When the
+        // loaded preset came from a setlist it opens inside that setlist, where the user is.
+        .onAppear {
+            if model.loadedFromSetlistID != nil {
+                model.showLoadedSetlist()
+                mode = .setlist
+            }
+        }
+        // Swiping the sheet away while a setlist is being created counts as Cancel.
+        .onDisappear {
+            if let creatingID { model.deleteSetlist(creatingID) }
+            creatingID = nil
+        }
         .background(Theme.surface)
         .preferredColorScheme(.dark)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
@@ -93,33 +99,143 @@ struct LibrarySheet: View {
         .presentationCornerRadius(28)
         .presentationBackground(Theme.surface)
         .onChange(of: model.selectedSetlistID) { _, selected in
-            // The setlist being edited was deleted.
-            if selected == nil, mode == .editing || mode == .adding { mode = .presets }
+            // The setlist being shown or edited was deleted, here or on another device.
+            if selected == nil, mode == .setlist || mode == .editing || mode == .adding { mode = .setlists }
         }
     }
 
-    private func editNewSetlist(_ id: UUID) {
-        newSetlistID = id
-        isNewSetlist = true
+    private func presetList(setlistID: UUID?) -> some View {
+        PresetListView(
+            setlistID: setlistID,
+            showSetlists: { mode = .setlists },
+            edit: { focusesName = false; mode = .editing },
+            addPresets: { addingReturnsTo = .setlist; mode = .adding },
+            newSetlist: { presetID in startCreating(with: presetID) },
+            removed: { removal = $0 },
+            close: { dismiss() }
+        )
+        // A duplicate takes the setlist's place, with its own rows.
+        .id(setlistID)
+    }
+
+    /// Makes a setlist, optionally starting with one preset, and opens it for naming.
+    private func startCreating(with presetID: UUID?) {
+        creatingReturnsTo = mode
+        setlistBeforeCreating = model.selectedSetlistID
+        let id = model.createSetlist()
+        if let presetID { model.setPreset(presetID, inSetlist: id, included: true) }
+        creatingID = id
+        focusesName = true
         mode = .editing
     }
 
+    /// Done keeps the setlist, unless it is new and was left unnamed and empty.
     private func finishEditing() {
-        discardUntouchedSetlist()
-        mode = .presets
-    }
-
-    /// A setlist made in this visit and left unnamed and empty is not kept, and the
-    /// library shows the list it showed before.
-    private func discardUntouchedSetlist() {
-        if let newSetlistID {
-            model.discardSetlistIfUntouched(newSetlistID)
-            if model.library.setlist(id: newSetlistID) == nil, let listBeforeNewSetlist {
-                model.selectFilter(listBeforeNewSetlist)
+        if let creatingID {
+            model.discardSetlistIfUntouched(creatingID)
+            let wasKept = model.library.setlist(id: creatingID) != nil
+            self.creatingID = nil
+            if !wasKept {
+                leaveCreating()
+                return
             }
         }
-        newSetlistID = nil
-        listBeforeNewSetlist = nil
+        mode = .setlist
+    }
+
+    /// Cancel drops the setlist being created, whatever was put into it.
+    private func cancelCreating() {
+        if let creatingID { model.deleteSetlist(creatingID) }
+        creatingID = nil
+        leaveCreating()
+    }
+
+    /// Back to the screen New setlist was chosen on.
+    private func leaveCreating() {
+        if creatingReturnsTo == .setlist, let setlistBeforeCreating,
+           model.library.setlist(id: setlistBeforeCreating) != nil {
+            model.selectFilter(setlistBeforeCreating)
+            mode = .setlist
+        } else {
+            mode = creatingReturnsTo == .presets ? .presets : .setlists
+        }
+    }
+}
+
+/// The switch at the top of the library: all the presets, or the list of setlists.
+struct LibraryTabs: View {
+    enum Tab { case presets, setlists }
+
+    let selected: Tab
+    let select: (Tab) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            tab("Presets", .presets)
+            tab("Setlists", .setlists)
+        }
+        .padding(3)
+        .background(Theme.surfaceRaised, in: Capsule())
+    }
+
+    private func tab(_ text: String, _ tab: Tab) -> some View {
+        let isSelected = tab == selected
+        return Button {
+            select(tab)
+        } label: {
+            Text(text)
+                .font(.system(size: 15, weight: isSelected ? .bold : .semibold))
+                .foregroundStyle(isSelected ? Theme.dialWhite : Theme.muted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity)
+                .frame(height: 34)
+                .background(isSelected ? Theme.tileDot : Color.clear, in: Capsule())
+                .contentShape(Rectangle().inset(by: -5))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// A centred title and a line of explanation, for a list that has nothing in it yet.
+struct EmptyListMessage<Extra: View>: View {
+    let title: String
+    let text: String
+    @ViewBuilder let extra: Extra
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Theme.dialWhite)
+            Text(text)
+                .font(.system(size: 15))
+                .foregroundStyle(Theme.muted)
+                .multilineTextAlignment(.center)
+            extra
+                .padding(.top, 8)
+        }
+        .padding(.horizontal, 44)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.bottom, 80)
+    }
+}
+
+/// A plain ‹ that goes one level up.
+struct BackButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(Theme.dialWhite)
+                .frame(width: 28, height: 44, alignment: .leading)
+                .contentShape(Rectangle().inset(by: -8))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Back to setlists")
     }
 }
 
@@ -155,11 +271,14 @@ private struct UndoBar: View {
 
 /// The round ⋯ button at the end of a row or in a header; it opens a menu.
 struct MoreButtonLabel: View {
+    /// 40 pt at the end of a row; 36 pt beside a pill button in a header.
+    var size: CGFloat = 40
+
     var body: some View {
         Image(systemName: "ellipsis")
             .font(.system(size: 15, weight: .bold))
             .foregroundStyle(Theme.dialWhite)
-            .frame(width: 40, height: 40)
+            .frame(width: size, height: size)
             .background(Theme.surfaceRaised, in: Circle())
             .contentShape(Circle().inset(by: -2))
     }
@@ -232,10 +351,13 @@ struct PillButton: View {
     }
 }
 
-/// The list of presets: all of them A–Z, or the selected setlist's in its own order.
+/// The list of presets: all of them A–Z on the Presets tab, or one setlist's in its own order.
 private struct PresetListView: View {
     @Environment(MetronomeModel.self) private var model
-    let showFilters: () -> Void
+    /// The setlist to show; nil for all the presets.
+    let setlistID: UUID?
+    /// Goes to the Setlists tab: from the Presets tab, or back up from a setlist.
+    let showSetlists: () -> Void
     let edit: () -> Void
     let addPresets: () -> Void
     /// Makes a setlist that starts with the given preset and opens it for naming.
@@ -247,9 +369,10 @@ private struct PresetListView: View {
     @State private var renaming: Preset?
     @State private var newName = ""
     @State private var deleting: Preset?
+    @State private var isDeleteSetlistShown = false
 
     private var setlist: Setlist? {
-        model.selectedSetlistID.flatMap(model.library.setlist(id:))
+        setlistID.flatMap(model.library.setlist(id:))
     }
 
     private var presets: [Preset] {
@@ -258,22 +381,46 @@ private struct PresetListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SheetHeader {
-                Button(action: showFilters) {
-                    SheetTitle(text: setlist?.name ?? "All presets", chevron: "chevron.down")
+            if let setlist {
+                // Inside a setlist: back to the list of setlists, the setlist's own menu, and
+                // Edit, where presets are added, removed and reordered.
+                SheetHeader {
+                    HStack(spacing: 2) {
+                        BackButton(action: showSetlists)
+                        SheetTitle(text: setlist.name)
+                    }
+                } trailing: {
+                    HStack(spacing: 8) {
+                        Menu {
+                            Button {
+                                model.duplicateSetlist(setlist.id)
+                            } label: {
+                                Label("Duplicate setlist", systemImage: "plus.square.on.square")
+                            }
+                            Button(role: .destructive) {
+                                isDeleteSetlistShown = true
+                            } label: {
+                                Label("Delete setlist", systemImage: "trash")
+                            }
+                        } label: {
+                            MoreButtonLabel(size: 36)
+                        }
+                        .accessibilityLabel("More for this setlist")
+                        PillButton(text: "Edit", symbol: "pencil", action: edit)
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint("Chooses all presets or a setlist")
-            } trailing: {
-                // The library's one button creates a preset. A setlist's opens Edit,
-                // where presets are added, removed and reordered.
-                if setlist == nil {
+            } else {
+                // The top level: the tabs take the title's place.
+                SheetHeader {
+                    LibraryTabs(selected: .presets) { tab in
+                        if tab == .setlists { showSetlists() }
+                    }
+                } trailing: {
                     PillButton(text: "New preset", symbol: "plus") { isNewPresetShown = true }
-                } else {
-                    PillButton(text: "Edit", symbol: "pencil", action: edit)
                 }
             }
-            if setlist != nil {
+            // An empty setlist says so in the middle of the screen; a count of 0 adds nothing.
+            if setlist != nil, !presets.isEmpty {
                 SectionLabel(text: presets.count == 1 ? "1 PRESET" : "\(presets.count) PRESETS")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
@@ -300,6 +447,14 @@ private struct PresetListView: View {
         } message: { preset in
             Text(deleteMessage(for: preset))
         }
+        .alert("Delete “\(setlist?.name ?? "")”?", isPresented: $isDeleteSetlistShown) {
+            Button("Delete", role: .destructive) {
+                if let setlist { model.deleteSetlist(setlist.id) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Its presets stay in the library.")
+        }
     }
 
     private func deleteMessage(for preset: Preset) -> String {
@@ -314,9 +469,9 @@ private struct PresetListView: View {
     private var list: some View {
         ScrollViewReader { proxy in
             List {
-                // Only the full library offers it; a setlist lists songs and nothing else.
-                if setlist == nil {
-                    NoPresetRow(isSelected: model.loadedPresetID == nil, settings: model.settings) {
+                // Only the full library offers it, and only while there is a preset to unload.
+                if setlist == nil, model.loadedPreset != nil {
+                    NoPresetRow(settings: model.settings) {
                         model.clearPreset()
                         close()
                     }
@@ -417,18 +572,23 @@ private struct PresetListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Text(setlist == nil ? "No presets in the library yet" : "No presets in this setlist")
-                .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(Theme.muted)
-            // The empty library needs no second button: New preset is in the header.
-            // An empty setlist gets a shortcut for filling it, past Edit.
-            if setlist != nil {
-                PillButton(text: "Add preset", symbol: "plus", look: .outlined, action: addPresets)
+        Group {
+            if setlist == nil {
+                // The empty library needs no second button: New preset is in the header.
+                EmptyListMessage(
+                    title: "No presets yet",
+                    text: "A preset is a tempo, time signature and accents saved under a name, usually one per song. Make one with New preset."
+                ) { EmptyView() }
+            } else {
+                // An empty setlist gets a shortcut for filling it, past Edit.
+                EmptyListMessage(
+                    title: "No presets in this setlist",
+                    text: "Add the presets you want to play, in the order you want them."
+                ) {
+                    PillButton(text: "Add preset", symbol: "plus", look: .outlined, action: addPresets)
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.bottom, 80)
     }
 }
 
@@ -482,49 +642,35 @@ private struct PresetRow<MenuContent: View>: View {
     }
 }
 
-/// The first row of All presets. Tapping it unloads the preset and keeps the settings.
-/// While nothing is loaded it is amber, shows the settings in use and has a tick.
+/// The first row of the Presets tab, shown only while a preset is loaded. Tapping it unloads
+/// the preset and keeps the settings. It has no menu button, so it does not pass for a preset.
 private struct NoPresetRow: View {
-    let isSelected: Bool
     let settings: MetronomeSettings
     let choose: () -> Void
 
-    /// The same in both states: the settings the metronome keeps when the row is tapped.
-    private var detail: String {
-        "\(settings.bpm) BPM · \(settings.timeSignature.rawValue) · current settings"
-    }
-
     var body: some View {
         Button(action: choose) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("No preset")
-                        .font(.system(size: 17, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(isSelected ? Theme.amber : Theme.dialWhite)
-                    Text(detail)
-                        .font(.system(size: 13))
-                        .foregroundStyle(Theme.muted)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-                // The same 40 pt lane as the menu buttons below, so the rows line up.
-                Image(systemName: "checkmark")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Theme.amber)
-                    .frame(width: 40, height: 40)
-                    .opacity(isSelected ? 1 : 0)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("No preset")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.dialWhite)
+                // What happens first, then what is kept; a narrow screen cuts the end.
+                Text("Unload current preset, keep \(settings.bpm) BPM · \(settings.timeSignature.rawValue)")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.muted)
+                    .lineLimit(1)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 62)
             .contentShape(Rectangle())
-            // The row changes state as the sheet closes; switching at once keeps the old
-            // and new text from fading over each other during the slide.
-            .transaction { $0.animation = nil }
         }
         .buttonStyle(.borderless)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("No preset, \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)")
-        .accessibilityHint(isSelected ? "" : "Unloads the preset and keeps the current settings")
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityLabel("No preset")
+        .accessibilityHint(
+            "Unloads the current preset and keeps \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)"
+        )
+        .accessibilityAddTraits(.isButton)
     }
 }
 

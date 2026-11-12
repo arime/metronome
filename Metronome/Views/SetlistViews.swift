@@ -1,79 +1,67 @@
 import SwiftUI
 
-/// "Setlists": chooses what the library lists, all presets or one setlist, and creates setlists.
-struct FilterListView: View {
+/// The Setlists tab: every setlist, most recently used first. Tapping one opens it.
+struct SetlistsTab: View {
     @Environment(MetronomeModel.self) private var model
-    /// Goes back to the list of presets, with or without a new choice.
-    let done: () -> Void
+    let showPresets: () -> Void
+    let open: (UUID) -> Void
     let newSetlist: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             SheetHeader {
-                HStack(spacing: 4) {
-                    Button(action: done) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(Theme.dialWhite)
-                            .frame(width: 32, height: 44, alignment: .leading)
-                            .contentShape(Rectangle().inset(by: -6))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Back")
-                    SheetTitle(text: "Setlists")
+                LibraryTabs(selected: .setlists) { tab in
+                    if tab == .presets { showPresets() }
                 }
             } trailing: {
                 PillButton(text: "New setlist", symbol: "plus", look: .outlined, action: newSetlist)
             }
-            List {
-                row(name: "All presets", count: model.library.presets.count, isSelected: model.selectedSetlistID == nil) {
-                    model.selectFilter(nil)
-                    done()
-                }
-                ForEach(model.library.setlistsByRecency) { setlist in
-                    row(name: setlist.name, count: setlist.presetIDs.count, isSelected: model.selectedSetlistID == setlist.id) {
-                        model.selectFilter(setlist.id)
-                        done()
+            if model.library.setlists.isEmpty {
+                EmptyListMessage(
+                    title: "No setlists yet",
+                    text: "A setlist is an ordered selection of presets, for a gig or a practice routine. Make one with New setlist."
+                ) { EmptyView() }
+            } else {
+                List {
+                    ForEach(model.library.setlistsByRecency) { setlist in
+                        row(setlist)
                     }
                 }
-                // Until there is a setlist, say what one is; the screen is otherwise one row.
-                if model.library.setlists.isEmpty {
-                    Text("A setlist is an ordered selection of presets, for a gig or a practice routine. Make one with New setlist.")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Theme.muted)
-                        .padding(.vertical, 16)
-                        .sheetRow()
-                        .listRowSeparator(.hidden)
-                }
+                .sheetList()
             }
-            .sheetList()
         }
     }
 
-    private func row(name: String, count: Int, isSelected: Bool, choose: @escaping () -> Void) -> some View {
-        Button(action: choose) {
+    /// The setlist the loaded preset came from is amber, so the user sees where they are.
+    private func row(_ setlist: Setlist) -> some View {
+        let holdsLoaded = model.loadedPresetID != nil && model.loadedFromSetlistID == setlist.id
+        let count = setlist.presetIDs.count
+        return Button {
+            open(setlist.id)
+        } label: {
             HStack(spacing: 12) {
-                Text(name)
-                    .font(.system(size: 17, weight: isSelected ? .bold : .semibold))
-                    .foregroundStyle(isSelected ? Theme.amber : Theme.dialWhite)
+                Text(setlist.name)
+                    .font(.system(size: 17, weight: holdsLoaded ? .bold : .semibold))
+                    .foregroundStyle(holdsLoaded ? Theme.amber : Theme.dialWhite)
                     .lineLimit(1)
                 Spacer(minLength: 0)
                 Text("\(count)")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(Theme.muted)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Theme.amber)
-                    .opacity(isSelected ? 1 : 0)
-                    .frame(width: 18)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.mutedDim)
             }
             .frame(height: 56)
             .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(name), \(count == 1 ? "1 preset" : "\(count) presets")")
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityLabel(
+            "\(setlist.name), \(count == 1 ? "1 preset" : "\(count) presets")"
+                + (holdsLoaded ? ", has the loaded preset" : "")
+        )
+        .accessibilityAddTraits(.isButton)
         .sheetRow()
     }
 }
@@ -103,20 +91,24 @@ struct ActionRow: View {
     }
 }
 
-/// Editing a setlist: its name, which presets it has and their order, and copying or deleting it.
+/// Creating or editing a setlist: its name, which presets it has and their order.
+/// Duplicating and deleting belong to the setlist's own view, not to its editor.
 struct SetlistEditor: View {
     @Environment(MetronomeModel.self) private var model
     let setlistID: UUID
+    /// True while the setlist is being created: Cancel is offered beside Done.
+    let isNew: Bool
     /// True for a setlist that was just created: the name field starts empty and focused.
     let focusName: Bool
     let addPresets: () -> Void
     let removed: (MetronomeModel.SetlistRemoval) -> Void
     /// The order changed, so an earlier removal can no longer be put back in place.
     let orderChanged: () -> Void
+    /// Drops the setlist being created.
+    let cancel: () -> Void
     let done: () -> Void
 
     @State private var name = ""
-    @State private var isDeleteShown = false
     @FocusState private var isNameFocused: Bool
 
     private var setlist: Setlist? { model.library.setlist(id: setlistID) }
@@ -125,42 +117,39 @@ struct SetlistEditor: View {
     var body: some View {
         VStack(spacing: 0) {
             SheetHeader {
-                TextField("Setlist name", text: $name, prompt: Text(Library.defaultSetlistName).foregroundStyle(Theme.mutedDim))
-                    .font(.system(size: 26, weight: .heavy))
-                    .foregroundStyle(Theme.dialWhite)
-                    .tint(Theme.amber)
-                    .submitLabel(.done)
-                    .focused($isNameFocused)
-                    .accessibilityLabel("Setlist name")
-            } trailing: {
-                HStack(spacing: 8) {
-                    Menu {
-                        // The name is a field that looks like a title, so renaming is also
-                        // offered by name here.
+                HStack(spacing: 4) {
+                    nameField
+                    // The name looks like a title, so a pen says that it can be changed.
+                    // It is hidden while the name is being typed, and while creating,
+                    // where the field starts out ready for typing.
+                    if !isNew, !isNameFocused {
                         Button {
-                            // The menu takes the focus back as it closes, so the field
-                            // is focused once it has gone.
-                            Task {
-                                try? await Task.sleep(for: .milliseconds(450))
-                                isNameFocused = true
-                            }
+                            isNameFocused = true
                         } label: {
-                            Label("Rename setlist", systemImage: "pencil")
+                            Image(systemName: "pencil")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(Theme.muted)
+                                .frame(width: 36, height: 44)
+                                .contentShape(Rectangle())
                         }
-                        Button {
-                            model.duplicateSetlist(setlistID)
-                        } label: {
-                            Label("Duplicate setlist", systemImage: "plus.square.on.square")
-                        }
-                        Button(role: .destructive) {
-                            isDeleteShown = true
-                        } label: {
-                            Label("Delete setlist", systemImage: "trash")
-                        }
-                    } label: {
-                        MoreButtonLabel()
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Rename setlist")
                     }
-                    .accessibilityLabel("More for this setlist")
+                }
+                // As tall with the pen as without, so the rows do not move when it hides.
+                .frame(height: 44)
+            } trailing: {
+                HStack(spacing: 14) {
+                    if isNew {
+                        Button(action: cancel) {
+                            Text("Cancel")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Theme.dialWhite)
+                                .frame(height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
                     PillButton(text: "Done", action: done)
                 }
             }
@@ -219,16 +208,24 @@ struct SetlistEditor: View {
             // An empty name is not accepted; the setlist keeps the one it had.
             model.renameSetlist(setlistID, to: newName)
         }
-        .onChange(of: setlist == nil) { _, isGone in
-            // Deleted here or on another device: close, as Done does.
-            if isGone { done() }
-        }
-        .alert("Delete “\(setlist?.name ?? "")”?", isPresented: $isDeleteShown) {
-            Button("Delete", role: .destructive) { model.deleteSetlist(setlistID) }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Its presets stay in the library.")
-        }
+    }
+
+    /// The name, as wide as its text so that the pen sits right after it. A hidden copy of
+    /// the text gives the width, and shrinks with the space when the name is long.
+    private var nameField: some View {
+        Text((name.isEmpty ? Library.defaultSetlistName : name) + " ")
+            .font(.system(size: 26, weight: .heavy))
+            .lineLimit(1)
+            .hidden()
+            .overlay(alignment: .leading) {
+                TextField("Setlist name", text: $name, prompt: Text(Library.defaultSetlistName).foregroundStyle(Theme.mutedDim))
+                    .font(.system(size: 26, weight: .heavy))
+                    .foregroundStyle(Theme.dialWhite)
+                    .tint(Theme.amber)
+                    .submitLabel(.done)
+                    .focused($isNameFocused)
+                    .accessibilityLabel("Setlist name")
+            }
     }
 }
 
