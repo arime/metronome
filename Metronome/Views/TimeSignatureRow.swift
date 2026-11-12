@@ -60,7 +60,6 @@ struct TimeSignaturePicker: View {
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 4)
     @ScaledMetric(relativeTo: .title2) private var titleSize = 26.0
-    @ScaledMetric(relativeTo: .caption) private var hintSize = 12.0
     /// The sheet's height. Starts at the height for the default text size, then follows the content.
     @State private var sheetHeight: CGFloat = 300
 
@@ -101,17 +100,10 @@ struct TimeSignaturePicker: View {
         return Button {
             choose(signature)
         } label: {
-            VStack(spacing: 2) {
-                Text(signature.rawValue)
-                    .font(.system(size: 26, weight: isSelected ? .heavy : .bold))
-                    .foregroundStyle(isSelected ? Theme.ink : Theme.dialWhite)
-                Text(signature.hint)
-                    .font(.system(size: hintSize, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(isSelected ? Theme.amberShade : Theme.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity)
+            Text(signature.rawValue)
+                .font(.system(size: 30, weight: isSelected ? .heavy : .bold))
+                .foregroundStyle(isSelected ? Theme.ink : Theme.dialWhite)
+                .frame(maxWidth: .infinity)
             .frame(height: 84)
             .background(
                 isSelected ? Theme.amber : Theme.surfaceRaised,

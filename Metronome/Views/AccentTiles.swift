@@ -34,7 +34,7 @@ struct AccentTiles: View {
                             isAccented: model.settings.accents.contains(beat),
                             isSounding: model.currentBeat == beat,
                             soundsAccented: model.lastBeat?.isAccented ?? false,
-                            showsMark: !isCompact,
+                            isCompact: isCompact,
                             height: isCompact ? Self.twoRowTileHeight : singleRowTileHeight
                         ) {
                             model.toggleAccent(beat: beat)
@@ -52,7 +52,8 @@ struct BeatTile: View {
     let isSounding: Bool
     /// Whether the beat that is sounding right now was scheduled as accented.
     let soundsAccented: Bool
-    let showsMark: Bool
+    /// True on the two-row layout, whose tiles are smaller.
+    let isCompact: Bool
     let height: CGFloat
     /// The fill of a tile that is neither accented nor sounding.
     var idleFill = Theme.surface
@@ -77,50 +78,33 @@ struct BeatTile: View {
 
     /// Smaller on the two-row layout and on the shorter tiles used on small phones.
     private var numberSize: CGFloat {
-        if !showsMark { return 20 }
+        if isCompact { return 20 }
         return height >= 70 ? 28 : 22
     }
 
+    /// The number alone says the beat; the fill, border and weight say the accent.
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: showsMark ? 20 : 14, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: isCompact ? 14 : 20, style: .continuous)
         Button(action: toggle) {
-            VStack(spacing: 2) {
-                if showsMark { mark }
-                Text("\(beat)")
-                    .font(.system(size: numberSize, weight: looksAccented ? .heavy : .semibold))
-                    .foregroundStyle(foreground)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: height)
-            .background(fill, in: shape)
-            .overlay(
-                shape.strokeBorder(Theme.amber, lineWidth: 1.5)
-                    .opacity(looksAccented && !isSounding ? 1 : 0)
-            )
-            .shadow(color: isSounding && looksAccented ? Theme.amber.opacity(0.55) : .clear, radius: 18)
-            .contentShape(TileTouchArea())
-            // Lights at once on its beat; fades back to idle over 150 ms afterwards.
-            .animation(isSounding ? nil : .easeOut(duration: 0.15), value: isSounding)
+            Text("\(beat)")
+                .font(.system(size: numberSize, weight: looksAccented ? .heavy : .semibold))
+                .foregroundStyle(foreground)
+                .frame(maxWidth: .infinity)
+                .frame(height: height)
+                .background(fill, in: shape)
+                .overlay(
+                    shape.strokeBorder(Theme.amber, lineWidth: 1.5)
+                        .opacity(looksAccented && !isSounding ? 1 : 0)
+                )
+                .shadow(color: isSounding && looksAccented ? Theme.amber.opacity(0.55) : .clear, radius: 18)
+                .contentShape(TileTouchArea())
+                // Lights at once on its beat; fades back to idle over 150 ms afterwards.
+                .animation(isSounding ? nil : .easeOut(duration: 0.15), value: isSounding)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Beat \(beat)")
         .accessibilityValue(isAccented ? "accented" : "not accented")
         .accessibilityHint("Toggles the accent")
-    }
-
-    @ViewBuilder private var mark: some View {
-        Group {
-            if looksAccented {
-                Image(systemName: "chevron.up")
-                    .font(.system(size: 13, weight: .heavy))
-                    .foregroundStyle(foreground)
-            } else {
-                Circle()
-                    .fill(isSounding ? Theme.ink : Theme.tileDot)
-                    .frame(width: 5, height: 5)
-            }
-        }
-        .frame(width: 18, height: 18)
     }
 }
 

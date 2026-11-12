@@ -23,7 +23,6 @@ enum Theme {
     /// The small dot on an idle, unaccented tile.
     static let tileDot = Color(hex: 0x3A3A3F)
     /// Hint text on the selected (amber) picker option.
-    static let amberShade = Color(hex: 0x3A2A08)
 
     static let sideMargin: CGFloat = 24
 }

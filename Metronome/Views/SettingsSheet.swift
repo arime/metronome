@@ -34,23 +34,15 @@ struct SettingsSheet: View {
                 headerHeight = height
             }
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        clickSoundCard
-                        footnote("Use your phone's volume buttons to set how loud the click is.")
-                    }
-                    VStack(alignment: .leading, spacing: 10) {
-                        hapticsCard
-                        footnote("A tap on every beat, and a tick when you change a setting.")
-                    }
-                    VStack(alignment: .leading, spacing: 10) {
-                        screenCard
-                        footnote("Keeps the screen on while the app is open, even when stopped. The screen always stays on while playing.")
-                    }
-                    VStack(alignment: .leading, spacing: 10) {
-                        iCloudCard
-                        footnote(syncText.footer)
-                    }
+                VStack(alignment: .leading, spacing: 10) {
+                    clickSoundCard
+                    // The footnotes keep 8 pt below them, so each group stands apart from the next.
+                    footnote("Set the click volume with your phone's volume buttons.")
+                    hapticsCard
+                    screenCard
+                    iCloudCard
+                        .padding(.top, 8)
+                    footnote(syncText.footer)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
@@ -78,22 +70,16 @@ struct SettingsSheet: View {
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(Theme.muted)
             .padding(.horizontal, 4)
+            .padding(.bottom, 8)
             .fixedSize(horizontal: false, vertical: true)
     }
 
     private var clickSoundCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                SectionLabel(text: "CLICK SOUND")
-                Spacer()
-                Text("Tap to hear it")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Theme.mutedDim)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 8)
-            .accessibilityElement(children: .combine)
+            SectionLabel(text: "CLICK SOUND")
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
             ForEach(ClickSound.allCases, id: \.self) { sound in
                 row(sound)
             }
@@ -103,7 +89,7 @@ struct SettingsSheet: View {
     }
 
     private var hapticsCard: some View {
-        card(label: "HAPTICS") {
+        plainCard {
             toggleRow("Haptic feedback", isOn: Binding(
                 get: { model.hapticsEnabled },
                 set: { model.setHapticsEnabled($0) }
@@ -112,7 +98,7 @@ struct SettingsSheet: View {
     }
 
     private var screenCard: some View {
-        card(label: "SCREEN") {
+        plainCard {
             toggleRow("Keep screen awake", isOn: Binding(
                 get: { model.keepScreenAwake },
                 set: { model.setKeepScreenAwake($0) }
@@ -145,7 +131,16 @@ struct SettingsSheet: View {
         .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    /// A row with a label and a switch, under a divider that starts at the text edge.
+    /// A raised card holding a single row, with no label: the row's name says it.
+    private func plainCard<Rows: View>(@ViewBuilder rows: () -> Rows) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            rows()
+        }
+        .padding(.vertical, 4)
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    /// A row with a label and a switch.
     private func toggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
         Toggle(isOn: isOn) {
             Text(title)
@@ -153,12 +148,13 @@ struct SettingsSheet: View {
                 .foregroundStyle(Theme.dialWhite)
         }
         .tint(Theme.amber)
-        .padding(.trailing, 16)
         .frame(minHeight: rowHeight)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Theme.line).frame(height: 1)
-        }
-        .padding(.leading, 16)
+        .padding(.horizontal, 16)
+    }
+
+    /// A divider above a row, inset by the same 16 pt on both sides.
+    private func divider() -> some View {
+        Rectangle().fill(Theme.line).frame(height: 1)
     }
 
     /// The sync status: a dot, the status and, at the right, a detail. Read as one line.
@@ -178,12 +174,9 @@ struct SettingsSheet: View {
                     .foregroundStyle(Theme.mutedDim)
             }
         }
-        .padding(.trailing, 16)
         .frame(minHeight: rowHeight)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Theme.line).frame(height: 1)
-        }
-        .padding(.leading, 16)
+        .overlay(alignment: .top) { divider() }
+        .padding(.horizontal, 16)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(status.detail.map { "\(status.text), \($0.lowercasedFirst)" } ?? status.text)
     }
@@ -215,13 +208,9 @@ struct SettingsSheet: View {
                     .opacity(isSelected ? 1 : 0)
                     .frame(width: 20)
             }
-            .padding(.trailing, 16)
             .frame(minHeight: rowHeight)
-            // Dividers start at the text edge, as in iOS lists.
-            .overlay(alignment: .top) {
-                Rectangle().fill(Theme.line).frame(height: 1)
-            }
-            .padding(.leading, 16)
+            .overlay(alignment: .top) { divider() }
+            .padding(.horizontal, 16)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

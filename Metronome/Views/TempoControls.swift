@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// − / Tap tempo / +
+/// − / Tap tempo / +, from margin to margin: the pill fills the space between the round buttons.
 struct TempoControls: View {
+    nonisolated static let height: CGFloat = 60
     @Environment(MetronomeModel.self) private var model
     @ScaledMetric(relativeTo: .subheadline) private var tapLabelSize = 15.0
     /// Goes up by one per tap; restarts the wait for the end of the series.
@@ -10,8 +11,8 @@ struct TempoControls: View {
     @State private var isTapping = false
 
     var body: some View {
-        HStack(spacing: 16) {
-            StepButton(symbol: "minus", label: "Slower") { model.nudgeBPM(by: -1) }
+        HStack(spacing: 12) {
+            StepButton(symbol: "minus", label: "Slower", size: Self.height) { model.nudgeBPM(by: -1) }
             Button {
                 model.tapTempo(at: ProcessInfo.processInfo.systemUptime)
                 tapCount += 1
@@ -30,8 +31,9 @@ struct TempoControls: View {
                     }
                     .allowsHitTesting(false)
                 }
-                .padding(.horizontal, 28)
-                .frame(height: 56)
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity)
+                .frame(height: Self.height)
                 .overlay(Capsule().strokeBorder(isTapping ? Theme.amber : Theme.line, lineWidth: isTapping ? 1.5 : 1))
                 .contentShape(Capsule())
             }
@@ -42,7 +44,7 @@ struct TempoControls: View {
                 try? await Task.sleep(for: .seconds(TapTempo.seriesTimeout))
                 if !Task.isCancelled { isTapping = false }
             }
-            StepButton(symbol: "plus", label: "Faster") { model.nudgeBPM(by: 1) }
+            StepButton(symbol: "plus", label: "Faster", size: Self.height) { model.nudgeBPM(by: 1) }
         }
     }
 

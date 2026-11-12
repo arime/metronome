@@ -210,7 +210,7 @@ struct SongSheet: View {
                             isAccented: draft.accents.contains(beat),
                             isSounding: false,
                             soundsAccented: false,
-                            showsMark: !isCompact,
+                            isCompact: isCompact,
                             height: isCompact ? AccentTiles.twoRowTileHeight : 56,
                             idleFill: Theme.surfaceRaised
                         ) {

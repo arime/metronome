@@ -18,7 +18,7 @@ import Testing
         let result = text(nil)
         #expect(result.row == nil)
         #expect(result.footer == SyncStatusText.generalFooter)
-        #expect(result.footer == "Keeps your songs and setlists the same on every device signed in to your iCloud account. Your settings stay separate on each device.")
+        #expect(result.footer == "Keeps your data the same on every device signed in to your iCloud account.")
     }
 
     @Test func syncingIsMutedWithAMutedDimDot() {
@@ -48,18 +48,18 @@ import Testing
     @Test func notSignedInIsAmber() {
         let result = text(.notSignedIn)
         #expect(result.row == .init(dot: .amber, text: "Not signed in to iCloud", textTone: .amber, detail: nil))
-        #expect(result.footer == "Sign in to iCloud in the Settings app to sync. Until then your songs and setlists stay on this iPhone.")
+        #expect(result.footer == "Sign in to iCloud in the Settings app to sync.")
     }
 
     @Test func fullIsAmber() {
         let result = text(.full)
         #expect(result.row == .init(dot: .amber, text: "iCloud storage is full", textTone: .amber, detail: nil))
-        #expect(result.footer == "Delete songs or setlists you no longer need to make room. Until then some changes stay on this iPhone.")
+        #expect(result.footer == "Delete songs or setlists you no longer need to make room.")
     }
 
     @Test func needsUpdateIsAmber() {
         let result = text(.needsUpdate)
         #expect(result.row == .init(dot: .amber, text: "Update the app to keep syncing", textTone: .amber, detail: nil))
-        #expect(result.footer == "Another of your devices has a newer version of the app. Until this one is updated, your songs and setlists stay on this iPhone.")
+        #expect(result.footer == "Another of your devices has a newer version of the app.")
     }
 }

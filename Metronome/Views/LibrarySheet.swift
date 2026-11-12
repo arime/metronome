@@ -13,6 +13,8 @@ struct LibrarySheet: View {
     }
 
     @State private var mode = Mode.songs
+    /// True while going deeper (a tab to its setlist, a setlist to Add songs); false going back.
+    @State private var goesDeeper = true
     /// The setlist just made with New setlist, until its view has asked for a name once.
     @State private var namingID: UUID?
     /// The setlist just made with New setlist, until the user leaves it. Left Untitled and
@@ -26,26 +28,32 @@ struct LibrarySheet: View {
             switch mode {
             case .songs:
                 songList(setlistID: nil)
+                    .transition(slide)
             case .setlists:
                 SetlistsTab(
                     showSongs: { mode = .songs },
                     open: { id in
                         model.selectFilter(id)
-                        mode = .setlist
+                        go(to: .setlist)
                     },
                     newSetlist: { startCreating(with: nil) }
                 )
+                .transition(slide)
             case .setlist:
                 if let id = model.selectedSetlistID {
                     songList(setlistID: id)
+                        .transition(slide)
                 }
             case .adding:
                 if let id = model.selectedSetlistID {
-                    AddSongsView(setlistID: id) { mode = .setlist }
+                    AddSongsView(setlistID: id) { go(to: .setlist) }
+                        .transition(slide)
                 }
             }
         }
-        .padding(.top, 22)
+        .padding(.top, 36)
+        // Each level slides over the one before, as in a navigation stack.
+        .clipped()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .overlay(alignment: .bottom) {
             if let removal {
@@ -93,11 +101,12 @@ struct LibrarySheet: View {
             showSetlists: {
                 namingID = nil
                 leaveNewSetlist()
-                mode = .setlists
+                // ‹ from a setlist slides back; the tab switch on the Songs tab does not.
+                if setlistID == nil { mode = .setlists } else { go(to: .setlists) }
             },
             addSongs: {
                 namingID = nil
-                mode = .adding
+                go(to: .adding)
             },
             newSetlist: { songID in startCreating(with: songID) },
             removed: { removal = $0 },
@@ -114,7 +123,33 @@ struct LibrarySheet: View {
         if let songID { model.setSong(songID, inSetlist: id, included: true) }
         namingID = id
         creatingID = id
-        mode = .setlist
+        go(to: .setlist)
+    }
+
+    private static func depth(of mode: Mode) -> Int {
+        switch mode {
+        case .songs, .setlists: 0
+        case .setlist: 1
+        case .adding: 2
+        }
+    }
+
+    /// A deeper level comes in from the right and a shallower one from the left; the level
+    /// left behind goes the other way.
+    private var slide: AnyTransition {
+        .asymmetric(
+            insertion: .move(edge: goesDeeper ? .trailing : .leading),
+            removal: .move(edge: goesDeeper ? .leading : .trailing)
+        )
+    }
+
+    /// Changes level with a slide. The direction is set first and the level changed a moment
+    /// later, so the view going away has already been drawn with the direction it leaves in.
+    private func go(to target: Mode) {
+        goesDeeper = Self.depth(of: target) > Self.depth(of: mode)
+        Task { @MainActor in
+            withAnimation(.snappy(duration: 0.3)) { mode = target }
+        }
     }
 
     /// Leaving the setlist just made: it is dropped if it is still Untitled and empty. This
@@ -162,10 +197,11 @@ struct LibraryTabs: View {
     }
 }
 
-/// A centred title and a line of explanation, for a list that has nothing in it yet.
+/// A centred title, and a line of explanation only where the title and button do not say it,
+/// for a list that has nothing in it yet.
 struct EmptyListMessage<Extra: View>: View {
     let title: String
-    let text: String
+    let text: String?
     @ViewBuilder let extra: Extra
 
     var body: some View {
@@ -173,10 +209,12 @@ struct EmptyListMessage<Extra: View>: View {
             Text(title)
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Theme.dialWhite)
-            Text(text)
-                .font(.system(size: 15))
-                .foregroundStyle(Theme.muted)
-                .multilineTextAlignment(.center)
+            if let text {
+                Text(text)
+                    .font(.system(size: 15))
+                    .foregroundStyle(Theme.muted)
+                    .multilineTextAlignment(.center)
+            }
             extra
                 .padding(.top, 8)
         }
@@ -572,7 +610,7 @@ private struct SongListView: View {
                 // Making one is the only thing to do, so the button is here, not in the header.
                 EmptyListMessage(
                     title: "No songs yet",
-                    text: "A song is a tempo, time signature and accents saved under a name."
+                    text: nil
                 ) {
                     PillButton(text: "New song", symbol: "plus", size: .large) { isNewSongShown = true }
                 }
@@ -580,7 +618,7 @@ private struct SongListView: View {
                 // Adding is the only thing to do here, so its button is the amber one.
                 EmptyListMessage(
                     title: "No songs in this setlist",
-                    text: "Add the songs you want to play, in the order you want them."
+                    text: nil
                 ) {
                     PillButton(text: "Add song", symbol: "plus", size: .large, action: addSongs)
                 }
@@ -651,8 +689,7 @@ private struct NoSongRow: View {
                 Text("No song")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Theme.dialWhite)
-                // What happens first, then what is kept; a narrow screen cuts the end.
-                Text("Unload current song, keep \(settings.bpm) BPM · \(settings.timeSignature.rawValue)")
+                Text("Keep \(settings.bpm) BPM · \(settings.timeSignature.rawValue)")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)

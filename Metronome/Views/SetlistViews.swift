@@ -25,7 +25,7 @@ struct SetlistsTab: View {
             if model.library.setlists.isEmpty {
                 EmptyListMessage(
                     title: "No setlists yet",
-                    text: "A setlist is an ordered selection of songs, for a gig or a practice routine."
+                    text: nil
                 ) {
                     PillButton(text: "New setlist", symbol: "plus", size: .large, action: newSetlist)
                 }
@@ -95,10 +95,9 @@ struct ActionRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 Image(systemName: symbol)
                     .font(.system(size: 15, weight: .bold))
-                    .frame(width: 24)
                 Text(text)
                     .font(.system(size: 17, weight: .semibold))
                 Spacer(minLength: 0)
@@ -112,8 +111,8 @@ struct ActionRow: View {
 }
 
 /// The header of a setlist's view: back to the setlists, the name, and the setlist's menu.
-/// The name is a field that looks like a title, with a pen after it, so the setlist is
-/// renamed in place. While the name is being typed, Done takes the menu's place.
+/// The name is a field that looks like a title. Rename setlist in the menu makes it
+/// editable in place; while the name is being typed, Done takes the menu's place.
 struct SetlistHeader: View {
     @Environment(MetronomeModel.self) private var model
     let setlistID: UUID
@@ -133,31 +132,19 @@ struct SetlistHeader: View {
         SheetHeader {
             HStack(spacing: 2) {
                 BackButton(action: back)
-                HStack(spacing: 4) {
-                    nameField
-                    // The pen says the name can be changed. It hides while the name is typed.
-                    if !isNameFocused {
-                        Button {
-                            isNameFocused = true
-                        } label: {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundStyle(Theme.muted)
-                                .frame(width: 32, height: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Rename setlist")
-                    }
-                }
-                // As tall with the pen as without, so the rows do not move when it hides.
-                .frame(height: 44)
+                nameField
+                    .frame(height: 44)
             }
         } trailing: {
             if isNameFocused {
                 PillButton(text: "Done") { isNameFocused = false }
             } else {
                 Menu {
+                    Button {
+                        isNameFocused = true
+                    } label: {
+                        Label("Rename setlist", systemImage: "pencil")
+                    }
                     Button(action: duplicate) {
                         Label("Duplicate setlist", systemImage: "plus.square.on.square")
                     }
@@ -200,22 +187,17 @@ struct SetlistHeader: View {
         return isNew && current == Library.defaultSetlistName ? "" : current
     }
 
-    /// The name, as wide as its text so that the pen sits right after it. A hidden copy of
-    /// the text gives the width, and shrinks with the space when the name is long.
+    /// The name. It takes touches only while it is being renamed, so a tap on the title does
+    /// nothing by surprise; Rename setlist in the menu is the way in.
     private var nameField: some View {
-        Text((name.isEmpty ? Library.defaultSetlistName : name) + " ")
+        TextField("Setlist name", text: $name, prompt: Text(Library.defaultSetlistName).foregroundStyle(Theme.mutedDim))
             .font(.system(size: 26, weight: .heavy))
-            .lineLimit(1)
-            .hidden()
-            .overlay(alignment: .leading) {
-                TextField("Setlist name", text: $name, prompt: Text(Library.defaultSetlistName).foregroundStyle(Theme.mutedDim))
-                    .font(.system(size: 26, weight: .heavy))
-                    .foregroundStyle(Theme.dialWhite)
-                    .tint(Theme.amber)
-                    .submitLabel(.done)
-                    .focused($isNameFocused)
-                    .accessibilityLabel("Setlist name")
-            }
+            .foregroundStyle(Theme.dialWhite)
+            .tint(Theme.amber)
+            .submitLabel(.done)
+            .focused($isNameFocused)
+            .allowsHitTesting(isNameFocused)
+            .accessibilityLabel("Setlist name")
     }
 }
 
@@ -264,8 +246,6 @@ struct AddSongsView: View {
 
     private var list: some View {
         List {
-            ActionRow(text: "New song", symbol: "plus") { isNewSongShown = true }
-                .sheetRow()
             ForEach(songs) { song in
                 let isIncluded = members.contains(song.id)
                 Button {
@@ -302,6 +282,9 @@ struct AddSongsView: View {
                 .accessibilityAddTraits(.isButton)
                 .sheetRow()
             }
+            // At the end, as Add song is in the setlist itself.
+            ActionRow(text: "New song", symbol: "plus") { isNewSongShown = true }
+                .sheetRow()
         }
         .sheetList()
     }

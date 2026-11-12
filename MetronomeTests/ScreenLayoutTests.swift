@@ -3,8 +3,8 @@ import Testing
 @testable import Metronome
 
 /// Heights are the usable height (inside the safe area). Everything but the dial takes
-/// 294 pt plus the two gaps and the tiles: 418 pt roomy and 382 pt compact with one row
-/// of tiles, 440 pt and 424 pt with two rows.
+/// 268 pt plus the two gaps and the tiles: 392 pt roomy and 356 pt compact with one row
+/// of tiles, 414 pt and 398 pt with two rows.
 struct ScreenLayoutTests {
     private func layout(
         width: CGFloat = 375, height: CGFloat, hasBottomInset: Bool = false, beats: Int = 4,
@@ -33,12 +33,12 @@ struct ScreenLayoutTests {
         #expect(layout.dialDiameter == 340)
         #expect(isRoomy(layout))
         #expect(layout.bottomPadding == 0)
-        #expect(layout.fixedHeight == 418)
+        #expect(layout.fixedHeight == 392)
     }
 
     @Test func dialGrowsOnlyAsFarAsTheSpareHeight() {
-        #expect(layout(width: 402, height: 718, hasBottomInset: true).dialDiameter == 300)
-        #expect(layout(width: 402, height: 738, hasBottomInset: true).dialDiameter == 320)
+        #expect(layout(width: 402, height: 692, hasBottomInset: true).dialDiameter == 300)
+        #expect(layout(width: 402, height: 712, hasBottomInset: true).dialDiameter == 320)
     }
 
     @Test func dialNeverGrowsWiderThanTheSpaceBetweenTheMargins() {
@@ -47,11 +47,11 @@ struct ScreenLayoutTests {
     }
 
     @Test func aSetlistAddsTheNextUpLine() {
-        let layout = layout(width: 402, height: 778, hasBottomInset: true, hasSetlist: true)
+        let layout = layout(width: 402, height: 752, hasBottomInset: true, hasSetlist: true)
         #expect(layout.showsNextLine)
-        #expect(layout.fixedHeight == 450)
+        #expect(layout.fixedHeight == 424)
         #expect(layout.dialDiameter == 328)
-        #expect(fits(layout, in: 778))
+        #expect(fits(layout, in: 752))
     }
 
     @Test func noSetlistNoNextUpLine() {
@@ -61,25 +61,25 @@ struct ScreenLayoutTests {
     @Test func iPhoneSEKeepsTheNextUpLineWithASmallerDial() {
         let layout = layout(height: 647, hasSetlist: true)
         #expect(layout.showsNextLine)
-        #expect(layout.dialDiameter == 217)
+        #expect(layout.dialDiameter == 243)
         #expect(fits(layout, in: 647))
     }
 
     @Test func nextUpLineIsLeftOutWhenTheDialWouldGoBelow200() {
-        let layout = layout(height: 647, beats: 12, hasSetlist: true)
+        let layout = layout(height: 645, beats: 12, hasSetlist: true)
         #expect(layout.showsNextLine == false)
-        #expect(layout.dialDiameter == 207)
-        #expect(fits(layout, in: 647))
+        #expect(layout.dialDiameter == 231)
+        #expect(fits(layout, in: 645))
     }
 
     @Test func dialShrinksFirstDownTo240() {
-        let layout = layout(height: 658, hasBottomInset: true)
+        let layout = layout(height: 632, hasBottomInset: true)
         #expect(layout.dialDiameter == 240)
         #expect(isRoomy(layout))
     }
 
     @Test func gapsAndTilesShrinkOnceTheDialWouldGoBelow240() {
-        let layout = layout(height: 657, hasBottomInset: true)
+        let layout = layout(height: 631, hasBottomInset: true)
         #expect(isCompact(layout))
         #expect(layout.dialDiameter == 275)
     }
@@ -88,8 +88,8 @@ struct ScreenLayoutTests {
         let layout = layout(height: 647)
         #expect(isCompact(layout))
         #expect(layout.bottomPadding == 16)
-        #expect(layout.fixedHeight == 382)
-        #expect(layout.dialDiameter == 249)
+        #expect(layout.fixedHeight == 356)
+        #expect(layout.dialDiameter == 275)
         #expect(fits(layout, in: 647))
     }
 
@@ -97,30 +97,30 @@ struct ScreenLayoutTests {
         let layout = layout(height: 647, beats: 12)
         #expect(layout.settingsTopGap == 16)
         #expect(layout.sectionGap == 16)
-        #expect(layout.fixedHeight == 424)
-        #expect(layout.dialDiameter == 207)
+        #expect(layout.fixedHeight == 398)
+        #expect(layout.dialDiameter == 233)
         #expect(fits(layout, in: 647))
     }
 
     @Test func dialKeepsShrinkingBelow200InsteadOfOverflowing() {
-        let layout = layout(height: 581, hasBottomInset: true)
+        let layout = layout(height: 555, hasBottomInset: true)
         #expect(isCompact(layout))
         #expect(layout.dialDiameter == 199)
-        #expect(fits(layout, in: 581))
+        #expect(fits(layout, in: 555))
     }
 
     @Test func displayZoomFitsWithASmallDial() {
         let layout = layout(width: 320, height: 548)
         #expect(isCompact(layout))
         #expect(layout.bottomPadding == 16)
-        #expect(layout.dialDiameter == 150)
+        #expect(layout.dialDiameter == 176)
         #expect(fits(layout, in: 548))
     }
 
     @Test func displayZoomWithTwelveBeatsFitsWithTheSmallestDial() {
         let layout = layout(width: 320, height: 548, beats: 12)
-        #expect(layout.fixedHeight == 424)
-        #expect(layout.dialDiameter == 108)
+        #expect(layout.fixedHeight == 398)
+        #expect(layout.dialDiameter == 134)
         #expect(fits(layout, in: 548))
     }
 

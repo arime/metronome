@@ -25,10 +25,7 @@ struct MetronomeScreen: View {
                     .padding(.top, 4)
                 VStack(alignment: .leading, spacing: layout.sectionGap) {
                     TimeSignatureRow(sideMargin: layout.sideMargin)
-                    VStack(alignment: .leading, spacing: 14) {
-                        SectionLabel(text: "ACCENTS")
-                        AccentTiles(singleRowTileHeight: layout.tileHeight)
-                    }
+                    AccentTiles(singleRowTileHeight: layout.tileHeight)
                 }
                 .padding(.top, layout.settingsTopGap)
                 Spacer(minLength: ScreenLayout.buttonTopGap)
@@ -169,7 +166,7 @@ struct ScreenLayout {
     static let maximumDial: CGFloat = 340
     /// The dial shrinks this far before the gaps and tiles give way.
     static let roomyMinimumDial: CGFloat = 240
-    /// A safety floor only; no supported iPhone gets near it (the smallest is about 108 pt).
+    /// A safety floor only; no supported iPhone gets near it (the smallest is about 134 pt).
     static let minimumDial: CGFloat = 80
 
     static let nextLineHeight: CGFloat = 18
@@ -196,13 +193,12 @@ struct ScreenLayout {
             func partsHeight(sectionGap: CGFloat, settingsTopGap: CGFloat, tileHeight: CGFloat) -> CGFloat {
                 let header: CGFloat = 8 + 40
                 let dialTop: CGFloat = 12
-                let controls: CGFloat = 4 + 56
+                let controls: CGFloat = 4 + TempoControls.height
                 let row: CGFloat = 60
-                let accentsLabel: CGFloat = 16 + 14
                 let tiles = AccentTiles.height(forBeats: beats, singleRowTileHeight: tileHeight)
                 let nextUp: CGFloat = nextLine ? Self.nextLineHeight + Self.nextLineGap : 0
                 let button: CGFloat = Self.buttonTopGap + nextUp + 68
-                return header + dialTop + controls + settingsTopGap + row + sectionGap + accentsLabel + tiles + button
+                return header + dialTop + controls + settingsTopGap + row + sectionGap + tiles + button
             }
 
             let roomy = partsHeight(sectionGap: 22, settingsTopGap: 26, tileHeight: 76)

@@ -222,7 +222,7 @@ Tempo names:
 
 ### 6.3 Tempo controls
 
-A row of three: − (56 pt round), `Tap tempo` (outlined pill with a hand icon), + (56 pt round).
+A 60 pt row of three that spans the screen between the side margins: − (60 pt round), `Tap tempo` (an outlined pill with a hand icon) and + (60 pt round). The pill fills the space between the round buttons, 12 pt from each, so the row lines up with the time signature row and the tiles below it.
 
 While a tap tempo series is open, from a tap until 2 seconds after the last one, the pill's outline is amber (1.5 pt) and its label reads `Tap again`. The pill keeps its width when the label changes.
 
@@ -232,26 +232,22 @@ A 60 pt row: the label `Time signature`, the current value in amber (for example
 
 ### 6.5 Accents
 
-The label `ACCENTS`, then one tile per beat in a single row with 10 pt gaps, each 76 pt tall with a 20 pt corner radius. Each tile shows a small mark above its beat number.
+One tile per beat, right below the time signature row, with no heading: the tiles are plainly the beats. They sit in a single row with 10 pt gaps, each 76 pt tall with a 20 pt corner radius. Each tile shows only its beat number, centred; the fill, border and weight of the number tell an accent apart.
 
-| Tile state | Fill | Border | Number and mark |
+| Tile state | Fill | Border | Number |
 |---|---|---|---|
-| Not accented, idle | surface | none | muted number, small dot |
-| Accented, idle | dark amber tint | 1.5 pt amber | amber number, ^ mark |
-| Not accented, sounding | dial white | none | ink number, ink dot |
-| Accented, sounding | amber, with amber glow | none | ink number, ink ^ mark |
+| Not accented, idle | surface | none | muted, semibold |
+| Accented, idle | dark amber tint | 1.5 pt amber | amber, heavy |
+| Not accented, sounding | dial white | none | ink, semibold |
+| Accented, sounding | amber, with amber glow | none | ink, heavy |
 
 "Sounding" applies only while playing, to the tile of the current beat. A sounding tile follows the beat as it was scheduled, so it always agrees with the click and the haptic.
 
-Up to seven tiles fit in one row. For 9/8 and 12/8 the tiles wrap into two equal rows (5 + 4, and 6 + 6) and the tile height drops to 44 pt, with the mark omitted.
+Up to seven tiles fit in one row. For 9/8 and 12/8 the tiles wrap into two equal rows (5 + 4, and 6 + 6) and the tile height drops to 44 pt, with a smaller number.
 
 ### 6.6 Time signature picker
 
-A bottom sheet over a dimmed screen, sized to its content: a grabber, the title `Time signature`, and a 4 × 2 grid of options. Each option shows the signature and a one-word hint:
-
-| 2/4 | 3/4 | 4/4 | 5/4 | 6/8 | 7/8 | 9/8 | 12/8 |
-|---|---|---|---|---|---|---|---|
-| March | Waltz | Common | Odd | Compound | Odd | Compound | Compound |
+A bottom sheet over a dimmed screen, sized to its content: a grabber, the title `Time signature`, and a 4 × 2 grid of options, each 84 pt tall. Each option shows only the signature (30 pt, bold; heavy when selected), in this order: 2/4, 3/4, 4/4, 5/4, 6/8, 7/8, 9/8, 12/8. VoiceOver still reads a one-word hint with each (March, Waltz, Common, Odd, Compound, Odd, Compound, Compound).
 
 The current signature is filled amber with a glow.
 
@@ -272,7 +268,7 @@ The footer changes only when the loaded song's setlist changes, never between Re
 
 The design is drawn for a 390 × 844 pt screen.
 
-On taller screens the dial takes the spare height: it grows from 300 pt up to 340 pt, and never wider than the space between the side margins. An iPhone 17 Pro gets 340 pt, or 328 pt with the next-up line. Height that is still left over stays between the accent tiles and the footer.
+On taller screens the dial takes the spare height: it grows from 300 pt up to 340 pt, and never wider than the space between the side margins. An iPhone 17 Pro gets 340 pt, with or without the next-up line. Height that is still left over stays between the accent tiles and the footer.
 
 On shorter screens the layout adapts in this order and stops as soon as everything fits:
 
@@ -318,31 +314,21 @@ A bottom sheet over a dimmed screen, styled like the New song sheet: a grabber, 
 
 **Click sound** is one surface-raised card with 16 pt corners:
 
-- A header line: `CLICK SOUND` (13 pt, semibold, capitals, wide letter spacing, muted) and, at the right, `Tap to hear it` (13 pt, muted dim).
-- One 44 pt row per sound, in this order: Digital, Soft beep, Woodblock, Mallet, Glass, Tick, Pendulum. Each row shows only the name (16 pt, dial white). Thin line-coloured dividers separate the rows and start at the text edge.
+- A header line: `CLICK SOUND` (13 pt, semibold, capitals, wide letter spacing, muted). Tapping a sound plays it, so nothing says so.
+- One 44 pt row per sound, in this order: Digital, Soft beep, Woodblock, Mallet, Glass, Tick, Pendulum. Each row shows only the name (16 pt, dial white). Thin line-coloured dividers separate the rows; they are inset 16 pt from both edges of the card.
 - The selected sound's name is amber and semibold, with an amber tick at the right. The tick has a fixed slot, so names line up in every row.
 
-Below the card: `Use your phone's volume buttons to set how loud the click is.` (13 pt, muted).
+Below the card: `Set the click volume with your phone's volume buttons.` (13 pt, muted).
 
-**Haptics** is a second surface-raised card with 16 pt corners, below that line:
+The cards and lines are 10 pt apart, and each line below a card keeps 8 pt below it, so a card that follows a line is 18 pt below it. Only the volume and iCloud have a line below their cards; the switches' names say what they do.
 
-- The same header line style: `HAPTICS`, with nothing at the right.
-- One 44 pt row: `Haptic feedback` (16 pt, dial white) and, at the right, a standard iOS switch tinted amber when on.
+**Haptic feedback** and **Keep screen awake** are two surface-raised cards with 16 pt corners and no header, 10 pt apart, so they read as a pair. Each holds one 44 pt row: the name (16 pt, dial white) and, at the right, a standard iOS switch tinted amber when on.
 
-Below the card: `A tap on every beat, and a tick when you change a setting.` (13 pt, muted).
-
-**Screen** is a third surface-raised card with 16 pt corners, below that line:
-
-- The same header line style: `SCREEN`, with nothing at the right.
-- One 44 pt row: `Keep screen awake` (16 pt, dial white) and, at the right, a standard iOS switch tinted amber when on.
-
-Below the card: `Keeps the screen on while the app is open, even when stopped. The screen always stays on while playing.` (13 pt, muted).
-
-**iCloud** is a fourth surface-raised card with 16 pt corners, below that line:
+**iCloud** is a last surface-raised card with 16 pt corners, 18 pt below Keep screen awake, so it stands as its own group:
 
 - The same header line style: `ICLOUD`, with nothing at the right.
 - One 44 pt row: `Sync songs and setlists` (16 pt, dial white) and, at the right, a standard iOS switch tinted amber when on.
-- While the switch is on, a second 44 pt row, the **status line**: an 8 pt dot, the status (15 pt) and, at the right, a detail (13 pt, muted dim). While the switch is off there is no status line.
+- While the switch is on, a second 44 pt row inside the card, the **status line**, under a divider inset 16 pt from both edges: an 8 pt dot, the status (15 pt) and, at the right, a detail (13 pt, muted dim). While the switch is off there is no status line.
 
 | Status | Dot | Text | Detail |
 |---|---|---|---|
@@ -354,10 +340,10 @@ Below the card: `Keeps the screen on while the app is open, even when stopped. T
 
 Below the card, one line (13 pt, muted) that depends on the state:
 
-- Off, syncing or up to date: `Keeps your songs and setlists the same on every device signed in to your iCloud account. Your settings stay separate on each device.`
-- Not signed in: `Sign in to iCloud in the Settings app to sync. Until then your songs and setlists stay on this iPhone.`
-- iCloud full: `Delete songs or setlists you no longer need to make room. Until then some changes stay on this iPhone.`
-- Newer format: `Another of your devices has a newer version of the app. Until this one is updated, your songs and setlists stay on this iPhone.`
+- Off, syncing or up to date: `Keeps your data the same on every device signed in to your iCloud account.`
+- Not signed in: `Sign in to iCloud in the Settings app to sync.`
+- iCloud full: `Delete songs or setlists you no longer need to make room.`
+- Newer format: `Another of your devices has a newer version of the app.`
 
 The status line is the device's own view. iCloud does not tell the app when a change has reached the server, so `Last synced` is the time the device last handed a change to iCloud or received one, and there is no separate status for being offline.
 
@@ -517,6 +503,8 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 
 - The top level has two tabs: **Songs**, every song, and **Setlists**, the list of setlists (9.1).
 - Tapping a setlist on the Setlists tab opens that setlist (8.3), one level down. A ‹ takes the user back up to the Setlists tab.
+- Each level slides in like a navigation stack: a deeper one (a setlist, then Add song) comes in from the right over 0.3 s, and going back the level above comes in from the left. Switching tabs does not slide.
+- The content starts 36 pt below the top of the sheet, so the grabber has room above the header.
 
 **Where it opens.**
 
@@ -535,15 +523,15 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 **Inside a setlist** the header has, from the left:
 
 - **‹**, which goes back to the Setlists tab.
-- The setlist's name as the title (26 pt heavy), with a muted **pen** right after it. Tapping the name or the pen renames the setlist in place (9.2).
-- **Menu button** (⋯, 36 pt round), with **Duplicate setlist** and **Delete setlist** (8.3). While the name is being typed, **Done** takes its place.
+- The setlist's name as the title (26 pt heavy). Tapping it does nothing; it is renamed from the menu (9.2).
+- **Menu button** (⋯, 36 pt round), with **Rename setlist**, **Duplicate setlist** and **Delete setlist** (8.3), a standard iOS menu. While the name is being typed, **Done** takes its place.
 
 There is no Edit button and no separate edit mode: everything that changes a setlist is done in its own view (8.3).
 
 ### 8.2 The Songs tab
 
 - **No song**, the first row, shown only while a song is loaded. It is how the user goes back to having no song loaded.
-  - Below the name it says what it does and what is kept, for example `Unload current song, keep 120 BPM · 4/4`. While the song has unsaved edits, these are the edited values. On a narrow screen the end of the line is cut.
+  - Below the name it says what it does and what is kept, for example `Keep 120 BPM · 4/4`. While the song has unsaved edits, these are the edited values. On a narrow screen the end of the line is cut.
   - It has no menu button, so it is not taken for a song.
   - Tapping it unloads the song and closes the sheet. The tempo, time signature and accents stay as they are, playing or stopped, and the click does not change. The song itself is not changed; unsaved edits stay as plain settings. Previous / Next disappear and the header shows the "nothing loaded" state.
   - It is not shown while nothing is loaded, since there is nothing to unload, and not in a setlist.
@@ -553,7 +541,7 @@ There is no Edit button and no separate edit mode: everything that changes a set
 - **Tapping a row** loads the song and closes the sheet. It does not start the metronome; Start is under the thumb when the sheet has closed. If the metronome is already playing, it keeps playing with the new song.
 - A song loaded from this view keeps the setlist that was being stepped through when it is in that setlist, so the header still shows its position and Previous / Next stay. A song that is not in that setlist, or one loaded while no setlist was being stepped through, has no loaded-from setlist, and Previous / Next are hidden.
 - **Swiping a row left** reveals **Edit** and **Delete**, as a shortcut to the same items in the row's menu.
-- Empty library: centred, `No songs yet` (17 pt, semibold, dial white) and below it `A song is a tempo, time signature and accents saved under a name.` (15 pt, muted), and a large amber **New song** button (48 pt tall). While the library is empty the header has no New song button; it is in the middle instead.
+- Empty library: centred, `No songs yet` (17 pt, semibold, dial white) and a large amber **New song** button (48 pt tall). While the library is empty the header has no New song button; it is in the middle instead.
 
 There is no button on a row that loads and starts in one tap. A button that looked like a preview but replaced the loaded song and closed the sheet was easy to misread, and its place is better used for the menu.
 
@@ -565,8 +553,8 @@ There is no button on a row that loads and starts in one tap. A button that look
 - **Reordering:** every row has a drag handle (≡) at its right end, after the menu button, always shown. Dragging the handle moves the row at once; the new order is the setlist's order, and the numbers follow.
 - **Removing:** **Remove from setlist** in the row's menu (8.4), with Undo (8.5). Rows cannot be swiped here: a list that shows drag handles does not take swipes.
 - **Adding:** **Add song**, an amber row after the last song, opens 9.3. New songs go to the end, where the row is.
-- **Renaming:** with the name or the pen in the header (9.2).
-- Empty setlist: centred, `No songs in this setlist`, below it `Add the songs you want to play, in the order you want them.`, and a large amber **Add song** button (48 pt tall), which opens 9.3. It is the only thing to do there, so it is filled.
+- **Renaming:** with Rename setlist in the header menu (9.2).
+- Empty setlist: centred, `No songs in this setlist` and a large amber **Add song** button (48 pt tall), which opens 9.3. It is the only thing to do there, so it is filled.
 - **The setlist's menu** (⋯ in the header) holds what is done to the setlist as a whole:
   - **Duplicate setlist:** creates a setlist named `<name> copy` with the same songs in the same order, and shows the copy. The songs are shared, not copied.
   - **Delete setlist**, in red: asks for confirmation, deletes the setlist and goes back to the Setlists tab. The songs stay in the library.
@@ -604,14 +592,14 @@ Only the last removal can be undone. Deleting a song or a setlist is confirmed b
 - Tapping a setlist opens it (8.3). It loads nothing into the metronome.
 - **Swiping a row left** reveals **Delete**, in red, a shortcut to Delete setlist in the setlist's menu. It asks for confirmation in the same way; the songs stay in the library.
 - **New setlist** button at the top right (in the middle while there are no setlists): creates a setlist and opens it for naming (9.2).
-- While there are no setlists: centred, `No setlists yet` (17 pt, semibold, dial white) and below it `A setlist is an ordered selection of songs, for a gig or a practice routine.` (15 pt, muted), and a large amber **New setlist** button (48 pt tall). While there are no setlists the header has no New setlist button; it is in the middle instead.
+- While there are no setlists: centred, `No setlists yet` (17 pt, semibold, dial white) and a large amber **New setlist** button (48 pt tall). While there are no setlists the header has no New setlist button; it is in the middle instead.
 - The list scrolls; there is no limit on the number of setlists.
 
 ### 9.2 Creating and renaming a setlist
 
 A setlist is changed in its own view (8.3); there is no separate editing screen.
 
-**Renaming:** the name stands in the place and size of a title, with a muted **pen** right after it. Tapping the name or the pen puts the cursor in the name; the pen hides while the name is being typed, and **Done** takes the menu button's place. Done, Return on the keyboard, or leaving the view ends typing, and only then is the name saved; there is no cancel. An empty name is not accepted: the setlist keeps its previous name, which comes back when typing ends. So a name typed and then erased leaves the setlist as it was.
+**Renaming:** the name stands in the place and size of a title. **Rename setlist** in the header menu puts the cursor in the name, and **Done** takes the menu button's place. The name takes no taps otherwise, so the title is not edited by surprise. A new setlist starts with the cursor already in its name. Done, Return on the keyboard, or leaving the view ends typing, and only then is the name saved; there is no cancel. An empty name is not accepted: the setlist keeps its previous name, which comes back when typing ends. So a name typed and then erased leaves the setlist as it was.
 
 **Creating**, after New setlist on the Setlists tab or in a song's row menu (8.4):
 
@@ -626,8 +614,8 @@ Duplicating and deleting are in the setlist's menu (8.3).
 Opened with Add song in a setlist's view, from the row after the last song or from the button of an empty setlist.
 
 - **Header:** `ADD TO` in small capitals above the setlist's name as the title, and **Done** at the right, which goes back to the setlist.
-- First row: **New song**, in amber, which opens the New song sheet (section 10) with "Add to <setlist>" switched on.
-- Then every song in the library, A–Z, each with a round tick at the right end: filled amber when it is in the setlist, an empty grey ring when it is not.
+- Every song in the library, A–Z, each with a round tick at the right end: filled amber when it is in the setlist, an empty grey ring when it is not.
+- Last row: **New song**, in amber, which opens the New song sheet (section 10) with "Add to <setlist>" switched on. It sits at the end like Add song in the setlist's view, with the + 8 pt from its text.
 - Tapping a row adds the song to the end of the setlist, or takes it out. Changes take effect at once. Taking a song out here shows no Undo bar: the user is picking, and ticking it again puts it back (at the end).
 - **Empty library:** centred, `No songs in library yet` (17 pt, semibold, dial white), below it `Create one here, and it goes straight into <setlist>.` (15 pt, muted), and a large amber **New song** button that opens the New song sheet with "Add to <setlist>" switched on. Done is grey here (surface raised, dial-white text), so that New song is the one amber button.
 
@@ -734,7 +722,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The sync switch reads as "Sync songs and setlists, on" or "Sync songs and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
   - The header title reads the song name and its second line, and says that it opens the library. While the song is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the save controls appearing cannot be heard.
   - A song row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its menu button reads "More for Harbour Lights".
-  - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist"; the pen beside a setlist's name reads "Rename setlist". The tabs read "Songs" and "Setlists", with "selected" for the one shown.
+  - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist", and its first item "Rename setlist". The tabs read "Songs" and "Setlists", with "selected" for the one shown.
   - In a setlist's view, rows can be moved up and down with VoiceOver actions as well as by dragging.
   - The Add song screen's title reads "Add to <setlist>", and each row says whether the song is in the setlist.
   - Beat changes during playback are not announced.
@@ -790,7 +778,7 @@ Songs and setlists:
 - [x] Loading a song while playing keeps the metronome running and starts a new bar.
 - [ ] The Setlists tab shows all setlists with counts, a setlist opens from it with a way back, and the tab explains setlists while there are none and stays usable with 20 setlists. *(The tab, opening a setlist and going back were tried in the simulator, and the explanations on an empty Setlists tab, an empty Songs tab and an empty setlist were seen. 20 setlists have not been seen.)*
 - [x] A setlist's menu has Duplicate and Delete. *(Tried in the simulator: Duplicate showed the copy, Delete went back to the Setlists tab.)*
-- [x] A setlist is changed in its own view, with no edit mode: the pen renames it in place, the handles reorder it, the row menu removes a song, and the Add song row opens 9.3. *(Tried in the simulator on an iPhone 17 Pro: dragging the last row to second place, renaming with the pen and Done, opening the picker from the row, and loading a song by tapping its row with the handles shown.)*
+- [x] A setlist is changed in its own view, with no edit mode: Rename setlist in the menu renames it in place, the handles reorder it, the row menu removes a song, and the Add song row opens 9.3. *(Tried in the simulator on an iPhone 17 Pro: dragging the last row to second place, renaming with the pen and Done (since moved to the menu), opening the picker from the row, and loading a song by tapping its row with the handles shown.)*
 - [x] New setlist makes an Untitled setlist and opens its view with the name ready for typing; leaving it with no name and no songs drops it, and a name typed and then erased counts as no name. *(Tried in the simulator: Done without typing kept the grey placeholder, and ‹ then dropped the setlist. The dropping rule and refusing an empty name are unit tested. Closing the library from a new setlist was not tried on screen.)*
 - [x] Swiping a setlist left on the Setlists tab offers Delete, with confirmation. *(Tried in the simulator.)*
 - [x] The Add song screen ticks songs at the right end and explains an empty library with a New song button. *(Both seen in the simulator.)*
