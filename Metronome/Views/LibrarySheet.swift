@@ -15,6 +15,8 @@ struct LibrarySheet: View {
     @State private var mode = Mode.songs
     /// True while going deeper (a tab to its setlist, a setlist to Add songs); false going back.
     @State private var goesDeeper = true
+    /// False for a switch between the tabs, which changes in place with no slide.
+    @State private var slides = false
     /// The setlist just made with New setlist, until its view has asked for a name once.
     @State private var namingID: UUID?
     /// The setlist just made with New setlist, until the user leaves it. Left Untitled and
@@ -31,7 +33,7 @@ struct LibrarySheet: View {
                     .transition(slide)
             case .setlists:
                 SetlistsTab(
-                    showSongs: { mode = .songs },
+                    showSongs: { switchTab(to: .songs) },
                     open: { id in
                         model.selectFilter(id)
                         go(to: .setlist)
@@ -102,7 +104,7 @@ struct LibrarySheet: View {
                 namingID = nil
                 leaveNewSetlist()
                 // ‹ from a setlist slides back; the tab switch on the Songs tab does not.
-                if setlistID == nil { mode = .setlists } else { go(to: .setlists) }
+                if setlistID == nil { switchTab(to: .setlists) } else { go(to: .setlists) }
             },
             addSongs: {
                 namingID = nil
@@ -137,7 +139,8 @@ struct LibrarySheet: View {
     /// A deeper level comes in from the right and a shallower one from the left; the level
     /// left behind goes the other way.
     private var slide: AnyTransition {
-        .asymmetric(
+        guard slides else { return .identity }
+        return .asymmetric(
             insertion: .move(edge: goesDeeper ? .trailing : .leading),
             removal: .move(edge: goesDeeper ? .leading : .trailing)
         )
@@ -147,8 +150,20 @@ struct LibrarySheet: View {
     /// later, so the view going away has already been drawn with the direction it leaves in.
     private func go(to target: Mode) {
         goesDeeper = Self.depth(of: target) > Self.depth(of: mode)
+        slides = true
         Task { @MainActor in
             withAnimation(.snappy(duration: 0.3)) { mode = target }
+        }
+    }
+
+    /// Switches between the Songs and Setlists tabs at once. Like go(to:), the views are
+    /// first drawn without their slide, then the tab changes with every animation turned off.
+    private func switchTab(to target: Mode) {
+        slides = false
+        Task { @MainActor in
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { mode = target }
         }
     }
 
@@ -334,7 +349,13 @@ struct PillButton: View {
     var symbol: String?
     var look = Look.filled
     var size = Size.regular
+    /// At least this wide, with the text centred; nil for the text's own width.
+    var minWidth: CGFloat?
     let action: () -> Void
+
+    /// The tab headers' New song and New setlist share this width, so the tab switch beside
+    /// them stays the same width on both tabs.
+    static let tabHeaderWidth: CGFloat = 124
 
     private var foreground: Color {
         switch look {
@@ -362,6 +383,7 @@ struct PillButton: View {
             }
             .foregroundStyle(foreground)
             .padding(.horizontal, size == .large ? 22 : 14)
+            .frame(minWidth: minWidth)
             .frame(height: size == .large ? 48 : 36)
             .background(fill, in: Capsule())
             .overlay(Capsule().strokeBorder(Theme.amber, lineWidth: 1).opacity(look == .outlined ? 1 : 0))
@@ -429,8 +451,10 @@ private struct SongListView: View {
                 } trailing: {
                     // While the library is empty the button is in the middle instead. Its
                     // place stays, so the tabs keep their width.
-                    PillButton(text: "New song", symbol: "plus") { isNewSongShown = true }
-                        .hiddenInPlace(songs.isEmpty)
+                    PillButton(text: "New song", symbol: "plus", minWidth: PillButton.tabHeaderWidth) {
+                        isNewSongShown = true
+                    }
+                    .hiddenInPlace(songs.isEmpty)
                 }
             }
             // An empty setlist says so in the middle of the screen; a count of 0 adds nothing.

@@ -19,7 +19,10 @@ struct SetlistsTab: View {
             } trailing: {
                 // While there are no setlists the button is in the middle instead. Its place
                 // stays, so the tabs keep their width.
-                PillButton(text: "New setlist", symbol: "plus", look: .outlined, action: newSetlist)
+                PillButton(
+                    text: "New setlist", symbol: "plus", look: .outlined,
+                    minWidth: PillButton.tabHeaderWidth, action: newSetlist
+                )
                     .hiddenInPlace(model.library.setlists.isEmpty)
             }
             if model.library.setlists.isEmpty {
