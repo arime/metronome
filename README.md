@@ -7,14 +7,16 @@
 <p align="center">A precise, no-fuss metronome for iPhone.</p>
 
 <p align="center">
-  <img src="screenshots/1-playing.png" width="300" alt="The metronome playing a 7/8 song at 168 BPM">
+  <img src="screenshots/1-playing.png" width="280" alt="The metronome playing a 7/8 song at 168 BPM">
+  &nbsp;
+  <img src="screenshots/3-setlist.png" width="280" alt="A setlist of eight songs in order">
 </p>
 
 Set a tempo and a time signature, choose which beats are accented, and press Start. Every beat is a click, a flash on screen and a tap you can feel, all on the same instant. Everything can be changed while it plays.
 
 ## Features
 
-- Tempo from 30 to 300 BPM, set with the dial, the − / + buttons or tap tempo
+- Tempo from 30 to 300 BPM, set with the dial, the − / + buttons, tap tempo or by typing it
 - Eight time signatures: 2/4, 3/4, 4/4, 5/4, 6/8, 7/8, 9/8 and 12/8
 - Accent any combination of beats
 - Seven click sounds, all generated in code
@@ -22,6 +24,7 @@ Set a tempo and a time signature, choose which beats are accented, and press Sta
 - Songs saved with their tempo, time signature and accents, and setlists to step through them in order
 - Optional iCloud sync of songs and setlists between your devices
 - Plays even when the phone is on silent
+- The screen stays on while playing, or whenever the app is open if you like
 - No account, no ads, no tracking
 
 ## Support and privacy
@@ -53,7 +56,7 @@ It launches a Debug build once per scene with sample songs, no sound and a clean
 | Folder                  | Contents                                                           |
 | ----------------------- | ------------------------------------------------------------------ |
 | `Metronome/Engine`      | Audio scheduling, click synthesis, haptics and the iCloud store    |
-| `Metronome/Model`       | Tempo, time signatures, the beat clock, songs, setlists and sync |
+| `Metronome/Model`       | Tempo, time signatures, the beat clock, songs, setlists and sync   |
 | `Metronome/Views`       | The SwiftUI screens and sheets                                     |
 | `Metronome/Screenshots` | The screenshot scenes, in Debug builds only                        |
 | `MetronomeTests`        | Unit tests                                                         |
@@ -65,7 +68,7 @@ It launches a Debug build once per scene with sample songs, no sound and a clean
 [docs/specification.md](docs/specification.md) describes how the app behaves and is kept up to date. It is the place to start. A few points worth knowing:
 
 - **Timing.** Clicks are scheduled ahead of time on the audio clock, never by a UI timer. The screen effects and haptics follow the same schedule, so sound, light and touch stay together.
-- **Sounds.** The seven click sounds are synthesised when playback starts, at the output's own sample rate, and are tested for equal loudness, a fast attack and a short length.
+- **Sounds.** The seven click sounds are synthesised when playback starts, at the output's own sample rate, and are tested to be loud enough to compete with music, with a fast attack and a short length.
 - **Sync.** Songs and setlists sync through iCloud key-value storage. Each part of a song or setlist carries its own change time, so edits made on different devices are combined rather than overwritten. The same result comes out on every device, whatever order the changes arrive in.
 
 ## Contributing
