@@ -60,24 +60,17 @@ enum DialGeometry {
         dialDiameter >= tempoNameMinimumDiameter
     }
 
-    /// The knob is 28 pt on the full 300 pt dial and scales down with it,
-    /// but never below 0.6 of that, so it stays easy to see and grab.
-    static func knobDiameter(dialDiameter: Double) -> Double {
-        28 * min(1, max(0.6, dialDiameter / 300))
-    }
-
-    /// True when the touch starts on the ring: between 0.35 and 0.55 dial diameters
-    /// from the centre (105 pt and 165 pt on the 300 pt dial).
+    /// True when the touch starts on the dial: anywhere within 0.55 dial diameters of the
+    /// centre (165 pt on the 300 pt dial), number and knob included, as on a real knob.
     static func startsDrag(dx: Double, dy: Double, dialDiameter: Double) -> Bool {
-        let distance = (dx * dx + dy * dy).squareRoot()
-        let tolerance = 1e-9
-        return distance >= 0.35 * dialDiameter - tolerance && distance <= 0.55 * dialDiameter + tolerance
+        (dx * dx + dy * dy).squareRoot() <= 0.55 * dialDiameter + 1e-9
     }
 
-    /// True when the touch starts inside the ring, on the number: closer to the centre than
-    /// 0.35 dial diameters. Such a drag slides the tempo up and down instead of turning it.
-    static func startsSlide(dx: Double, dy: Double, dialDiameter: Double) -> Bool {
-        (dx * dx + dy * dy).squareRoot() < 0.35 * dialDiameter - 1e-9
+    /// Radius of the circle at the centre where the finger's angle is ignored: 0.1 dial
+    /// diameters (30 pt on the 300 pt dial). So close to the centre a tiny movement swings
+    /// the angle a long way, and the tempo would jump.
+    static func deadZoneRadius(dialDiameter: Double) -> Double {
+        0.1 * dialDiameter
     }
 
     /// Degrees clockwise from 12 o'clock, for an offset from the dial centre with y pointing down.
@@ -86,55 +79,41 @@ enum DialGeometry {
     }
 }
 
-/// A drag on the ring. It turns the dial by the angle the finger travels around the centre,
-/// wherever on the ring it began, so a touch that does not move changes nothing and the
+/// A turn of the dial. It turns the knob by the angle the finger travels around the centre,
+/// wherever on the dial it began, so a touch that does not move changes nothing and the
 /// tempo never jumps to where the finger landed.
 struct DialDrag: Equatable {
     /// Position along the arc, 0…1. Kept as a fraction so slow drags add up between whole BPM.
     private(set) var fraction: Double
-    private var lastAngle: Double
+    /// The finger's last angle, or nil while it is in the dead zone at the centre.
+    private var lastAngle: Double?
+    private let deadZoneRadius: Double
 
-    init(startFraction: Double, dx: Double, dy: Double) {
+    init(startFraction: Double, dx: Double, dy: Double, dialDiameter: Double) {
         fraction = min(max(startFraction, 0), 1)
-        lastAngle = DialGeometry.angle(dx: dx, dy: dy)
+        deadZoneRadius = DialGeometry.deadZoneRadius(dialDiameter: dialDiameter)
+        lastAngle = nil
+        lastAngle = angle(dx: dx, dy: dy)
+    }
+
+    /// The finger's angle, or nil in the dead zone.
+    private func angle(dx: Double, dy: Double) -> Double? {
+        (dx * dx + dy * dy).squareRoot() < deadZoneRadius ? nil : DialGeometry.angle(dx: dx, dy: dy)
     }
 
     /// Moves the finger and returns the new position. The position stops at the ends of the
-    /// arc, and turning back from an end takes effect at once.
+    /// arc, and turning back from an end takes effect at once. In the dead zone nothing
+    /// changes, and on leaving it the turn carries on from where the finger comes out.
     @discardableResult
     mutating func move(dx: Double, dy: Double) -> Double {
-        let angle = DialGeometry.angle(dx: dx, dy: dy)
-        var delta = angle - lastAngle
+        let current = angle(dx: dx, dy: dy)
+        defer { lastAngle = current }
+        guard let current, let lastAngle else { return fraction }
+        var delta = current - lastAngle
         // The shorter way round, so crossing 6 o'clock is a small step and not a full turn.
         if delta > 180 { delta -= 360 } else if delta < -180 { delta += 360 }
-        lastAngle = angle
         fraction = min(max(fraction + delta / DialGeometry.arcSweepDegrees, 0), 1)
         return fraction
-    }
-}
-
-/// An up or down drag that began on the number. Up is faster: the tempo changes by 1 BPM for
-/// every 4 pt the finger travels vertically; sideways movement is ignored.
-struct DialSlide: Equatable {
-    static let pointsPerBPM = 4.0
-
-    /// Kept unrounded so slow drags add up between whole BPM.
-    private(set) var bpm: Double
-    private var lastY: Double
-
-    init(startBPM: Int, y: Double) {
-        bpm = Double(Tempo.clamp(startBPM))
-        lastY = y
-    }
-
-    /// Moves the finger and returns the new tempo. The tempo stops at the ends of the range,
-    /// and moving back from an end takes effect at once.
-    @discardableResult
-    mutating func move(y: Double) -> Int {
-        let range = Tempo.range
-        bpm = min(max(bpm + (lastY - y) / Self.pointsPerBPM, Double(range.lowerBound)), Double(range.upperBound))
-        lastY = y
-        return Tempo.clamp(Int(bpm.rounded()))
     }
 }
 

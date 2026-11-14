@@ -55,90 +55,85 @@ struct DialGeometryTests {
         #expect(!DialGeometry.showsTempoName(dialDiameter: 108))
     }
 
-    @Test func knobScalesWithTheDialButStaysGrabbable() {
-        #expect(DialGeometry.knobDiameter(dialDiameter: 300) == 28)
-        #expect(isClose(DialGeometry.knobDiameter(dialDiameter: 240), 22.4))
-        #expect(isClose(DialGeometry.knobDiameter(dialDiameter: 150), 16.8))
-        #expect(isClose(DialGeometry.knobDiameter(dialDiameter: 108), 16.8))
-        #expect(DialGeometry.knobDiameter(dialDiameter: 400) == 28)
-    }
-
-    @Test func onlyTheRingBandStartsADrag() {
-        #expect(DialGeometry.startsDrag(dx: 0, dy: -104, dialDiameter: 300) == false)
-        #expect(DialGeometry.startsDrag(dx: 0, dy: -105, dialDiameter: 300) == true)
+    @Test func aTurnCanStartAnywhereOnTheDial() {
+        #expect(DialGeometry.startsDrag(dx: 0, dy: 0, dialDiameter: 300) == true)
+        #expect(DialGeometry.startsDrag(dx: 0, dy: -60, dialDiameter: 300) == true)
         #expect(DialGeometry.startsDrag(dx: 165, dy: 0, dialDiameter: 300) == true)
         #expect(DialGeometry.startsDrag(dx: 166, dy: 0, dialDiameter: 300) == false)
+    }
+
+    @Test func theDeadZoneScalesWithTheDial() {
+        #expect(isClose(DialGeometry.deadZoneRadius(dialDiameter: 300), 30))
+        #expect(isClose(DialGeometry.deadZoneRadius(dialDiameter: 150), 15))
     }
 }
 
 struct DialDragTests {
     private func isClose(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
 
+    private func drag(_ startFraction: Double, _ dx: Double, _ dy: Double) -> DialDrag {
+        DialDrag(startFraction: startFraction, dx: dx, dy: dy, dialDiameter: 300)
+    }
+
     @Test func aTouchThatDoesNotMoveChangesNothing() {
-        var drag = DialDrag(startFraction: 0.4, dx: 120, dy: 0)
-        #expect(isClose(drag.move(dx: 120, dy: 0), 0.4))
+        var turn = drag(0.4, 120, 0)
+        #expect(isClose(turn.move(dx: 120, dy: 0), 0.4))
     }
 
     @Test func theDialTurnsByTheAngleTravelledWhereverTheDragBegan() {
         // From 3 o'clock a quarter turn clockwise to 6 o'clock: 90 of the arc's 270 degrees.
-        var fromRight = DialDrag(startFraction: 0.2, dx: 120, dy: 0)
+        var fromRight = drag(0.2, 120, 0)
         #expect(isClose(fromRight.move(dx: 0, dy: 120), 0.2 + 90.0 / 270))
         // The same quarter turn begun at 9 o'clock gives the same change.
-        var fromLeft = DialDrag(startFraction: 0.2, dx: -120, dy: 0)
+        var fromLeft = drag(0.2, -120, 0)
         #expect(isClose(fromLeft.move(dx: 0, dy: -120), 0.2 + 90.0 / 270))
     }
 
+    @Test func aTurnCloseToTheCentreCountsTheSameAngle() {
+        // On the number, 40 pt out: the same quarter turn gives the same change.
+        var turn = drag(0.2, 40, 0)
+        #expect(isClose(turn.move(dx: 0, dy: 40), 0.2 + 90.0 / 270))
+    }
+
     @Test func anticlockwiseSlowsDown() {
-        var drag = DialDrag(startFraction: 0.5, dx: 0, dy: -120)
-        #expect(isClose(drag.move(dx: -120, dy: 0), 0.5 - 90.0 / 270))
+        var turn = drag(0.5, 0, -120)
+        #expect(isClose(turn.move(dx: -120, dy: 0), 0.5 - 90.0 / 270))
     }
 
     @Test func crossingSixOClockIsASmallStep() {
-        var drag = DialDrag(startFraction: 0.5, dx: 10, dy: 120)
-        let moved = drag.move(dx: -10, dy: 120)
+        var turn = drag(0.5, 10, 120)
+        let moved = turn.move(dx: -10, dy: 120)
         #expect(moved > 0.5)
         #expect(moved < 0.55)
     }
 
     @Test func itStopsAtTheEndsAndTurnsBackAtOnce() {
-        var drag = DialDrag(startFraction: 0.9, dx: 0, dy: -120)
-        #expect(drag.move(dx: 120, dy: 0) == 1)
-        #expect(isClose(drag.move(dx: 0, dy: -120), 1 - 90.0 / 270))
-    }
-}
-
-struct DialSlideTests {
-    @Test func onlyTouchesInsideTheRingStartASlide() {
-        #expect(DialGeometry.startsSlide(dx: 0, dy: 0, dialDiameter: 300) == true)
-        #expect(DialGeometry.startsSlide(dx: 0, dy: -104, dialDiameter: 300) == true)
-        #expect(DialGeometry.startsSlide(dx: 0, dy: -105, dialDiameter: 300) == false)
+        var turn = drag(0.9, 0, -120)
+        #expect(turn.move(dx: 120, dy: 0) == 1)
+        #expect(isClose(turn.move(dx: 0, dy: -120), 1 - 90.0 / 270))
     }
 
-    @Test func aTouchThatDoesNotMoveChangesNothing() {
-        var slide = DialSlide(startBPM: 120, y: 50)
-        #expect(slide.move(y: 50) == 120)
+    @Test func theDeadZoneChangesNothing() {
+        // Through the centre from 12 o'clock to 6 o'clock would be half a turn by angle.
+        var turn = drag(0.5, 0, -40)
+        #expect(isClose(turn.move(dx: 0, dy: -10), 0.5))
+        #expect(isClose(turn.move(dx: 0, dy: 10), 0.5))
+        #expect(isClose(turn.move(dx: 0, dy: 40), 0.5))
     }
 
-    @Test func upIsFasterByOneBPMPerFourPoints() {
-        var slide = DialSlide(startBPM: 120, y: 100)
-        #expect(slide.move(y: 60) == 130)
-        #expect(slide.move(y: 140) == 110)
+    @Test func leavingTheDeadZoneCarriesOnWithoutAJump() {
+        var turn = drag(0.5, 0, -40)
+        turn.move(dx: 0, dy: 0)
+        // Out at 3 o'clock: the first point outside only sets the angle.
+        #expect(isClose(turn.move(dx: 40, dy: 0), 0.5))
+        // Then a quarter turn clockwise counts as usual.
+        #expect(isClose(turn.move(dx: 0, dy: 40), 0.5 + 90.0 / 270))
     }
 
-    @Test func smallMovesAddUp() {
-        var slide = DialSlide(startBPM: 120, y: 100)
-        #expect(slide.move(y: 99) == 120)
-        #expect(slide.move(y: 98) == 121)
-        #expect(slide.move(y: 96) == 121)
-    }
-
-    @Test func itStopsAtTheEndsAndComesBackAtOnce() {
-        var slide = DialSlide(startBPM: 295, y: 100)
-        #expect(slide.move(y: -400) == 300)
-        #expect(slide.move(y: -360) == 290)
-        var low = DialSlide(startBPM: 35, y: 0)
-        #expect(low.move(y: 400) == 30)
-        #expect(low.move(y: 380) == 35)
+    @Test func aTurnThatStartsInTheDeadZoneBeginsWhenItLeaves() {
+        var turn = drag(0.5, 5, 0)
+        #expect(isClose(turn.move(dx: 40, dy: 0), 0.5))
+        #expect(isClose(turn.move(dx: 0, dy: 40), 0.5 + 90.0 / 270))
     }
 }
 
