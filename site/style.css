@@ -112,6 +112,96 @@ nav a[aria-current="page"] {
   color: var(--muted);
 }
 
+/* Home page */
+
+main.home {
+  max-width: 880px;
+}
+
+main.home nav {
+  justify-content: center;
+}
+
+main.home footer {
+  text-align: center;
+}
+
+.hero {
+  text-align: center;
+  margin: 24px 0 40px;
+}
+
+.hero .app-icon {
+  width: 112px;
+  height: 112px;
+  border-radius: 26px;
+  box-shadow: 0 0 0 1px var(--line);
+  margin-bottom: 20px;
+}
+
+.hero h1 {
+  font-size: 40px;
+}
+
+.tagline {
+  margin: 8px 0 20px;
+  font-size: 20px;
+  color: var(--muted);
+}
+
+.pill {
+  display: inline-block;
+  margin: 0;
+  padding: 10px 20px;
+  border: 1.5px solid var(--amber);
+  border-radius: 999px;
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.shots {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin: 0 0 48px;
+}
+
+.shots img {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  min-width: 0;
+  border-radius: 12% / 5.5%;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.shots.small img {
+  max-width: 200px;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px 32px;
+  margin: 0 0 48px;
+}
+
+.features h2 {
+  margin: 16px 0 4px;
+  color: var(--amber);
+  font-size: 18px;
+}
+
+.features p {
+  color: var(--dial-white);
+}
+
+.closing {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+}
+
 footer {
   margin-top: 48px;
   padding-top: 16px;

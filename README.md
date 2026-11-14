@@ -6,12 +6,6 @@
 
 <p align="center">A precise, no-fuss metronome for iPhone.</p>
 
-<p align="center">
-  <img src="screenshots/1-playing.png" width="280" alt="The metronome playing a 7/8 song at 168 BPM">
-  &nbsp;
-  <img src="screenshots/3-setlist.png" width="280" alt="A setlist of eight songs in order">
-</p>
-
 Set a tempo and a time signature, choose which beats are accented, and press Start. Every beat is a click, a flash on screen and a tap you can feel, all on the same instant. Everything can be changed while it plays.
 
 ## Features
@@ -29,7 +23,8 @@ Set a tempo and a time signature, choose which beats are accented, and press Sta
 
 ## Support and privacy
 
-- Help and contact: [arime.github.io/metronome](https://arime.github.io/metronome/)
+- Website, with screenshots: [arime.github.io/metronome](https://arime.github.io/metronome/)
+- Help and contact: [arime.github.io/metronome/support.html](https://arime.github.io/metronome/support.html)
 - Privacy policy: [arime.github.io/metronome/privacy.html](https://arime.github.io/metronome/privacy.html). The app collects no data.
 - Problems and ideas: email [metsari+metronome@proton.me](mailto:metsari+metronome@proton.me) or [open an issue](https://github.com/arime/metronome/issues)
 
@@ -47,7 +42,7 @@ The scripts print a short summary. The full logs go to `build/build.log`, `build
 
 ### Screenshots
 
-`scripts/screenshots.sh` makes the App Store screenshots in `screenshots/`, at the 6.9" size that App Store Connect requires. Run it before a release when the screens have changed, and commit the result.
+`scripts/screenshots.sh` makes the App Store screenshots in `screenshots/`, at the 6.9" size that App Store Connect requires. It also puts half-size copies in `site/shots/` for the website's home page. Run it before a release when the screens have changed, and commit the result.
 
 It launches a Debug build once per scene with sample songs, no sound and a clean status bar, on a simulator of its own called "Metronome screenshots". The scenes, and the sample songs, are in [ScreenshotScene.swift](Metronome/Screenshots/ScreenshotScene.swift); that code is left out of Release builds. To add a screenshot, add a case there, open its screen when the app launches with that scene, and add the case's name to the list in the script.
 
@@ -61,7 +56,7 @@ It launches a Debug build once per scene with sample songs, no sound and a clean
 | `Metronome/Screenshots` | The screenshot scenes, in Debug builds only                        |
 | `MetronomeTests`        | Unit tests                                                         |
 | `screenshots`           | The App Store screenshots                                          |
-| `site`                  | The support and privacy pages, published to GitHub Pages           |
+| `site`                  | The home, support and privacy pages, published to GitHub Pages     |
 
 ### How it works
 

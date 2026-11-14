@@ -5,6 +5,7 @@
 # Metronome/Screenshots/ScreenshotScene.swift) with sample songs and a clean
 # status bar, and saves one PNG per scene in screenshots/, numbered in App Store
 # order, without an alpha channel. Old PNGs in screenshots/ are removed first.
+# Half-size copies for the site's home page go to site/shots/.
 #
 # It uses a simulator of its own, "Metronome screenshots", created on the first
 # run and set to US English so the status bar reads 9:41. Your other simulators
@@ -83,4 +84,10 @@ xcrun simctl shutdown "$sim"
 
 # App Store Connect rejects screenshots with an alpha channel.
 xcrun swift scripts/flatten-png.swift screenshots/*.png || status=1
+
+# Half-size copies for the home page of the site.
+mkdir -p site/shots
+for file in screenshots/*.png; do
+  sips --resampleWidth 660 "$file" --out "site/shots/$(basename "$file")" > /dev/null || status=1
+done
 exit $status
