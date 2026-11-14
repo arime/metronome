@@ -2,7 +2,7 @@
 
 This is the single specification for the app. It describes how version 1.0 is meant to work and is kept up to date as decisions change. Parts that are specified here but not built yet are listed in section 15.
 
-Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Songs & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen. The page *Main view UX review (draft)* holds the tempo sheet (board A), the split Save button in the header and its menu (boards D and E; board B is the earlier one-part button they replaced), now used only on small dials, the next-up line (board C), and the save controls in the dial's gap (board V4; the other boards in its row are alternatives that were not chosen). The page *Library UX review (draft)* holds the library's tabs (boards K, L and M) and, in its third row, a setlist's view without an edit mode (board N, with renaming in board P and an empty setlist beside them) and the Add song screen (boards Q and R); board O is an alternative that was not chosen.
+Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Songs & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen. The page *Main view UX review (draft)* holds the tempo sheet (board A), the next-up line (board C), and earlier ways of offering unsaved changes that were replaced (boards B, D, E, V4 and the others in their rows). The page *Tester feedback (draft)* holds the round Save button in the header with its menu and its Saved tick (boards W1, W2 and W3). The page *Library UX review (draft)* holds the library's tabs (boards K, L and M) and, in its third row, a setlist's view without an edit mode (board N, with renaming in board P and an empty setlist beside them) and the Add song screen (boards Q and R); board O is an alternative that was not chosen.
 
 ## 1. Summary
 
@@ -84,7 +84,7 @@ Not kept:
 
 Derived:
 
-- **Edited:** a song is loaded and the current tempo, time signature or accents differ from it. On screen this is shown by the save controls in the dial (6.2), or on a small dial by the Save button in the header (6.1); the word itself is not displayed.
+- **Edited:** a song is loaded and the current tempo, time signature or accents differ from it. On screen this is shown by the Save button in the header (6.1); the word itself is not displayed.
 - **Position:** the loaded song's place in the loaded-from setlist, such as 3 of 8.
 
 Reopening the app restores the settings, the loaded song and its setlist, so the position in the setlist is restored too and the user can carry on with Next. The app always launches stopped and with sound on.
@@ -156,7 +156,7 @@ One screen with two states, Ready (stopped) and Playing. The layout is identical
 
 ### 6.1 Header
 
-**Song title**, at the left, taking the space left by the buttons. One or two lines; a long name is cut with an ellipsis. Line 1 is 20 pt heavy in dial white, followed by a small ˅, which is left out while the Save button is showing in the header (on a small dial only), so that the name gets its place. Line 2 is 13 pt in muted. Without a line 2, line 1 is centred vertically in the header.
+**Song title**, at the left, taking the space left by the buttons. One or two lines; a long name is cut with an ellipsis. Line 1 is 20 pt heavy in dial white, followed by a small ˅. Line 2 is 13 pt in muted. Without a line 2, line 1 is centred vertically in the header.
 
 | State | Line 1 | Line 2 |
 |---|---|---|
@@ -164,18 +164,13 @@ One screen with two states, Ready (stopped) and Playing. The layout is identical
 | Loaded from the Songs tab | song name | none |
 | Loaded from a setlist | song name | setlist name · `3 of 8` |
 
-The title does not change when the loaded song is edited: unsaved changes are shown by the save controls (6.2) alone. So the setlist name stays in view while a song is being adjusted, and a title without a second line does not gain one and shift.
+The title does not change when the loaded song is edited: unsaved changes are shown by the Save button (below) alone. So the setlist name stays in view while a song is being adjusted, and a title without a second line does not gain one and shift.
 
 The title looks the same stopped and playing. Nothing is added in front of it while playing, so it does not move when Start is pressed; the dial, the tiles and the Stop button show that the metronome is running.
 
-**Save button**, only on a dial too small for the save controls in its gap (6.2), as on iPhone SE. It takes their place: shown only while the loaded song is edited, between the title and the mute button, a 40 pt tall amber pill in two parts, about 109 pt wide.
+**Save button**, shown only while the loaded song is edited, between the title and the mute button: a 40 pt amber circle with an ink save symbol (a tray with a down arrow, 17 pt bold), the only amber thing in the header. It is the same on every phone. Tapping it opens the Save menu (7.6). It takes touches over 44 pt.
 
-- The left part reads `Save` (15 pt, bold, ink), with 16 pt of padding before it and 12 pt after. One tap saves the changes (7.6).
-- A 1 pt, 22 pt tall divider in ink at 28 % separates the parts.
-- The right part is 44 pt wide with an ink ˅ (14 pt). It opens the Save menu (7.6). It is a full-size target of its own, because a miss to the left would save.
-- Both parts take touches over a height of 44 pt.
-
-The button comes and goes like the save controls (6.2), and the title gives up its width to it. After Save it confirms the save the same way: for one second the pill keeps its size and place and reads `Saved ✓` (15 pt, bold) in place of its two parts, green on the green tint, and cannot be tapped; then it fades away. The word starts where `Save` did, so it only gains a letter, and the tick stands where the ˅ was, so nothing jumps; there is no divider. Everything that can be done with unsaved changes is in this one control, which is there only while there are changes; the title never changes what it does.
+It fades in with the first change. It does not go away the instant the settings equal the saved ones again: it stays until the settings have rested there for half a second, so that turning the dial past the saved tempo does not make it blink out and in. Reverting, and loading or unloading a song, take it away at once. After Save it confirms the save first: for one second it shows a green ✓ on a see-through green tint (green at 16 %) in the same place, so that it reads as a status and not as a button, and cannot be tapped; then it fades away. A change to the settings during that second brings the button straight back. Everything that can be done with unsaved changes is in this one control; the title never changes what it does.
 
 **Mute button**, 40 pt round:
 
@@ -184,7 +179,7 @@ The button comes and goes like the save controls (6.2), and the title gives up i
 
 **Settings button**, at the far right: a 20 pt dial-white gear with no fill, in a 32 pt wide slot aligned to the right margin. It is lighter than the round buttons because it is used far less often. Its touch area is 44 × 44 pt. It opens the settings sheet (6.10).
 
-The header has only these buttons, so the title gets about 240 pt, also while the song is edited. Only on a small dial, while the Save button is shown there, it gets about 142 pt, with the title's ˅ left out: room for about 13 characters of the name, which comes back in full once the changes are saved or reverted. Previous and Next sit beside the Start / Stop button (6.7).
+The header has only these buttons, so the title gets about 240 pt; while the song is edited and the Save button is shown, about 190 pt. Previous and Next sit beside the Start / Stop button (6.7).
 
 ### 6.2 Tempo dial
 
@@ -194,31 +189,7 @@ The header has only these buttons, so the title gets about 240 pt, also while th
 - Centre: the BPM number (112 pt, heavy, digits set slightly tight, dial white). Three-digit tempos are drawn at 88 % of that size so they stay clear of the knob. Below the number: the tempo name in muted italic (15 pt), for example `Presto`. There is no `BPM` label.
 - Tapping the number or the tempo name opens the tempo sheet (6.11). Dragging up or down on them slides the tempo (7.1).
 
-**Save controls**, in the gap at the bottom of the ring, shown only while the loaded song is edited. Three pieces side by side, 176 pt wide in all, centred under the number, with their bottom edge 6 pt above the bottom of the dial, so about 10 pt above `Tap tempo`. They do not scale with the dial.
-
-- Left: **Revert**, a 38 pt round button with a dial-white ↺ on a surface fill and a 1 pt outline in the line colour.
-- Middle: **Save**, an amber pill, 84 × 38 pt, reading `Save` (15 pt, bold, ink). It is the only coloured piece, so it reads as the thing to tap.
-- Right: **Save as new song**, a 38 pt round button like Revert, with two overlapping squares and a +.
-- 8 pt between the pieces. Each takes touches over 44 pt, which leaves 2 pt between the touch areas. A touch on a control never turns the dial. Revert and Save as new song are on opposite sides of Save, so the two less-used actions are never mistaken for each other.
-
-The controls fade in with the first change. They do not go away the instant the settings equal the saved ones again: they stay until the settings have rested there for half a second, so that turning the dial past the saved tempo does not make them blink out and in. Reverting, and loading or unloading a song, take them away at once. After Save they confirm the save first: the two round buttons fade out, and for one second the pill keeps its size and place and reads `Saved ✓` (15 pt, bold, centred), in green on a see-through green tint (green at 16 %) rather than solid amber, so that it reads as a status and not as a button. It cannot be tapped then. Then it fades away. A change to the settings during that second brings the controls straight back.
-
-The controls fit in the gap only while a round button stays at least 4 pt clear of the knob with the knob at either end of the arc, which takes a dial of about 290 pt or more. On a smaller dial, as on iPhone SE, they are left out and the Save button in the header (6.1) is shown instead.
-
-Tempo names:
-
-| BPM | Name |
-|---|---|
-| 30–39 | Grave |
-| 40–59 | Largo |
-| 60–65 | Larghetto |
-| 66–75 | Adagio |
-| 76–107 | Andante |
-| 108–119 | Moderato |
-| 120–155 | Allegro |
-| 156–175 | Vivace |
-| 176–199 | Presto |
-| 200–300 | Prestissimo |
+The gap at the bottom of the ring is left empty.
 
 ### 6.3 Tempo controls
 
@@ -306,7 +277,7 @@ When accent tiles are narrower than 44 pt (seven beats in a row), each tile's to
 | amber | `#FFB224` | the single accent colour |
 | amber tint | `#1E1A12` | idle accented tile fill, muted button fill |
 | red | `#E5484D` | remove and delete actions only |
-| green | `#4CC38A` | confirmations only: the sync status dot when up to date, and the Save pill while it reads Saved |
+| green | `#4CC38A` | confirmations only: the sync status dot when up to date, and the Save button's tick after a save |
 
 ### 6.10 Settings sheet
 
@@ -417,17 +388,17 @@ All five ways of setting the tempo work when stopped and when playing.
 
 **Tapping the title** always opens the library sheet (section 8), edited or not. Unsaved edits are kept while the library is open.
 
-**Unsaved changes** are handled with the save controls in the dial's gap (6.2), which are shown while the song is edited; on a small dial, with the Save button in the header and its menu (6.1). There are three things to do with them:
+**Unsaved changes** are handled with the Save button in the header (6.1), which is shown while the song is edited. It opens the Save menu, the system menu, with three things to do, in this order. Tapping outside it closes it.
 
-- **Save:** tapping `Save` writes the current settings into the loaded song. The pill confirms it by reading `Saved ✓` for a second, with a success haptic, and then goes away (6.2). There is no separate message.
-- **Save as new song:** the round button right of Save (in the header, the Save menu). It opens the New song sheet (section 10) filled with the current settings. After saving, the new song is the loaded one, and the song that was edited is left as it was.
-- **Revert:** the round ↺ button left of Save (in the header, the Save menu, as `Revert` with the saved song's tempo and time signature on a second, smaller line, for example `120 BPM · 4/4`, so that it is clear what comes back). It sets the metronome back to the song's tempo, time signature and accents, with a selection tick.
+- **Save changes** writes the current settings into the loaded song. The button confirms it with a green ✓ for a second, with a success haptic, and then goes away (6.1). There is no separate message.
+- **Save as new song** opens the New song sheet (section 10) filled with the current settings. After saving, the new song is the loaded one, and the song that was edited is left as it was.
+- **Revert**, with the saved song's tempo and time signature on a second, smaller line, for example `120 BPM · 4/4`, so that it is clear what comes back. It sets the metronome back to the song's tempo, time signature and accents, with a selection tick.
   - While playing, the bar carries on when only the tempo or the accents go back, as with any other change of tempo or accents (7.1, 7.3). When the time signature goes back, the next beat is beat 1 of a new bar (7.2).
   - There is no confirmation and no undo.
 
-The Save menu, on a small dial only, is the system menu, opened by the ˅ part of the header button, with Save as new song and Revert in this order. Tapping outside it closes it.
+Saving takes two taps, button and menu item, as it is a deliberate choice made between songs, and the menu keeps Revert and Save as new song in plain sight.
 
-Edits also go away without the controls: loading another song, with Previous / Next or from the library, drops them without asking, and **No song** in the library (8.2) keeps them as plain settings.
+Edits also go away without the menu: loading another song, with Previous / Next or from the library, drops them without asking, and **No song** in the library (8.2) keeps them as plain settings.
 
 **Previous and Next** load the previous or next song in the loaded-from setlist's order.
 
@@ -489,7 +460,7 @@ The switch works when stopped and when playing, applies to this device only and 
 **When changes arrive:**
 
 - The metronome never changes by itself: tempo, time signature and accents stay as they are, playing or stopped.
-- If the loaded song's settings changed, the song counts as edited and the save controls appear, because what is in the metronome now differs from the song. Revert takes the arrived version; Save keeps the metronome's and sends it to the other devices.
+- If the loaded song's settings changed, the song counts as edited and the Save button appears, because what is in the metronome now differs from the song. Revert takes the arrived version; Save keeps the metronome's and sends it to the other devices.
 - If the loaded song's name changed, the header shows the new name at once.
 - If the loaded song, the loaded-from setlist or the setlist the library is showing was deleted, the rules in section 5 apply.
 - An open library sheet, setlist or setlist editor updates in place. A setlist view or editor whose setlist was deleted closes and the library shows the Setlists tab.
@@ -636,7 +607,7 @@ Changing values in the sheet does not affect the metronome, playing or stopped, 
 
 Titled `New song`, with `Save song`. Opened with New song in the library (8.1, 9.3) or with Save as new song (7.6). The name field is ready for typing. All three settings start from the metronome's current values, so the quickest way to make a song is to set the metronome first.
 
-Saving a new song from the library does not load it, with one exception: **naming the current settings.** When no song is loaded and the song is saved with the same tempo, time signature and accents as the metronome has, the new song becomes the loaded one, so the header shows its name at once and later changes bring up the save controls.
+Saving a new song from the library does not load it, with one exception: **naming the current settings.** When no song is loaded and the song is saved with the same tempo, time signature and accents as the metronome has, the new song becomes the loaded one, so the header shows its name at once and later changes bring up the Save button.
 
 - The metronome is not touched: it keeps playing or stays stopped, and no new bar starts.
 - If the song was added to a setlist (9.3, with "Add to <setlist>" on), it counts as loaded from that setlist, so the header shows its position and Previous / Next appear. Otherwise it is loaded on its own.
@@ -710,7 +681,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. It has the action "Type a tempo", which opens the tempo sheet.
   - In the tempo sheet the field reads as "Tempo" with the typed digits, each key as its digit, and the delete key as "Delete".
   - In the song sheet the tempo value is a button: "Tempo, 120 beats per minute", with the hint "Type a tempo".
-  - The save controls in the dial read as "Revert", with a hint that says what comes back (for example "Goes back to 120 BPM · 4/4"), "Save changes" and "Save as new song". They are separate from the dial's own element. The header Save button on a small dial reads as "Save changes" and "More save options". After Save, "Saved" is announced, and the pill reads "Saved" while it shows that.
+  - The Save button reads as "Unsaved changes", with the hint "Save, save as a new song, or revert". Its menu items read as written, Revert with the saved values. After Save, "Saved" is announced, and the tick reads "Saved" while it shows.
   - The tap tempo pill reads as "Tap tempo" also while it shows `Tap again`.
   - The next-up line reads as one element, for example "Next: Seven Bridges, 168 beats per minute, 7/8", or "Last song in the setlist".
   - Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action.
@@ -720,7 +691,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The haptics switch reads as "Haptic feedback, on" or "Haptic feedback, off".
   - The screen switch reads as "Keep screen awake, on" or "Keep screen awake, off".
   - The sync switch reads as "Sync songs and setlists, on" or "Sync songs and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
-  - The header title reads the song name and its second line, and says that it opens the library. While the song is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the save controls appearing cannot be heard.
+  - The header title reads the song name and its second line, and says that it opens the library. While the song is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the Save button appearing cannot be heard.
   - A song row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its menu button reads "More for Harbour Lights".
   - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist", and its first item "Rename setlist". The tabs read "Songs" and "Setlists", with "selected" for the one shown.
   - In a setlist's view, rows can be moved up and down with VoiceOver actions as well as by dragging.
@@ -766,7 +737,7 @@ Songs and setlists:
 - [x] The library opens on the Songs tab, or inside the loaded song's setlist when it came from one, and scrolls to its row. *(Choosing the setlist is unit tested, and both ways of opening were seen in the simulator. In the simulator the list stayed at its top on an iPhone 17 Pro, where the loaded row fits, and scrolled just far enough to show it on an iPhone SE, where it does not. A library of several screens has not been tried.)*
 - [x] A song loaded from the Songs tab keeps the setlist being stepped through when it is in it. *(Unit tested.)*
 - [x] The header shows the right title and second line in every state of 6.1.
-- [x] Changing a loaded song's settings shows the save controls in the dial's gap and leaves the title as it is; Save, Save as new song and Revert do what 7.6 says, and the title opens the library also while edited. *(Save and Revert, with the bar carrying on or starting over, are unit tested, and so is the dial size the controls need. On the iPhone 17 Pro simulator Revert, Save with its Saved confirmation, and Save as new song opening its sheet were tried. On the iPhone SE simulator the header Save button was seen to take their place.)*
+- [x] Changing a loaded song's settings shows the Save button in the header and leaves the title as it is; Save changes, Save as new song and Revert in its menu do what 7.6 says, and the title opens the library also while edited. *(Save and Revert, with the bar carrying on or starting over, are unit tested. On the iPhone 17 Pro simulator the button, its menu with Revert's saved values, and Save changes with the green tick were tried.)*
 - [x] Quick taps on − / + each count once and never leave the tempo running on by itself. *(Four quick taps on + were tried in the simulator after two quick taps had left the repeat running up to 250.)*
 - [x] Naming the current settings while nothing is loaded loads the new song, from the setlist it was added to; in other cases a new song from the library is not loaded. *(Unit tested.)*
 - [ ] The next-up line names the song Next would load, says so at the last song, and is left out when it would push the dial below 200 pt. *(The song and the layout rule are unit tested, and the line was seen in the simulator. The last song and a small phone were not seen on screen.)*

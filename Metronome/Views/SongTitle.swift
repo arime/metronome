@@ -1,13 +1,9 @@
 import SwiftUI
 
 /// The loaded song's name in the header. Tapping it always opens the library; saving
-/// and reverting unsaved changes belong to the save controls in the dial's gap (or, on a
-/// small dial, to the Save button beside the title).
+/// and reverting unsaved changes belong to the Save button beside it.
 struct SongTitle: View {
     @Environment(MetronomeModel.self) private var model
-    /// False while the Save button is beside the title: it takes width from the name, and
-    /// the chevron's place gives some of it back.
-    var showsChevron = true
     let openLibrary: () -> Void
 
     var body: some View {
@@ -27,11 +23,9 @@ struct SongTitle: View {
                     .tracking(-0.2)
                     .foregroundStyle(Theme.dialWhite)
                     .lineLimit(1)
-                if showsChevron {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Theme.muted)
-                }
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Theme.muted)
             }
             if let subtitle = model.headerSubtitle {
                 Text(subtitle)
@@ -45,34 +39,24 @@ struct SongTitle: View {
     }
 }
 
-/// The amber split pill in the header while the loaded song has unsaved changes, on a
-/// dial too small for the save controls in its gap (iPhone SE and the like). Its
-/// Save part writes them into the song in one tap; its ˅ part opens a menu with the
-/// other two ways out: saving as a new song, and going back to the saved one.
+/// The round amber button in the header while the loaded song has unsaved changes. It
+/// opens a menu with the three ways out: saving the changes into the song, saving them as
+/// a new song, and going back to the saved one. After a save it shows a green tick for a
+/// moment in the same place, then goes away.
 struct SaveButton: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isSaveAsShown = false
 
+    static let size: CGFloat = 40
+
     var body: some View {
-        HStack(spacing: 0) {
-            Button {
-                model.saveChanges()
-            } label: {
-                Text("Save")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Theme.ink)
-                    .padding(.leading, 16)
-                    .padding(.trailing, 12)
-                    .frame(height: 40)
-                    // Drawn 40 pt tall; the touch area is 44 pt.
-                    .contentShape(Rectangle().scale(x: 1, y: 1.1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Save changes")
-            Rectangle()
-                .fill(Theme.ink.opacity(0.28))
-                .frame(width: 1, height: 22)
+        ZStack {
             Menu {
+                Button {
+                    model.saveChanges()
+                } label: {
+                    Label("Save changes", systemImage: "square.and.arrow.down")
+                }
                 Button {
                     isSaveAsShown = true
                 } label: {
@@ -90,40 +74,33 @@ struct SaveButton: View {
                     Image(systemName: "arrow.uturn.backward")
                 }
             } label: {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 14, weight: .heavy))
+                Image(systemName: "square.and.arrow.down")
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(Theme.ink)
-                    .frame(width: 44, height: 40)
-                    // A full-size target of its own, since a miss to the left saves.
-                    // Drawn 40 pt tall; the touch area is 44 pt.
-                    .contentShape(Rectangle().scale(x: 1, y: 1.1))
+                    // The symbol's tray sits low; lifted a little so it looks centred.
+                    .offset(y: -1)
+                    .frame(width: Self.size, height: Self.size)
+                    .background(Theme.amber, in: Circle())
+                    // Drawn 40 pt; the touch area is 44 pt.
+                    .contentShape(Circle().inset(by: -2))
             }
-            .accessibilityLabel("More save options")
-        }
-        // After Save the pill keeps its size and place and reads Saved for a moment. The
-        // two parts stay laid out underneath, unseen and untouchable, so nothing moves.
-        .opacity(model.isSaveConfirmed ? 0 : 1)
-        .allowsHitTesting(!model.isSaveConfirmed)
-        .accessibilityHidden(model.isSaveConfirmed)
-        .overlay {
+            .accessibilityLabel("Unsaved changes")
+            .accessibilityHint("Save, save as a new song, or revert")
+            // After Save the tick takes its place; the menu stays laid out underneath,
+            // unseen and untouchable, so nothing moves.
+            .opacity(model.isSaveConfirmed ? 0 : 1)
+            .allowsHitTesting(!model.isSaveConfirmed)
+            .accessibilityHidden(model.isSaveConfirmed)
+
             if model.isSaveConfirmed {
-                // Laid out like the button itself, so that nothing jumps: the word starts
-                // where Save did and only gains a letter, and the tick takes the chevron's
-                // place.
-                HStack(spacing: 0) {
-                    Text("Saved")
-                        .font(.system(size: 15, weight: .bold))
-                        .fixedSize()
-                        .padding(.leading, 16)
-                    Spacer(minLength: 0)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .heavy))
-                        .frame(width: 44)
-                }
-                .foregroundStyle(Theme.green)
-                .transition(.opacity)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Saved")
+                Image(systemName: "checkmark")
+                    .font(.system(size: 16, weight: .heavy))
+                    .foregroundStyle(Theme.green)
+                    .frame(width: Self.size, height: Self.size)
+                    .background(Theme.green.opacity(0.16), in: Circle())
+                    .transition(.opacity)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Saved")
             }
         }
         .animation(.easeOut(duration: 0.15), value: model.isSaveConfirmed)
@@ -131,9 +108,6 @@ struct SaveButton: View {
             // The change is silent on screen for VoiceOver, so it is spoken.
             if isConfirmed { AccessibilityNotification.Announcement("Saved").post() }
         }
-        // Amber and solid while it is a button; a green tint while it only reports.
-        .background(model.isSaveConfirmed ? Theme.green.opacity(0.16) : Theme.amber, in: Capsule())
-        .clipShape(Capsule())
         .sheet(isPresented: $isSaveAsShown) {
             SongSheet(purpose: .saveAsNew)
                 .environment(model)

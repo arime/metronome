@@ -63,20 +63,6 @@ struct DialGeometryTests {
         #expect(DialGeometry.knobDiameter(dialDiameter: 400) == 28)
     }
 
-    @Test func saveControlsFitTheGapOnTheDesignDialAndLarger() {
-        #expect(DialGeometry.saveControlsWidth == 176)
-        #expect(DialGeometry.fitsSaveControls(dialDiameter: 300))
-        #expect(DialGeometry.fitsSaveControls(dialDiameter: 310))
-        #expect(DialGeometry.fitsSaveControls(dialDiameter: 340))
-    }
-
-    @Test func saveControlsGoToTheHeaderOnASmallDial() {
-        // The knob at either end of the arc would touch a round button.
-        #expect(!DialGeometry.fitsSaveControls(dialDiameter: 280))
-        #expect(!DialGeometry.fitsSaveControls(dialDiameter: 249))
-        #expect(!DialGeometry.fitsSaveControls(dialDiameter: 200))
-    }
-
     @Test func onlyTheRingBandStartsADrag() {
         #expect(DialGeometry.startsDrag(dx: 0, dy: -104, dialDiameter: 300) == false)
         #expect(DialGeometry.startsDrag(dx: 0, dy: -105, dialDiameter: 300) == true)

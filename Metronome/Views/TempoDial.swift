@@ -1,12 +1,9 @@
 import SwiftUI
 
-/// The tempo gauge: tick ring, draggable knob, and the BPM number in the middle. While the
-/// song has unsaved changes, the save controls stand in the gap at the bottom of the ring.
+/// The tempo gauge: tick ring, draggable knob, and the BPM number in the middle.
 struct TempoDial: View {
     @Environment(MetronomeModel.self) private var model
     let diameter: CGFloat
-    /// False on a dial too small for the save controls; the header then has them.
-    var showsSaveControls = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isEntryShown = false
@@ -44,16 +41,6 @@ struct TempoDial: View {
             }
         }
         .accessibilityAction(named: "Type a tempo") { isEntryShown = true }
-        // Added after the ring's gesture and accessibility element, so a touch on a control
-        // never starts a drag, and VoiceOver finds the controls on their own.
-        .overlay(alignment: .bottom) {
-            if showsSaveControls && model.isSaveOffered {
-                DialSaveControls()
-                    .padding(.bottom, DialGeometry.saveControlsBottomInset)
-                    .transition(.opacity)
-            }
-        }
-        .animation(.easeOut(duration: 0.15), value: model.isSaveOffered)
         .sheet(isPresented: $isEntryShown) {
             TempoEntrySheet(current: model.settings.bpm) { model.setBPM($0) }
                 .environment(model)
