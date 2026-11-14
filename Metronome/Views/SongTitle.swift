@@ -41,8 +41,7 @@ struct SongTitle: View {
 
 /// The round amber button in the header while the loaded song has unsaved changes. It
 /// opens a menu with the three ways out: saving the changes into the song, saving them as
-/// a new song, and going back to the saved one. After a save it shows a green tick for a
-/// moment in the same place, then goes away.
+/// a new song, and going back to the saved one. After a save it simply goes away.
 struct SaveButton: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isSaveAsShown = false
@@ -50,64 +49,43 @@ struct SaveButton: View {
     static let size: CGFloat = 40
 
     var body: some View {
-        ZStack {
-            Menu {
-                Button {
-                    model.saveChanges()
-                } label: {
-                    Label("Save changes", systemImage: "square.and.arrow.down")
-                }
-                Button {
-                    isSaveAsShown = true
-                } label: {
-                    Label("Save as new song", systemImage: "plus.square.on.square")
-                }
-                Button {
-                    model.discardChanges()
-                } label: {
-                    // A title with the saved values on a second line; on one line the
-                    // item wraps in the system menu.
-                    Text("Revert")
-                    if let saved = model.revertDescription {
-                        Text(saved)
-                    }
-                    Image(systemName: "arrow.uturn.backward")
-                }
+        Menu {
+            Button {
+                model.saveChanges()
+                // The button going away cannot be heard, so the save is spoken.
+                AccessibilityNotification.Announcement("Saved").post()
             } label: {
-                Image(systemName: "square.and.arrow.down")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Theme.ink)
-                    // The symbol's tray sits low; lifted a little so it looks centred.
-                    .offset(y: -1)
-                    .frame(width: Self.size, height: Self.size)
-                    .background(Theme.amber, in: Circle())
-                    // Drawn 40 pt; the touch area is 44 pt.
-                    .contentShape(Circle().inset(by: -2))
+                Label("Save changes", systemImage: "square.and.arrow.down")
             }
-            .accessibilityLabel("Unsaved changes")
-            .accessibilityHint("Save, save as a new song, or revert")
-            // After Save the tick takes its place; the menu stays laid out underneath,
-            // unseen and untouchable, so nothing moves.
-            .opacity(model.isSaveConfirmed ? 0 : 1)
-            .allowsHitTesting(!model.isSaveConfirmed)
-            .accessibilityHidden(model.isSaveConfirmed)
-
-            if model.isSaveConfirmed {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 16, weight: .heavy))
-                    .foregroundStyle(Theme.green)
-                    .frame(width: Self.size, height: Self.size)
-                    .background(Theme.green.opacity(0.16), in: Circle())
-                    .transition(.opacity)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Saved")
+            Button {
+                isSaveAsShown = true
+            } label: {
+                Label("Save as new song", systemImage: "plus.square.on.square")
             }
+            Button {
+                model.discardChanges()
+            } label: {
+                // A title with the saved values on a second line; on one line the
+                // item wraps in the system menu.
+                Text("Revert")
+                if let saved = model.revertDescription {
+                    Text(saved)
+                }
+                Image(systemName: "arrow.uturn.backward")
+            }
+        } label: {
+            Image(systemName: "square.and.arrow.down")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(Theme.ink)
+                // The symbol's tray sits low; lifted a little so it looks centred.
+                .offset(y: -1)
+                .frame(width: Self.size, height: Self.size)
+                .background(Theme.amber, in: Circle())
+                // Drawn 40 pt; the touch area is 44 pt.
+                .contentShape(Circle().inset(by: -2))
         }
-        .animation(.easeOut(duration: 0.15), value: model.isSaveConfirmed)
-        .onChange(of: model.isSaveConfirmed) { _, isConfirmed in
-            // The change is silent on screen for VoiceOver, so it is spoken.
-            if isConfirmed { AccessibilityNotification.Announcement("Saved").post() }
-        }
+        .accessibilityLabel("Unsaved changes")
+        .accessibilityHint("Save, save as a new song, or revert")
         .sheet(isPresented: $isSaveAsShown) {
             SongSheet(purpose: .saveAsNew)
                 .environment(model)

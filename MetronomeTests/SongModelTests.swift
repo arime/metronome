@@ -424,42 +424,35 @@ struct SongModelTests {
         #expect(model.isSaveOffered)
     }
 
-    @Test func savingConfirmsInTheButtonAndThenTakesItAway() async throws {
-        let model = MetronomeModel(
-            engine: engine, store: store, haptics: haptics, libraryStore: libraryStore,
-            saveConfirmationTime: .milliseconds(20)
-        )
+    @Test func savingTakesTheButtonAwayAtOnce() {
+        let model = makeModel()
         let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
         model.loadSong(song.id, from: nil)
         model.setBPM(96)
         model.saveChanges()
         #expect(model.library.song(id: song.id)?.settings.bpm == 96)
-        #expect(model.isSaveConfirmed)
-        #expect(model.isSaveOffered)
-        #expect(haptics.successCount == 1)
-        // A second tap during the confirmation does nothing.
-        model.saveChanges()
-        #expect(haptics.successCount == 1)
-        for _ in 0..<300 where model.isSaveOffered {
-            try await Task.sleep(for: .milliseconds(10))
-        }
         #expect(model.isSaveOffered == false)
-        // The button keeps its Saved look while it fades away, and shows Save again
-        // with the next change.
-        #expect(model.isSaveConfirmed)
-        model.setBPM(97)
-        #expect(model.isSaveOffered)
-        #expect(model.isSaveConfirmed == false)
+        #expect(haptics.successCount == 1)
     }
 
-    @Test func aChangeDuringTheConfirmationBringsSaveBack() {
+    @Test func savingWhileRestingOnTheSavedValuesTakesTheButtonAwayAtOnce() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        model.setBPM(96)
+        model.setBPM(90)
+        #expect(model.isSaveOffered)
+        model.saveChanges()
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func aChangeAfterSavingBringsSaveBack() {
         let model = makeModel()
         let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
         model.loadSong(song.id, from: nil)
         model.setBPM(96)
         model.saveChanges()
         model.setBPM(97)
-        #expect(model.isSaveConfirmed == false)
         #expect(model.isSaveOffered)
         #expect(model.isEdited)
     }

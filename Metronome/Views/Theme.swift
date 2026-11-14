@@ -13,8 +13,7 @@ enum Theme {
     static let amberTint = Color(hex: 0x1E1A12)
     /// Remove and delete actions only.
     static let red = Color(hex: 0xE5484D)
-    /// Confirmations only: the sync status dot when up to date, and the Save button while
-    /// it reads Saved.
+    /// Confirmations only: the sync status dot when up to date.
     static let green = Color(hex: 0x4CC38A)
 
     /// Unlit ticks on the dial: 3:1 against ink, so the rest of the range can be seen.

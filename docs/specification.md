@@ -2,7 +2,7 @@
 
 This is the single specification for the app. It describes how version 1.0 is meant to work and is kept up to date as decisions change. Parts that are specified here but not built yet are listed in section 15.
 
-Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Songs & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen. The page *Main view UX review (draft)* holds the tempo sheet (board A), the next-up line (board C), and earlier ways of offering unsaved changes that were replaced (boards B, D, E, V4 and the others in their rows). The page *Tester feedback (draft)* holds the round Save button in the header with its menu and its Saved tick (boards W1, W2 and W3). The page *Library UX review (draft)* holds the library's tabs (boards K, L and M) and, in its third row, a setlist's view without an edit mode (board N, with renaming in board P and an empty setlist beside them) and the Add song screen (boards Q and R); board O is an alternative that was not chosen.
+Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Songs & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen. The page *Main view UX review (draft)* holds the tempo sheet (board A), the next-up line (board C), and earlier ways of offering unsaved changes that were replaced (boards B, D, E, V4 and the others in their rows). The page *Tester feedback (draft)* holds the round Save button in the header with its menu (boards W1 and W2; board W3 shows a Saved tick that was later dropped). The page *Library UX review (draft)* holds the library's tabs (boards K, L and M) and, in its third row, a setlist's view without an edit mode (board N, with renaming in board P and an empty setlist beside them) and the Add song screen (boards Q and R); board O is an alternative that was not chosen.
 
 ## 1. Summary
 
@@ -170,7 +170,7 @@ The title looks the same stopped and playing. Nothing is added in front of it wh
 
 **Save button**, shown only while the loaded song is edited, between the title and the mute button: a 40 pt amber circle with an ink save symbol (a tray with a down arrow, 17 pt bold), the only amber thing in the header. It is the same on every phone. Tapping it opens the Save menu (7.6). It takes touches over 44 pt.
 
-It fades in with the first change. It does not go away the instant the settings equal the saved ones again: it stays until the settings have rested there for half a second, so that turning the dial past the saved tempo does not make it blink out and in. Reverting, and loading or unloading a song, take it away at once. After Save it confirms the save first: for one second it shows a green ✓ on a see-through green tint (green at 16 %) in the same place, so that it reads as a status and not as a button, and cannot be tapped; then it fades away. A change to the settings during that second brings the button straight back. Everything that can be done with unsaved changes is in this one control; the title never changes what it does.
+It fades in with the first change. It does not go away the instant the settings equal the saved ones again: it stays until the settings have rested there for half a second, so that turning the dial past the saved tempo does not make it blink out and in. Reverting, and loading or unloading a song, take it away at once. Save takes it away at once too: the menu closes and the button fades out, with nothing shown in its place. Everything that can be done with unsaved changes is in this one control; the title never changes what it does.
 
 **Mute button**, 40 pt round:
 
@@ -279,7 +279,7 @@ When accent tiles are narrower than 44 pt (seven beats in a row), each tile's to
 | amber | `#FFB224` | the single accent colour |
 | amber tint | `#1E1A12` | idle accented tile fill, muted button fill |
 | red | `#E5484D` | remove and delete actions only |
-| green | `#4CC38A` | confirmations only: the sync status dot when up to date, and the Save button's tick after a save |
+| green | `#4CC38A` | confirmations only: the sync status dot when up to date |
 
 ### 6.10 Settings sheet
 
@@ -391,7 +391,7 @@ All four ways of setting the tempo work when stopped and when playing.
 
 **Unsaved changes** are handled with the Save button in the header (6.1), which is shown while the song is edited. It opens the Save menu, the system menu, with three things to do, in this order. Tapping outside it closes it.
 
-- **Save changes** writes the current settings into the loaded song. The button confirms it with a green ✓ for a second, with a success haptic, and then goes away (6.1). There is no separate message.
+- **Save changes** writes the current settings into the loaded song. The menu closes and the button goes away at once, with a success haptic (6.1). There is no separate message.
 - **Save as new song** opens the New song sheet (section 10) filled with the current settings. After saving, the new song is the loaded one, and the song that was edited is left as it was.
 - **Revert**, with the saved song's tempo and time signature on a second, smaller line, for example `120 BPM · 4/4`, so that it is clear what comes back. It sets the metronome back to the song's tempo, time signature and accents, with a selection tick.
   - While playing, the bar carries on when only the tempo or the accents go back, as with any other change of tempo or accents (7.1, 7.3). When the time signature goes back, the next beat is beat 1 of a new bar (7.2).
@@ -682,7 +682,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. It has the action "Type a tempo", which opens the tempo sheet.
   - In the tempo sheet the field reads as "Tempo" with the typed digits, each key as its digit, and the delete key as "Delete".
   - In the song sheet the tempo value is a button: "Tempo, 120 beats per minute", with the hint "Type a tempo".
-  - The Save button reads as "Unsaved changes", with the hint "Save, save as a new song, or revert". Its menu items read as written, Revert with the saved values. After Save, "Saved" is announced, and the tick reads "Saved" while it shows.
+  - The Save button reads as "Unsaved changes", with the hint "Save, save as a new song, or revert". Its menu items read as written, Revert with the saved values. After Save, "Saved" is announced, since the button going away cannot be heard.
   - The tap tempo pill reads as "Tap tempo" also while it shows `Tap again`.
   - The next-up line reads as one element, for example "Next: Seven Bridges, 168 beats per minute, 7/8", or "Last song in the setlist".
   - Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action.
@@ -738,7 +738,7 @@ Songs and setlists:
 - [x] The library opens on the Songs tab, or inside the loaded song's setlist when it came from one, and scrolls to its row. *(Choosing the setlist is unit tested, and both ways of opening were seen in the simulator. In the simulator the list stayed at its top on an iPhone 17 Pro, where the loaded row fits, and scrolled just far enough to show it on an iPhone SE, where it does not. A library of several screens has not been tried.)*
 - [x] A song loaded from the Songs tab keeps the setlist being stepped through when it is in it. *(Unit tested.)*
 - [x] The header shows the right title and second line in every state of 6.1.
-- [x] Changing a loaded song's settings shows the Save button in the header and leaves the title as it is; Save changes, Save as new song and Revert in its menu do what 7.6 says, and the title opens the library also while edited. *(Save and Revert, with the bar carrying on or starting over, are unit tested. On the iPhone 17 Pro simulator the button, its menu with Revert's saved values, and Save changes with the green tick were tried.)*
+- [x] Changing a loaded song's settings shows the Save button in the header and leaves the title as it is; Save changes, Save as new song and Revert in its menu do what 7.6 says, and the title opens the library also while edited. *(Save and Revert, with the bar carrying on or starting over, are unit tested. On the iPhone 17 Pro simulator the button, its menu with Revert's saved values, and Save changes were tried. Save changes taking the button away at once, with no green tick, is unit tested and was seen in the simulator.)*
 - [x] Quick taps on − / + each count once and never leave the tempo running on by itself. *(Four quick taps on + were tried in the simulator after two quick taps had left the repeat running up to 250.)*
 - [x] Naming the current settings while nothing is loaded loads the new song, from the setlist it was added to; in other cases a new song from the library is not loaded. *(Unit tested.)*
 - [ ] The next-up line names the song Next would load, says so at the last song, and is left out when it would push the dial below 200 pt. *(The song and the layout rule are unit tested, and the line was seen in the simulator. The last song and a small phone were not seen on screen.)*

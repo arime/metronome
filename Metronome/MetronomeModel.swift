@@ -55,10 +55,8 @@ final class MetronomeModel {
 
     init(engine: ClickEngine, store: SettingsStore, haptics: HapticsPlaying, libraryStore: LibraryStore,
          sync: LibrarySync? = nil, now: @escaping () -> Date = Date.init,
-         saveOfferDelay: Duration = .milliseconds(500),
-         saveConfirmationTime: Duration = .seconds(1)) {
+         saveOfferDelay: Duration = .milliseconds(500)) {
         self.saveOfferDelay = saveOfferDelay
-        self.saveConfirmationTime = saveConfirmationTime
         self.sync = sync
         self.now = now
         self.engine = engine
@@ -243,17 +241,10 @@ final class MetronomeModel {
     @ObservationIgnored private var saveOfferHide: Task<Void, Never>?
     @ObservationIgnored private let saveOfferDelay: Duration
 
-    /// True from Save on: the button stays for a moment and reads Saved, as the confirmation.
-    /// It stays true while the button fades away and after, until the next change.
-    private(set) var isSaveConfirmed = false
-    @ObservationIgnored private let saveConfirmationTime: Duration
-
     /// After the user changed the tempo, time signature or accents.
     private func userChangedSettings() {
         saveOfferHide?.cancel()
         saveOfferHide = nil
-        // A change during the confirmation ends it: there is something to save again.
-        isSaveConfirmed = false
         if isEdited {
             isSaveOffered = true
         } else if isSaveOffered {
@@ -271,24 +262,7 @@ final class MetronomeModel {
     private func syncSaveOffer() {
         saveOfferHide?.cancel()
         saveOfferHide = nil
-        isSaveConfirmed = false
         isSaveOffered = isEdited
-    }
-
-    /// After Save: the button stays for a moment, reading Saved, and then goes away.
-    private func confirmSave() {
-        saveOfferHide?.cancel()
-        isSaveOffered = true
-        isSaveConfirmed = true
-        saveOfferHide = Task { [weak self, saveConfirmationTime] in
-            try? await Task.sleep(for: saveConfirmationTime)
-            guard !Task.isCancelled, let self else { return }
-            self.isSaveOffered = self.isEdited
-            // While the button fades away it must still read Saved: going back to the
-            // amber Save look at the same moment shows as a flash of amber. The Saved
-            // look is dropped by the next change, before the button is shown again.
-            if self.isSaveOffered { self.isSaveConfirmed = false }
-        }
     }
 
     /// The loaded song's place in the setlist it was loaded from.
@@ -370,13 +344,13 @@ final class MetronomeModel {
         loadSong(ids[position.index + offset], from: setlistID)
     }
 
-    /// Writes the current settings into the loaded song, and confirms it: the Save button
-    /// reads Saved for a moment, with a success haptic.
+    /// Writes the current settings into the loaded song. The Save button goes away at once,
+    /// with a success haptic.
     func saveChanges() {
-        guard let id = loadedSongID, !(isSaveConfirmed && isSaveOffered) else { return }
+        guard let id = loadedSongID else { return }
         library.updateSong(id, settings: settings, now: now())
         persistLibrary()
-        confirmSave()
+        syncSaveOffer()
         haptics?.success()
     }
 
