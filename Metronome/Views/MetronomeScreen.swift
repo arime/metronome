@@ -54,7 +54,9 @@ struct MetronomeScreen: View {
             SongTitle { isLibraryShown = true }
             if model.isSaveOffered {
                 SaveButton()
-                    .transition(.opacity)
+                    // Fades in, but leaves at once, so that after Save only the menu's own
+                    // closing animation is left on screen.
+                    .transition(.asymmetric(insertion: .opacity, removal: .identity))
             }
             MuteButton()
             SettingsButton { isSettingsShown = true }

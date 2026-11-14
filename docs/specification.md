@@ -170,7 +170,7 @@ The title looks the same stopped and playing. Nothing is added in front of it wh
 
 **Save button**, shown only while the loaded song is edited, between the title and the mute button: a 40 pt amber circle with an ink save symbol (a tray with a down arrow, 17 pt bold), the only amber thing in the header. It is the same on every phone. Tapping it opens the Save menu (7.6). It takes touches over 44 pt.
 
-It fades in with the first change. It does not go away the instant the settings equal the saved ones again: it stays until the settings have rested there for half a second, so that turning the dial past the saved tempo does not make it blink out and in. Reverting, and loading or unloading a song, take it away at once. Save takes it away at once too: the menu closes and the button fades out, with nothing shown in its place. Everything that can be done with unsaved changes is in this one control; the title never changes what it does.
+It fades in with the first change. It does not go away the instant the settings equal the saved ones again: it stays until the settings have rested there for half a second, so that turning the dial past the saved tempo does not make it blink out and in. Reverting, and loading or unloading a song, take it away at once. Save takes it away at once too, with no fade, so that only the menu's own closing animation is seen; nothing is shown in its place. Everything that can be done with unsaved changes is in this one control; the title never changes what it does.
 
 **Mute button**, 40 pt round:
 
