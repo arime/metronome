@@ -17,11 +17,9 @@ struct SyncSheet: View {
                         .tracking(-0.52)
                         .foregroundStyle(Theme.dialWhite)
                     Spacer()
-                    Button("Done") { dismiss() }
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Theme.amber)
-                        .buttonStyle(.plain)
                 }
+                // An overlay, so its 44 × 44 touch area does not make the title row taller.
+                .overlay(alignment: .trailing) { doneButton }
                 HStack(spacing: 10) {
                     PlayStopButton()
                     TrackProgressBar(spacing: 10)
@@ -74,6 +72,18 @@ struct SyncSheet: View {
         .onChange(of: model.isTrackPlayable) { _, isPlayable in
             if !isPlayable { dismiss() }
         }
+    }
+
+    /// The text is drawn as before, at the row's right edge; the touch area is at least 44 × 44.
+    private var doneButton: some View {
+        Button { dismiss() } label: {
+            Text("Done")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Theme.amber)
+                .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     /// A label 8 pt above its row.
