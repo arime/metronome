@@ -5,28 +5,42 @@ struct MetronomeScreen: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isLibraryShown = false
     @State private var isSettingsShown = false
+    /// Set by Sync on the track strip; Task 9 presents the Sync sheet from it.
+    @State private var isSyncShown = false
 
     var body: some View {
         GeometryReader { proxy in
+            // The arrangement follows the song, not the file: a missing file still shows the strip.
+            let hasTrack = model.loadedTrack != nil
             let layout = ScreenLayout(
                 width: proxy.size.width,
                 height: proxy.size.height,
                 hasBottomInset: proxy.safeAreaInsets.bottom > 0,
                 beats: model.settings.timeSignature.beatsPerBar,
-                hasSetlist: model.position != nil
+                hasSetlist: model.position != nil,
+                hasTrack: hasTrack
             )
             VStack(spacing: 0) {
                 header
                     .padding(.top, 8)
                 TempoDial(diameter: layout.dialDiameter)
                     .padding(.top, 12)
-                TempoControls()
-                    .padding(.top, 4)
-                VStack(alignment: .leading, spacing: layout.sectionGap) {
-                    TimeSignatureRow(sideMargin: layout.sideMargin)
+                if hasTrack {
+                    TrackTempoRow(sideMargin: layout.sideMargin)
+                        .padding(.top, layout.settingsTopGap)
                     AccentTiles(singleRowTileHeight: layout.tileHeight)
+                        .padding(.top, layout.sectionGap)
+                    TrackStrip { isSyncShown = true }
+                        .padding(.top, layout.stripTopGap)
+                } else {
+                    TempoControls()
+                        .padding(.top, 4)
+                    VStack(alignment: .leading, spacing: layout.sectionGap) {
+                        TimeSignatureRow(sideMargin: layout.sideMargin)
+                        AccentTiles(singleRowTileHeight: layout.tileHeight)
+                    }
+                    .padding(.top, layout.settingsTopGap)
                 }
-                .padding(.top, layout.settingsTopGap)
                 Spacer(minLength: ScreenLayout.buttonTopGap)
                 footer(showsNextLine: layout.showsNextLine)
                     .padding(.bottom, layout.bottomPadding)
@@ -141,11 +155,19 @@ struct NextUpLine: View {
 /// On a tall screen the dial grows past its 300 pt design size, up to 340 pt. On a short
 /// one the dial shrinks first, down to 240 pt; then the gaps and tiles shrink; then the
 /// dial shrinks as far as it must. The screen never scrolls.
+///
+/// A song with a backing track has its own arrangement (6.12): one tempo and time signature
+/// row in place of two, and the track strip below the tiles. There the gaps around the row
+/// stay put, and the compact fit shrinks only the gap above the strip and the tiles.
 struct ScreenLayout {
     let dialDiameter: CGFloat
+    /// Below the time signature row; with a track, below the tempo and time signature row.
     let sectionGap: CGFloat
+    /// Above the time signature row; with a track, between the dial and the row.
     let settingsTopGap: CGFloat
     let tileHeight: CGFloat
+    /// Between the accent tiles and the track strip; 0 without a track.
+    let stripTopGap: CGFloat
     let bottomPadding: CGFloat
     let sideMargin: CGFloat
     /// Height of everything except the dial and the bottom padding.
@@ -174,7 +196,15 @@ struct ScreenLayout {
     /// The next-up line is left out when it would push the dial below this size.
     static let nextLineMinimumDial: CGFloat = 200
 
-    init(width: CGFloat, height: CGFloat, hasBottomInset: Bool, beats: Int, hasSetlist: Bool = false) {
+    /// The tempo and time signature row of the track arrangement.
+    static let trackRowHeight: CGFloat = 56
+    /// The track strip, which never shrinks: 12 + 30 + 10 + 44 + 12.
+    static let trackStripHeight: CGFloat = 108
+
+    init(
+        width: CGFloat, height: CGFloat, hasBottomInset: Bool, beats: Int, hasSetlist: Bool = false,
+        hasTrack: Bool = false
+    ) {
         let sideMargin = width < Self.narrowWidth ? Self.narrowSideMargin : Theme.sideMargin
         self.sideMargin = sideMargin
         // Phones with a home indicator already have the design's bottom margin.
@@ -184,33 +214,44 @@ struct ScreenLayout {
         // The dial never grows wider than the space between the side margins.
         let largestDial = min(Self.maximumDial, max(Self.fullDial, width - 2 * sideMargin))
 
+        struct Gaps {
+            let sectionGap, settingsTopGap, tileHeight, stripTopGap: CGFloat
+        }
+        let roomyGaps = hasTrack
+            ? Gaps(sectionGap: 12, settingsTopGap: 10, tileHeight: 76, stripTopGap: 14)
+            : Gaps(sectionGap: 22, settingsTopGap: 26, tileHeight: 76, stripTopGap: 0)
+        let compactGaps = hasTrack
+            ? Gaps(sectionGap: 12, settingsTopGap: 10, tileHeight: 56, stripTopGap: 10)
+            : Gaps(sectionGap: 16, settingsTopGap: 16, tileHeight: 56, stripTopGap: 0)
+
         struct Fit {
-            let dial, sectionGap, settingsTopGap, tileHeight, fixedHeight: CGFloat
+            let dial, fixedHeight: CGFloat
+            let gaps: Gaps
         }
 
         func fit(nextLine: Bool) -> Fit {
-            func partsHeight(sectionGap: CGFloat, settingsTopGap: CGFloat, tileHeight: CGFloat) -> CGFloat {
+            func partsHeight(_ gaps: Gaps) -> CGFloat {
                 let header: CGFloat = 8 + 40
                 let dialTop: CGFloat = 12
-                let controls: CGFloat = 4 + TempoControls.height
-                let row: CGFloat = 60
-                let tiles = AccentTiles.height(forBeats: beats, singleRowTileHeight: tileHeight)
+                // The track arrangement has no separate tempo controls; its one row holds them.
+                let controls: CGFloat = hasTrack ? 0 : 4 + TempoControls.height
+                let row: CGFloat = hasTrack ? Self.trackRowHeight : 60
+                let tiles = AccentTiles.height(forBeats: beats, singleRowTileHeight: gaps.tileHeight)
+                let strip: CGFloat = hasTrack ? gaps.stripTopGap + Self.trackStripHeight : 0
                 let nextUp: CGFloat = nextLine ? Self.nextLineHeight + Self.nextLineGap : 0
                 let button: CGFloat = Self.buttonTopGap + nextUp + 68
-                return header + dialTop + controls + settingsTopGap + row + sectionGap + tiles + button
+                return header + dialTop + controls + gaps.settingsTopGap + row + gaps.sectionGap + tiles
+                    + strip + button
             }
 
-            let roomy = partsHeight(sectionGap: 22, settingsTopGap: 26, tileHeight: 76)
+            let roomy = partsHeight(roomyGaps)
             if available - roomy >= Self.roomyMinimumDial {
-                return Fit(
-                    dial: min(largestDial, available - roomy),
-                    sectionGap: 22, settingsTopGap: 26, tileHeight: 76, fixedHeight: roomy
-                )
+                return Fit(dial: min(largestDial, available - roomy), fixedHeight: roomy, gaps: roomyGaps)
             }
-            let compact = partsHeight(sectionGap: 16, settingsTopGap: 16, tileHeight: 56)
+            let compact = partsHeight(compactGaps)
             return Fit(
                 dial: min(largestDial, max(Self.minimumDial, available - compact)),
-                sectionGap: 16, settingsTopGap: 16, tileHeight: 56, fixedHeight: compact
+                fixedHeight: compact, gaps: compactGaps
             )
         }
 
@@ -224,9 +265,10 @@ struct ScreenLayout {
             showsNextLine = false
         }
         dialDiameter = chosen.dial
-        sectionGap = chosen.sectionGap
-        settingsTopGap = chosen.settingsTopGap
-        tileHeight = chosen.tileHeight
+        sectionGap = chosen.gaps.sectionGap
+        settingsTopGap = chosen.gaps.settingsTopGap
+        tileHeight = chosen.gaps.tileHeight
+        stripTopGap = chosen.gaps.stripTopGap
         fixedHeight = chosen.fixedHeight
     }
 }
