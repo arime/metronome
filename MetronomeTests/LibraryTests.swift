@@ -35,6 +35,46 @@ struct LibraryTests {
         #expect(library.sortedSongs.map(\.id) == [a2.id, a1.id, b.id, c.id])
     }
 
+    @Test func searchMatchesPartOfTheNameIgnoringCase() {
+        let song = Song(id: UUID(), name: "Harbour Lights", settings: settings(100))
+        #expect(song.matches(search: "harbour"))
+        #expect(song.matches(search: "LIGHT"))
+        #expect(song.matches(search: "our li"))
+        #expect(!song.matches(search: "lights out"))
+    }
+
+    @Test func searchIgnoresAccents() {
+        let song = Song(id: UUID(), name: "Täällä Pohjantähden alla", settings: settings(100))
+        #expect(song.matches(search: "taalla"))
+        #expect(song.matches(search: "pohjantahden"))
+        #expect(song.matches(search: "TÄÄLLÄ"))
+        let plain = Song(id: UUID(), name: "Paivan kahtaa", settings: settings(100))
+        #expect(plain.matches(search: "päivän"))
+    }
+
+    @Test func searchIgnoresSpacesAroundTheQuery() {
+        let song = Song(id: UUID(), name: "Slow Burn", settings: settings(72))
+        #expect(song.matches(search: "  burn \n"))
+        #expect(song.matches(search: " slow burn "))
+        #expect(!song.matches(search: "slowburn"))
+    }
+
+    @Test func anEmptySearchMatchesEverySong() {
+        let song = Song(id: UUID(), name: "Cold", settings: settings(110))
+        #expect(song.matches(search: ""))
+        #expect(song.matches(search: "   "))
+    }
+
+    @Test func searchFiltersInOrderAndCanMatchNothing() {
+        var library = Library()
+        let b = library.addSong(name: "Blue Hour", settings: settings(90), now: now)!
+        _ = library.addSong(name: "Cold", settings: settings(110), now: now)!
+        let l = library.addSong(name: "Länsi hour", settings: settings(120), now: now)!
+        #expect(library.sortedSongs.filter { $0.matches(search: "HOUR") }.map(\.id) == [b.id, l.id])
+        #expect(library.sortedSongs.filter { $0.matches(search: "lansi") }.map(\.id) == [l.id])
+        #expect(library.sortedSongs.filter { $0.matches(search: "xyz") }.isEmpty)
+    }
+
     @Test func renamingAndUpdatingASong() {
         var library = Library()
         let song = library.addSong(name: "One", settings: settings(100), now: now)!

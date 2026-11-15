@@ -419,6 +419,11 @@ private struct SongListView: View {
     @State private var editingSong: Song?
     @State private var deleting: Song?
     @State private var isDeleteSetlistShown = false
+    /// What is typed in the Songs tab's search field. It starts empty each time.
+    @State private var query = ""
+    /// The list scrolls to the loaded song once, when it first appears, not each time a
+    /// search brings it back.
+    @State private var hasScrolledToLoaded = false
 
     private var setlist: Setlist? {
         setlistID.flatMap(model.library.setlist(id:))
@@ -426,6 +431,11 @@ private struct SongListView: View {
 
     private var songs: [Song] {
         setlist.map { model.library.songs(inSetlist: $0.id) } ?? model.library.sortedSongs
+    }
+
+    /// The songs in the list: on the Songs tab those matching the search, in a setlist all of them.
+    private var shownSongs: [Song] {
+        setlist == nil ? songs.filter { $0.matches(search: query) } : songs
     }
 
     var body: some View {
@@ -467,7 +477,12 @@ private struct SongListView: View {
             if songs.isEmpty {
                 emptyState
             } else {
-                list
+                controls
+                if shownSongs.isEmpty {
+                    EmptyListMessage(title: "No matches", text: nil) { EmptyView() }
+                } else {
+                    list
+                }
             }
         }
         .sheet(isPresented: $isNewSongShown) {
@@ -503,18 +518,37 @@ private struct SongListView: View {
         }
     }
 
+    /// The line between the Songs tab's header and its list: the search field, and Clear song
+    /// at its right end while there is a song to unload. A setlist has no such line.
+    @ViewBuilder
+    private var controls: some View {
+        if setlist == nil {
+            VStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    SearchField(text: $query)
+                    if model.loadedSong != nil {
+                        ClearSongButton(settings: model.settings) {
+                            model.clearSong()
+                            close()
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 12)
+                Rectangle()
+                    .fill(Theme.line)
+                    .frame(height: 1)
+                    .padding(.horizontal, 20)
+            }
+        }
+    }
+
     private var list: some View {
         ScrollViewReader { proxy in
             List {
-                // Only the full library offers it, and only while there is a song to unload.
-                if setlist == nil, model.loadedSong != nil {
-                    NoSongRow(settings: model.settings) {
-                        model.clearSong()
-                        close()
-                    }
-                    .sheetRow()
-                }
-                ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
+                // The numbers are a setlist's, which is never filtered, so an index here is
+                // also the song's place in the setlist.
+                ForEach(Array(shownSongs.enumerated()), id: \.element.id) { index, song in
                     SongRow(
                         song: song,
                         number: setlist == nil ? nil : index + 1,
@@ -549,11 +583,16 @@ private struct SongListView: View {
             .sheetList()
             // A setlist's rows always show their drag handles; there is no separate edit mode.
             .environment(\.editMode, editMode)
+            .scrollDismissesKeyboard(.immediately)
             // The library opens where the user is: with the loaded song's row in view.
             // Without an anchor the list moves only as far as it must, so a row that is
             // already on screen leaves the list at its top.
             .onAppear {
-                if let loaded = model.loadedSongID { proxy.scrollTo(loaded) }
+                guard !hasScrolledToLoaded else { return }
+                hasScrolledToLoaded = true
+                if let loaded = model.loadedSongID, shownSongs.contains(where: { $0.id == loaded }) {
+                    proxy.scrollTo(loaded)
+                }
             }
         }
     }
@@ -701,34 +740,64 @@ private struct SongRow<MenuContent: View>: View {
     }
 }
 
-/// The first row of the Songs tab, shown only while a song is loaded. Tapping it unloads
-/// the song and keeps the settings. It has no menu button, so it does not pass for a song.
-private struct NoSongRow: View {
-    let settings: MetronomeSettings
-    let choose: () -> Void
+/// The Songs tab's search, filling the line above the list. Typing narrows the list to the
+/// songs whose names contain the text.
+private struct SearchField: View {
+    @Binding var text: String
+    @FocusState private var isFocused: Bool
 
     var body: some View {
-        Button(action: choose) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("No song")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Theme.dialWhite)
-                Text("Keep \(settings.bpm) BPM · \(settings.timeSignature.rawValue)")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.muted)
-                    .lineLimit(1)
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.muted)
+                .accessibilityHidden(true)
+            TextField("Search songs", text: $text, prompt: Text("Search").foregroundStyle(Theme.muted))
+                .font(.system(size: 15))
+                .foregroundStyle(Theme.dialWhite)
+                .tint(Theme.amber)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .submitLabel(.search)
+                .focused($isFocused)
+                .onSubmit { isFocused = false }
+                .accessibilityLabel("Search songs")
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Theme.muted)
+                        .frame(width: 36, height: 36)
+                        // Drawn in a 36 pt square; the touch area is 44 pt.
+                        .contentShape(Rectangle().inset(by: -4))
+                }
+                .buttonStyle(.plain)
+                // The symbol sits at the field's end, where the padding would push it in.
+                .padding(.trailing, -10)
+                .accessibilityLabel("Clear search")
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 62)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.borderless)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("No song")
-        .accessibilityHint(
-            "Unloads the current song and keeps \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)"
-        )
-        .accessibilityAddTraits(.isButton)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity)
+        .frame(height: 36)
+        .background(Theme.surfaceRaised, in: Capsule())
+    }
+}
+
+/// The grey pill above the Songs tab's list, shown only while a song is loaded. Tapping it
+/// unloads the song and keeps the settings.
+private struct ClearSongButton: View {
+    let settings: MetronomeSettings
+    let clear: () -> Void
+
+    var body: some View {
+        PillButton(text: "Clear song", symbol: "xmark", look: .neutral, action: clear)
+            .accessibilityLabel("Clear song")
+            .accessibilityHint(
+                "Unloads the current song and keeps \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)"
+            )
     }
 }
 

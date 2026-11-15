@@ -28,7 +28,7 @@ Not included:
 
 - Bar counter, subdivisions, a volume control inside the app (the phone's own volume controls set the click volume; see 7.7).
 - Playback with the screen locked or the app in the background.
-- Search, folders or tags, notes on songs, per-song sounds, import, export and sharing with other people.
+- Search other than by song name on the Songs tab (8.2), folders or tags, notes on songs, per-song sounds, import, export and sharing with other people.
 - Syncing anything other than songs and setlists: the current settings, the loaded song, the click sound and haptics stay separate on each device.
 - iPad layout, landscape, light mode, Apple Watch, widgets.
 
@@ -399,7 +399,7 @@ All four ways of setting the tempo work when stopped and when playing.
 
 Saving takes two taps, button and menu item, as it is a deliberate choice made between songs, and the menu keeps Revert and Save as new song in plain sight.
 
-Edits also go away without the menu: loading another song, with Previous / Next or from the library, drops them without asking, and **No song** in the library (8.2) keeps them as plain settings.
+Edits also go away without the menu: loading another song, with Previous / Next or from the library, drops them without asking, and **Clear song** in the library (8.2) keeps them as plain settings.
 
 **Previous and Next** load the previous or next song in the loaded-from setlist's order.
 
@@ -482,7 +482,7 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 
 - On the Songs tab, so that a song can be picked at once.
 - When the loaded song was loaded from a setlist, inside that setlist, where the user is.
-- Either way the list is scrolled only as far as is needed for the loaded song's row to be in view, when the list has it.
+- Either way the list is scrolled only as far as is needed for the loaded song's row to be in view, when the list has it. This happens once, as the list first appears; a search that hides and brings back the list does not scroll it again.
 
 ### 8.1 Header
 
@@ -502,12 +502,21 @@ There is no Edit button and no separate edit mode: everything that changes a set
 
 ### 8.2 The Songs tab
 
-- **No song**, the first row, shown only while a song is loaded. It is how the user goes back to having no song loaded.
-  - Below the name it says what it does and what is kept, for example `Keep 120 BPM · 4/4`. While the song has unsaved edits, these are the edited values. On a narrow screen the end of the line is cut.
-  - It has no menu button, so it is not taken for a song.
+- **The controls line**, between the header and the list: the search field, and at its right end **Clear song** while a song is loaded, 10 pt apart. Below it come 12 pt of space, a 1 pt divider in `line` and then the songs. It stays in place while the songs scroll. It is there whenever the library has songs; an empty library shows only its empty state, and a setlist has no such line.
+- **Search**, a field filling the line to the left of Clear song, or the whole line while nothing is loaded.
+  - It is 36 pt tall and fully rounded, surface raised with no border, 12 pt padding at the sides: a magnifying glass (15 pt semibold, muted) and, 8 pt after it, the text (15 pt regular, dial white, amber cursor), with the placeholder `Search` in muted.
+  - While it has text, a muted ⓧ at its right end empties it. Its touch area is 44 pt.
+  - The list shows only the songs whose name contains the text, ignoring case, accents (`a` finds `ä`) and spaces at the ends of the text, in the usual order. Empty text, or only spaces, shows every song.
+  - When no song matches, the list's place shows `No matches`, centred (17 pt, semibold, dial white), with nothing else.
+  - The keyboard does not come up by itself; tapping the field brings it up. It has a Search key, which puts the keyboard away, and scrolling the list puts it away too. There is no autocorrection or automatic capital letter.
+  - The text starts empty each time the library opens and is not remembered. Going to the Setlists tab and back empties it too.
+  - Rows found by a search work as everywhere else: tapping one loads it, its menu and swipe are the same, and the loaded song is still marked.
+  - VoiceOver calls the field `Search songs` and the ⓧ `Clear search`.
+- **Clear song**, a pill at the right end of the controls line, shown only while a song is loaded. It is how the user goes back to having no song loaded.
+  - The pill is 36 pt tall and fully rounded, surface raised with no border, 14 pt padding at the sides: an ✕ (12 pt) and `Clear song` (14 pt bold, dial white), 6 pt apart. Its touch area is 44 pt tall.
   - Tapping it unloads the song and closes the sheet. The tempo, time signature and accents stay as they are, playing or stopped, and the click does not change. The song itself is not changed; unsaved edits stay as plain settings. Previous / Next disappear and the header shows the "nothing loaded" state.
   - It is not shown while nothing is loaded, since there is nothing to unload, and not in a setlist.
-- Then every song, sorted by name A–Z, ignoring case and following the phone's language rules. Songs with the same name keep their order of creation.
+- Then every song (or every song the search finds), sorted by name A–Z, ignoring case and following the phone's language rules. Songs with the same name keep their order of creation.
 - Each row shows the name (17 pt), and below it tempo and time signature, for example `120 BPM · 4/4`. At the right is the **menu button**: a 40 pt round surface-raised button with a dial-white ⋯ (8.4).
 - The loaded song's row has an amber name and `· loaded` after its details.
 - **Tapping a row** loads the song and closes the sheet. It does not start the metronome; Start is under the thumb when the sheet has closed. If the metronome is already playing, it keeps playing with the new song.
@@ -729,7 +738,8 @@ Metronome:
 Songs and setlists:
 
 - [x] A song can be created, loaded, edited and deleted; the library is sorted A–Z.
-- [x] No song unloads the loaded song and keeps the settings and playback; it is only on the Songs tab, and only while a song is loaded. *(Unit tested; the row and its new text were seen in the simulator.)*
+- [x] Clear song unloads the loaded song and keeps the settings and playback; it is only on the Songs tab, and only while a song is loaded. *(Unloading is unit tested. In the simulator the pill showed with a song loaded, tapping it unloaded the song, closed the sheet and kept the tempo and time signature, and with nothing loaded the songs started right below the header. Playback carrying on and VoiceOver were not tried on screen.)*
+- [x] Search on the Songs tab narrows the list by name, ignoring case, accents and the spaces at the ends, and shows `No matches` when nothing matches. *(Matching is unit tested, accents included. In the simulator the field showed beside Clear song with a song loaded and across the whole line without one, did not take focus when the library opened, filtered the list as text was typed (the loaded song staying amber), showed `No matches`, and ⓧ emptied it; a song tapped in a filtered list was the one loaded. The simulator had a hardware keyboard, so the on-screen keyboard, its Search key and scrolling it away were not seen, and nor were VoiceOver or the row menu in a filtered list.)*
 - [x] Tapping a row loads without starting, and keeps playing when the metronome is running. *(Unit tested.)*
 - [x] The row menu offers Add to setlist, Edit, Remove from setlist and Delete in every list, and the swipe on the Songs tab gives the shortcuts of 8.2. *(Adding to a setlist, New setlist, Delete and Remove were tried in the simulator before Edit replaced Rename. Edit from the menu on the Songs tab was tried after it; the Edit swipe and Edit in a setlist view were not.)*
 - [x] Edit song changes a song's name, tempo, time signature and accents as 10.2 says. *(The rules for the loaded and the unloaded song are unit tested. Changing a tempo by typing it and saving was tried in the simulator.)*

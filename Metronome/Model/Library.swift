@@ -7,6 +7,16 @@ struct Song: Codable, Equatable, Identifiable, Sendable {
     var settings: MetronomeSettings
 }
 
+extension Song {
+    /// True when the name contains the query, ignoring case, accents and the spaces at the
+    /// query's ends. A query with nothing else in it matches every song.
+    func matches(search query: String) -> Bool {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return true }
+        return name.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+    }
+}
+
 /// A named, ordered selection of songs. It refers to songs; it does not own them.
 struct Setlist: Codable, Equatable, Identifiable, Sendable {
     let id: UUID
