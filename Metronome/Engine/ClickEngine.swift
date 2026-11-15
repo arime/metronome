@@ -20,6 +20,7 @@ protocol ClickEngine: AnyObject {
     var onBeat: ((ScheduledBeat) -> Void)? { get set }
     /// Called when playback ended for a reason other than `stop()`:
     /// an interruption, an audio route change or an engine failure.
+    /// `trackTime` still answers while it runs, so the track's position can be kept.
     var onStopped: (() -> Void)? { get set }
     /// Called once when the file has played to its end. Not called after stop() or a seek.
     var onTrackEnded: (() -> Void)? { get set }
@@ -38,6 +39,7 @@ protocol ClickEngine: AnyObject {
     /// Applies at once, also to audio already scheduled.
     func setMix(clickGain: Float, trackGain: Float)
     /// The file time being heard now, allowing for output delay; negative during a count-in. nil unless playing with a track.
+    /// When playback ends from outside it still answers while `onStopped` runs, with the time heard last; nil afterwards.
     var trackTime: TimeInterval? { get }
     /// Silences or restores the click at once, without stopping. Beats keep being
     /// reported through `onBeat`, and the setting stays across stop and start.

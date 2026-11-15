@@ -54,6 +54,8 @@ final class AudioClickEngine: ClickEngine {
     private var trackClock: TrackBeatClock?
     /// The host time, in seconds, at which both players start: sample time 0 on both timelines.
     private var trackStartHostSeconds: Double?
+    /// The file time heard when playback ended from outside; set only while `onStopped` runs.
+    private var trackTimeAtStop: TimeInterval?
     /// True between `start` and the moment the audio session is active.
     private var isStarting = false
     private var settings = MetronomeSettings()
@@ -253,6 +255,7 @@ final class AudioClickEngine: ClickEngine {
     /// The last render cycle in file time, moved on by the time since on the host clock,
     /// less the delay until it is heard.
     var trackTime: TimeInterval? {
+        if let trackTimeAtStop { return trackTimeAtStop }
         guard let trackClock else { return nil }
         let render = lastRender()
         let sinceRender = render.hostSeconds.map { Self.hostNow() - $0 } ?? 0
@@ -495,10 +498,15 @@ final class AudioClickEngine: ClickEngine {
     }
 
     /// Playback ended from outside: stop cleanly and tell the model.
+    /// The track time is read before the teardown and kept while `onStopped` runs,
+    /// so the model can keep the position.
     private func stoppedExternally() {
         guard isPlaying else { return }
+        let heard = trackTime
         tearDown()
+        trackTimeAtStop = heard
         onStopped?()
+        trackTimeAtStop = nil
     }
 
     private func observeAudioChanges() {
