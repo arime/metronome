@@ -125,6 +125,8 @@ struct TrackStrip: View {
 /// the Sync sheet. 44 pt tall.
 struct TrackProgressBar: View {
     @Environment(MetronomeModel.self) private var model
+    /// Between the buttons and the line: 12 on the track strip, 10 in the Sync sheet.
+    var spacing: CGFloat = 12
     /// Where the knob has been dragged from and to. Gesture state goes back to nil when the
     /// drag is cancelled as well as when it ends, so the knob never sticks off the position.
     @GestureState private var drag: KnobDrag?
@@ -153,7 +155,7 @@ struct TrackProgressBar: View {
     private var row: some View {
         let isMissing = model.isTrackMissing
         let canSkipForward = model.canSkipForward
-        return HStack(spacing: 12) {
+        return HStack(spacing: spacing) {
             SkipButton(symbol: "chevron.backward.2", label: "Back 15 seconds") {
                 model.skipTrack(by: -Self.skip)
             }

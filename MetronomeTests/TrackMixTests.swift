@@ -40,6 +40,29 @@ struct TrackMixTests {
         #expect(TrackMix.position(forKnobAt: -20, width: 234) == -1)
     }
 
+    @Test func dragPositionsRoundToHalfDecibels() {
+        #expect(TrackMix.quantised(0) == 0)
+        #expect(TrackMix.quantised(0.26) == 0.25)
+        #expect(TrackMix.quantised(-0.51) == -0.5)
+        #expect(TrackMix.quantised(0.3) == 14.0 / 48)
+        #expect(TrackMix.quantised(0.005) == 0)
+        #expect(TrackMix.quantised(1) == 1)
+        #expect(TrackMix.quantised(-1.2) == -1)
+        // Positions within a step's rounding give the same value, so a drag saves only real changes.
+        #expect(TrackMix.quantised(0.2501) == TrackMix.quantised(0.2549))
+    }
+
+    @Test func voiceOverStepsLandOnWholeSteps() {
+        #expect(TrackMix.nextSpokenStep(from: 0, upward: true) == 0.125)
+        #expect(TrackMix.nextSpokenStep(from: 0, upward: false) == -0.125)
+        #expect(TrackMix.nextSpokenStep(from: 0.29, upward: true) == 0.375)
+        #expect(TrackMix.nextSpokenStep(from: 0.29, upward: false) == 0.25)
+        #expect(TrackMix.nextSpokenStep(from: 0.25, upward: false) == 0.125)
+        #expect(TrackMix.nextSpokenStep(from: -0.125, upward: true) == 0)
+        #expect(TrackMix.nextSpokenStep(from: 1, upward: true) == 1)
+        #expect(TrackMix.nextSpokenStep(from: -1, upward: false) == -1)
+    }
+
     @Test func spokenValuesRoundToWholeDecibels() {
         #expect(TrackMix.spoken(0) == "Mix, centre")
         #expect(TrackMix.spoken(-0.5) == "Mix, track turned down 12 decibels")

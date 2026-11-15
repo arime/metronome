@@ -388,6 +388,14 @@ struct TrackSongModelTests {
         #expect(haptics.selectionCount == ticks)
     }
 
+    @Test func settingTheSameMixAgainDoesNothing() throws {
+        let model = try makeModel().model
+        model.setMix(0.25)
+        let mixes = engine.mixes.count
+        model.setMix(0.25)
+        #expect(engine.mixes.count == mixes)
+    }
+
     // MARK: - Changes arriving from another device
 
     /// One phone with sync on the shared fake iCloud, with its own track files.

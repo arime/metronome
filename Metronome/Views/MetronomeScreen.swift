@@ -5,7 +5,7 @@ struct MetronomeScreen: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isLibraryShown = false
     @State private var isSettingsShown = false
-    /// Set by Sync on the track strip; Task 9 presents the Sync sheet from it.
+    /// Set by Sync on the track strip.
     @State private var isSyncShown = false
 
     var body: some View {
@@ -49,6 +49,12 @@ struct MetronomeScreen: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.ink.ignoresSafeArea())
+        // Presented from the screen rather than the strip, so the strip going away cannot
+        // leave the flag set and reopen the sheet with the next song's track.
+        .sheet(isPresented: $isSyncShown) {
+            SyncSheet()
+                .environment(model)
+        }
         // Labels follow Dynamic Type up to the largest size that still fits the layout.
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         #if DEBUG

@@ -27,6 +27,21 @@ enum TrackMix {
         return min(max(Double(offset / half), -1), 1)
     }
 
+    /// The position rounded to steps of 0.5 dB, 48 on each side. The slider sets only these, so a
+    /// drag saves the mix when it really changes rather than on every touch sample.
+    static func quantised(_ position: Double) -> Double {
+        (min(max(position, -1), 1) * dragSteps).rounded() / dragSteps
+    }
+
+    private static let dragSteps: Double = 48
+
+    /// The next whole accessibility step up or down from a position, which may lie between steps.
+    static func nextSpokenStep(from position: Double, upward: Bool) -> Double {
+        let steps = position / spokenStep
+        let next = upward ? (steps + 1e-9).rounded(.down) + 1 : (steps - 1e-9).rounded(.up) - 1
+        return min(max(next * spokenStep, -1), 1)
+    }
+
     static func spoken(_ position: Double) -> String {
         let decibels = Int((range * abs(position)).rounded())
         guard decibels > 0 else { return "Mix, centre" }
