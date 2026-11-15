@@ -4,11 +4,15 @@ This is the single specification for the app. It describes how version 1.0 is me
 
 Design source: Paper file "Snappy Metronome", page *v1.0*. Its boards are named *v1.0 · <screen>*, and the screens are drawn at 390 × 844 pt. In rows: the metronome screen (*Metronome — Ready*, *— Playing*, *— Edited* and *— Save menu*); the sheets over it (*Time signature picker*, *Tempo sheet*, *Settings sheet*, and two small boards with the iCloud card switched on, *Settings — iCloud on, up to date* and *Settings — iCloud not signed in*); the library (*Library — Songs, song loaded*, *— Songs, empty*, *— Setlists*, *— Setlist*, *— Add song* and *— Empty setlist*); the song sheet (*Song sheet — New song* and *— Edit song*); and *Beat effects* and *App icon — Downbeat*.
 
+Backing tracks are on the page *Backing tracks (draft)* of the same file. Its boards *Track · C — Ready (playback above Start, compact tempo row)* and *Track · C — Sync sheet* are the design of the metronome screen and the Sync sheet (6.12, 6.13); boards A and B on that page are alternatives that were not chosen. The boards *Track · Song sheet — Edit song, with track* and *— Edit song, no track* show the song sheet's Backing track row (10.3), and *Track · Library — Songs, track mark* the library's mark (8.2). The playing state, the missing-file state on the metronome screen and the Backing track row's missing-file state are not drawn.
+
 ## 1. Summary
 
 A native iOS metronome with one main screen. The user sets a tempo and a time signature, chooses which beats are accented, and presses Start. Each beat produces a click, a visual effect and a haptic tap on the same instant. Everything can be changed while it plays.
 
 Settings can be saved as named **songs**; a practice setup can be saved as one too. The **library** lists all songs, and **setlists** are named, ordered selections from it. The loaded song's name sits in the header of the metronome screen; tapping it opens the library.
+
+A song can have a **backing track**: an audio file produced to a click. Start then plays a count-in of click only, after which the track and the click play together, locked to each other, until the track ends.
 
 ## 2. Scope
 
@@ -20,23 +24,25 @@ Included:
 - Start / Stop with click sound, visual beat effects and haptics.
 - A mute button that silences the click while the metronome keeps running.
 - A song library and setlists.
+- Backing tracks: an audio file attached to a song that plays locked to the click, with a count-in, rewind, fast-forward and a Sync sheet that lines the click up with the track and sets the mix between them.
 - A settings sheet with a choice of seven click sounds and a switch that turns all haptics off.
 - Everything remembered between launches.
 - Optional iCloud sync that keeps the songs and setlists the same on the user's devices.
 
 Not included:
 
-- Bar counter, subdivisions, a volume control inside the app (the phone's own volume controls set the click volume; see 7.7).
+- Bar counter, subdivisions, an overall volume control inside the app (the phone's own volume controls set the overall level; see 7.7).
 - Playback with the screen locked or the app in the background.
-- Search other than by song name on the Songs tab (8.2), folders or tags, notes on songs, per-song sounds, import, export and sharing with other people.
-- Syncing anything other than songs and setlists: the current settings, the loaded song, the click sound and haptics stay separate on each device.
+- Search other than by song name on the Songs tab (8.2), folders or tags, notes on songs, per-song sounds, importing or exporting songs, and sharing with other people.
+- For backing tracks: tempo maps and tempos with decimals, so a track whose tempo wanders is not supported; a waveform view; automatic tempo or beat detection.
+- Syncing anything other than songs and setlists: the current settings, the loaded song, the click sound and haptics stay separate on each device, and the audio file of a backing track is never synced.
 - iPad layout, landscape, light mode, Apple Watch, widgets.
 
 ## 3. Platform and identity
 
 - iPhone only, portrait only, dark appearance only.
 - SwiftUI. Minimum iOS version: iOS 18.
-- Designed at 390 × 844 pt. Smaller phones adapt the layout; see 6.8.
+- Designed at 390 × 844 pt. Smaller phones adapt the layout; see 6.8 and 6.12.
 - Typeface: the system font (SF Pro). The Paper boards use Inter and Inter Tight as stand-ins because SF Pro is not available there. Weights and sizes in this document carry over.
 - Version: 1.0. Until 1.0 is released, new work stays in 1.0 and goes to TestFlight as a new build number.
 - App Store name: "Snappy Metronome". Under the icon on the home screen the app shows as "Metronome", because the full name does not fit there.
@@ -46,11 +52,16 @@ Not included:
 ## 4. Concepts
 
 - A **song** has a name, a tempo, a time signature and a set of accented beats: the same settings as the metronome screen.
+- A song may have one **backing track**: an audio file that plays together with the click. It is meant for a track produced to a click, so its tempo is steady and a whole number of BPM fits it. Besides the file, the track has the file's name as shown to the user, a first beat, a count-in and a mix:
+  - The **first beat** is the time in the file where beat 1 of the first bar falls, in seconds with two decimals, from 0.00 up to the file's length.
+  - The **count-in** is Off, 1 bar or 2 bars; a new track starts with 2 bars.
+  - The **mix** is how loud the click is against the track, set between Click and Track; a new track starts at the centre. At the centre the click and the track both play at full level. Towards Click the track is turned down, evenly in decibels along that half, by up to 24 dB at the end. Towards Track the click is turned down the same way, by up to 24 dB at the end. Nothing is ever turned up, and neither end is silent.
+- The file is chosen with the system Files picker, from the audio files iOS can play (for example m4a, mp3, wav and aiff). The app copies it into its own storage on the device, so the track keeps working when the original is moved or deleted. There is no size limit.
 - The **library** holds every song. Songs exist only in the library; setlists refer to them.
 - A **setlist** has a name and an ordered list of songs. It acts as a filter on the library and defines the order shown while it is selected.
 - A song can be in any number of setlists, but only once in each.
 - Removing a song from a setlist never deletes the song.
-- Deleting a song removes it from the library and from every setlist.
+- Deleting a song removes it from the library and from every setlist, and deletes the device's copy of its backing track's file (5.1).
 - Changing a song changes it everywhere, since setlists share the same song.
 - Names need not be unique, for songs or for setlists.
 - Beats per bar is the top number of the time signature (7/8 has seven beats). One beat is one click. BPM counts clicks per minute for every signature, including the /8 ones.
@@ -64,7 +75,7 @@ Kept between launches:
 | Tempo | integer, 30…300 BPM | 120 |
 | Time signature | one of the eight in section 2 | 4/4 |
 | Accents | set of beat numbers, 1…beats per bar | {1} |
-| Songs | each with id, name, tempo, time signature, accents | none |
+| Songs | each with id, name, tempo, time signature, accents and an optional backing track (section 4) | none |
 | Setlists | each with id, name, ordered song ids, last-used time | none |
 | Loaded song | the song in the metronome, if any | none |
 | Loaded-from setlist | the setlist the song was loaded from, if any | none |
@@ -81,29 +92,30 @@ Not kept:
 | Playing | whether the metronome is running | stopped |
 | Muted | whether the click is silenced | sound on |
 | Current beat | the beat that is sounding | none |
+| Track position | the place in the loaded song's backing track | 0:00, and 0:00 again whenever a song is loaded |
 
 Derived:
 
-- **Edited:** a song is loaded and the current tempo, time signature or accents differ from it. On screen this is shown by the Save button in the header (6.1); the word itself is not displayed.
+- **Edited:** a song is loaded and the current tempo, time signature or accents differ from it. On screen this is shown by the Save button in the header (6.1); the word itself is not displayed. A backing track's first beat, count-in and mix are saved into the song the moment they are set (7.11), so they never make the song edited.
 - **Position:** the loaded song's place in the loaded-from setlist, such as 3 of 8.
 
 Reopening the app restores the settings, the loaded song and its setlist, so the position in the setlist is restored too and the user can carry on with Next. The app always launches stopped and with sound on.
 
-Data is stored on the device. With iCloud sync on, the songs and setlists are also kept in the user's iCloud account (5.1).
+Data is stored on the device, together with the copies of backing-track files, which are included in the device's backup. With iCloud sync on, the songs and setlists are also kept in the user's iCloud account (5.1); the files never are.
 
-If the loaded song is deleted, the metronome keeps its current settings and the header shows "nothing loaded". If it is removed from the loaded-from setlist, it stays loaded and the header shows the name alone, as for a song loaded from the Songs tab. If the loaded-from setlist is deleted, the same applies. If the setlist the library is showing is deleted, the library shows the Setlists tab. These rules hold whether the change was made on this device or arrived from another one.
+If the loaded song is deleted, the metronome keeps its current settings and the header shows "nothing loaded". If the song had a playable backing track (7.10) and was playing, playback stops. If it is removed from the loaded-from setlist, it stays loaded and the header shows the name alone, as for a song loaded from the Songs tab. If the loaded-from setlist is deleted, the same applies. If the setlist the library is showing is deleted, the library shows the Setlists tab. These rules hold whether the change was made on this device or arrived from another one.
 
 ### 5.1 iCloud sync
 
 Sync is optional and off by default; the switch and what the user sees are in 6.10 and 7.9. This section says what is synced and how copies are combined.
 
-**What is synced.** Songs and setlists, in both directions, between the user's devices that have sync on. Everything else in the tables above stays on the device.
+**What is synced.** Songs and setlists, in both directions, between the user's devices that have sync on. Everything else in the tables above stays on the device, and so do the audio files of backing tracks (see Backing-track files below).
 
 **Storage.** iCloud key-value storage (`NSUbiquitousKeyValueStore`), which uses the iCloud account the phone is signed in to. The app has no account or server of its own. iCloud holds one item per song, one per setlist and one per device. The device always keeps its own complete library, so the app works the same with sync off, signed out or offline.
 
 **What is recorded so copies can be combined.** The device records this at all times, also with sync off, because switching sync off is treated like being offline (7.9).
 
-- A song has three parts, each with the time it last changed: the name; the tempo; and the time signature together with the accents, which only make sense as a pair. It also has a creation time, which gives the order of creation used in 8.2.
+- A song has four parts, each with the time it last changed: the name; the tempo; the time signature together with the accents, which only make sense as a pair; and the backing track, which is the file's identifier, its name, the first beat, the count-in and the mix together, as they only make sense together. A song without a backing track has that part empty. It also has a creation time, which gives the order of creation used in 8.2.
 - A setlist has a name with the time it last changed; for every song that is or was in it, whether it is in or out and since when; its order with the time it last changed; and its last-used time.
 - A deleted song or setlist leaves a delete marker with the time of deletion.
 - Times come from the device's clock. A change always gets a time later than the one it replaces, even when the clock is behind.
@@ -122,6 +134,14 @@ Sync is optional and off by default; the switch and what the user sees are in 6.
 
 Examples: a song renamed on one device and given a new tempo on another ends up with both changes. A song deleted on one device and edited later on another comes back with the edit. A setlist reordered on one device while a song is added on another keeps the new order with the added song at the end.
 
+**Backing-track files.** The audio file itself is never synced; only the song's backing-track part is.
+
+- Each file gets an identifier when it is attached. Replacing the file gives the new one a new identifier.
+- On the user's other devices the song arrives with its backing track but without the file, so the track shows as missing (6.12) until the file is picked there (10.3).
+- A file picked for a missing track is stored under the identifier the part already has. The part, the file's name in it included, does not change, so nothing is sent.
+- Removing or replacing the track changes the part and syncs. A replaced file is then missing on the other devices until it is picked there too.
+- A device keeps its copy of a file only while a song on it refers to the file's identifier, and deletes the copy when none does, also when the song is deleted. A deleted song that comes back through sync has its track missing until the file is picked again.
+
 **Later versions.** Songs and setlists can get new properties in later versions, and devices on different versions must be able to sync with each other.
 
 - A new property is a new part with its own change time. A part that is missing counts as its default value, never changed, so the first device to set it wins.
@@ -131,7 +151,7 @@ Examples: a song renamed on one device and given a new tempo on another ends up 
 
 **Delete markers** are kept for one year and then removed from the device and from iCloud. A device that has been away longer than that can bring a deleted item back.
 
-**Limits.** iCloud key-value storage holds 1 MB and 1,024 items per app, so songs, setlists, delete markers and device entries together have room for about a thousand items. When iCloud reports that it is full, the status line says so (6.10) and the library keeps working on the device. Delete markers count towards the limit, so when the items would go over 1,024 the oldest markers are removed first to make room, even if they are less than a year old.
+**Limits.** iCloud key-value storage holds 1 MB and 1,024 items per app, so songs, setlists, delete markers and device entries together have room for about a thousand items. A song's backing-track part is small, and the audio files are not in iCloud, so backing tracks barely count towards the limit. When iCloud reports that it is full, the status line says so (6.10) and the library keeps working on the device. Delete markers count towards the limit, so when the items would go over 1,024 the oldest markers are removed first to make room, even if they are less than a year old.
 
 **Devices and clean-up.** While sync is on, the device keeps an entry in iCloud with a random identifier and the date it last synced, refreshed at most once a day. An entry is live when its date is less than six months old.
 
@@ -152,7 +172,7 @@ The account is told apart by the identity iOS gives the app for the signed-in iC
 
 ## 6. Metronome screen
 
-One screen with two states, Ready (stopped) and Playing. The layout is identical in both, so nothing moves when Start is pressed. From top to bottom:
+One screen with two states, Ready (stopped) and Playing. The layout is identical in both, so nothing moves when Start is pressed. A loaded song with a backing track uses its own arrangement of the same parts (6.12); every other song, and the screen with nothing loaded, use the layout below. From top to bottom:
 
 ### 6.1 Header
 
@@ -264,15 +284,17 @@ On screens narrower than 360 pt the side margins drop from 24 pt to 16 pt.
 
 When accent tiles are narrower than 44 pt (seven beats in a row), each tile's touch area extends into the gaps on either side so that it is at least 44 pt wide. The tile is drawn at its normal size.
 
+The layout for a song with a backing track adapts by its own steps (6.12).
+
 ### 6.9 Colours
 
 | Token | Value | Use |
 |---|---|---|
 | ink | `#0B0B0C` | background; text on amber and white |
 | surface | `#17171A` | rows, round buttons, idle tiles, sheets |
-| surface raised | `#222226` | picker options, fields and rows inside sheets |
-| line | `#2A2A2E` | outlines, dividers |
-| tick | `#606066` | unlit ticks on the dial |
+| surface raised | `#222226` | picker options, fields and rows inside sheets; Rewind and Fast-forward on the track strip |
+| line | `#2A2A2E` | outlines, dividers, the lines of the progress bar and the mix slider |
+| tick | `#606066` | unlit ticks on the dial; the centre mark of the mix slider |
 | dial white | `#F3EEE6` | primary text; sounding unaccented tile |
 | muted | `#8A8780` | labels, secondary text |
 | muted dim | `#6B6963` | large text only (18 pt and up, or 14 pt bold and up): idle unaccented tile numbers, position numbers, the placeholders of the tempo sheet and a new setlist's name; the `Syncing…` dot and the › on the Setlists tab's rows |
@@ -331,6 +353,45 @@ A bottom sheet over a dimmed screen, sized to its content, opened by tapping the
 - **The keys:** the digits 1 to 9 in three rows of three, then a last row with an empty place, 0 and a delete key. Each key is 54 pt tall with 8 pt gaps; digit keys are surface raised with 16 pt corners and a 26 pt bold digit, and the delete key is an icon with no fill. The sheet has its own keys, not the system keyboard, so they are large, match the app and appear with the sheet.
 - **Cancel and Set tempo:** a row of two 56 pt pills, 16 pt below the keys, on the keys' columns. **Cancel** is as wide as one key, under the empty place: `Cancel` (17 pt, bold, dial white) with a 1 pt outline in the line colour and no fill. It is always enabled and closes the sheet without changes. **Set tempo** spans the other two columns, under 0 and the delete key, 8 pt from Cancel: amber with ink text (17 pt, bold) when the digits are a tempo from 30 to 300; otherwise surface raised with muted text, not ready, like the song sheet's save button (section 10), and it does nothing.
 
+### 6.12 A song with a backing track
+
+When the loaded song has a backing track, the screen uses this layout. It is drawn at 390 × 844 pt and, like the other, is identical stopped and playing. From top to bottom:
+
+- **Header:** as in 6.1.
+- **Dial:** as in 6.2, 280 pt in the design. On taller screens it takes the spare height as in 6.8, up to 340 pt.
+- **Tempo and time signature row**, 10 pt below the dial: one 56 pt row in place of the tempo controls (6.3) and the time signature row (6.4), its parts 8 pt apart:
+  - − (56 pt round, surface).
+  - `Tap`, an outlined pill with the hand icon that fills the width left over. While a tap tempo series is open its outline is amber (1.5 pt) and its label reads `Again`; it keeps its width.
+  - + (56 pt round, surface).
+  - The **time signature chip:** surface fill, 18 pt corners, 56 pt tall, showing only the value (for example `7/8`, 24 pt heavy, amber) and a › chevron. It has no `Time signature` label. Tapping it opens the picker (6.6).
+- **Accent tiles:** as in 6.5, 12 pt below the row.
+- **Track strip**, 14 pt below the tiles, between the side margins: a surface card with 20 pt corners and two rows. Its inner padding is 12 pt at the top and bottom, 16 pt at the left and 14 pt at the right.
+  - Row 1, 30 pt tall: a 16 pt music-note icon in muted, the file name (14 pt medium, dial white, cut with an ellipsis) and, at the right, the **Sync** button: a 30 pt outlined pill (1 pt, line colour) reading `Sync` (13 pt semibold, dial white). Its touch area is at least 44 pt tall. It opens the Sync sheet (6.13).
+  - Row 2, 10 pt below: **Rewind** (44 pt round, surface raised, a double ‹ chevron), the **progress bar** and **Fast-forward** (44 pt round, surface raised, a double › chevron), 12 pt apart.
+  - The progress bar is a 4 pt line in the line colour, its played part amber, with a 14 pt dial-white knob at the position. Below the line are the elapsed time at the left and the file's length at the right (13 pt, muted, digits of equal width), as `m:ss`; the minutes keep counting past 59. Whenever the file is playing, the knob and the elapsed time show its real position. While the count-in's click sounds alone, before the file has started (7.10), the knob is at the start and the elapsed time reads `Count-in` in amber.
+- **Footer:** as in 6.7: the next-up line when the song was loaded from a setlist, and Previous, Start / Stop and Next.
+
+**Missing file.** When the song has a backing track but its file is not on this device (5.1), the strip shows `Track missing` in amber in place of the file name. The progress bar, Rewind, Fast-forward and Sync are dimmed and do nothing, and the times are not shown. The rest of the layout is the same.
+
+**Small screens.** The track strip never shrinks. On shorter screens the layout adapts in this order and stops as soon as everything fits:
+
+1. The dial shrinks, down to 240 pt.
+2. The gap above the track strip drops to 10 pt, and single-row accent tiles drop to 56 pt tall with a smaller number.
+3. The dial shrinks further, as far as it needs to. The screen never scrolls.
+
+At least 16 pt is always kept between the track strip and the footer. The next-up line, the small dial, the side margins, the tiles' touch areas and the margin below the button follow 6.8.
+
+### 6.13 Sync sheet
+
+A bottom sheet over a dimmed screen in the style of the other sheets, opened with Sync on the track strip (6.12), stopped or playing. It is sized to its content and scrolls when that is taller than the screen. The side padding is 24 pt and the groups are 14 pt apart. In each group the label is 8 pt above its row, and a pill is 10 pt below its row. From top to bottom:
+
+- A grabber, the title `Sync` (26 pt heavy, dial white) and `Done` in amber at the right.
+- **Playback row:** Play / Stop, then Rewind, the progress bar with its times, and Fast-forward as on the track strip, 10 pt apart. Play / Stop is a 52 pt round button: stopped, an amber fill with an ink play icon; playing, a surface fill with a 1.5 pt amber outline and an amber stop square.
+- **Tempo:** the label `TEMPO` (13 pt, semibold, capitals, wide letter spacing, muted). Below it a row of − (56 pt round, surface raised), the tempo (48 pt heavy, dial white) with `BPM` (15 pt bold, amber), and + (56 pt round, surface raised). Below the row a 52 pt outlined pill with the hand icon reading `Tap tempo`. While a tap tempo series is open its outline is amber (1.5 pt) and it reads `Tap again`, as in 6.3.
+- **First beat:** the label `FIRST BEAT` in the same style. A row of −, the first beat in seconds with two decimals (for example `0.48`, 48 pt heavy, dial white) with `s` in amber, and +, built like the tempo row. Below the row a 52 pt outlined pill with the hand icon reading `Tap on beat 1`, dimmed while it does nothing (7.11).
+- **Count-in:** the label `COUNT-IN` in the same style, and three options side by side, 8 pt apart, each 52 pt tall with 16 pt corners on surface raised: `Off`, `1 bar` and `2 bars`. The selected one is amber with a glow and heavy ink text.
+- **Mix:** the label `MIX` in the same style. Below it a 44 pt row: `Click` at the left and `Track` at the right (15 pt semibold, dial white), and between them, 12 pt from each, the **mix slider**: a 4 pt line in the line colour with a 2 × 12 pt mark at its centre in the tick colour, and a 24 pt dial-white knob. The part of the line between the centre and the knob is amber, so with the knob at the centre nothing is amber. The knob's touch area is at least 44 × 44 pt.
+
 ## 7. Metronome behaviour
 
 ### 7.1 Tempo
@@ -348,16 +409,16 @@ All four ways of setting the tempo work when stopped and when playing.
   - When the digits are above 300, the range at the top right turns amber.
   - `Cancel`, swiping the sheet down or tapping outside it closes it without changes. Nothing changes before `Set tempo`.
 - **− / +.** One tap changes the tempo by 1 BPM. Holding repeats: after 400 ms, 10 steps per second. The repeat ends the moment the finger lifts, however quickly taps follow each other.
-- **Tap tempo.** From the second tap on, the tempo is set to the average of the last four intervals between taps (fewer if fewer exist). A pause longer than 2 seconds starts a new series. While a series is open the pill reads `Tap again` (6.3), so the first tap, which cannot set a tempo yet, is still seen to register.
+- **Tap tempo.** From the second tap on, the tempo is set to the average of the last four intervals between taps (fewer if fewer exist). A pause longer than 2 seconds starts a new series. While a series is open the pill reads `Tap again` (6.3), or `Again` on the screen for a song with a backing track (6.12), so the first tap, which cannot set a tempo yet, is still seen to register.
 - All inputs clamp to 30…300.
-- While playing, a tempo change takes effect from the next beat. The beat that is already scheduled is not moved, and the bar position is kept.
+- While playing, a tempo change takes effect from the next beat. The beat that is already scheduled is not moved, and the bar position is kept. With a backing track the beats follow the track instead (7.10).
 
 ### 7.2 Time signature
 
-- Tapping the row opens the picker. Tapping an option selects it and closes the sheet.
+- Tapping the row, or the time signature chip (6.12), opens the picker. Tapping an option selects it and closes the sheet.
 - Swiping the sheet down or tapping outside it closes it without changes.
 - Choosing a different signature resets the accents to beat 1 only.
-- While playing, the metronome keeps playing: the next beat is beat 1 of a new bar in the new signature.
+- While playing, the metronome keeps playing: the next beat is beat 1 of a new bar in the new signature. With a backing track the bar follows the track instead (7.10).
 - Choosing the signature that is already selected changes nothing.
 
 ### 7.3 Accents
@@ -368,13 +429,13 @@ All four ways of setting the tempo work when stopped and when playing.
 
 ### 7.4 Start and stop
 
-- Start begins playback on beat 1, with the first click straight away.
-- Stop silences playback at once, clears the current beat and returns every tile to its idle appearance.
+- Start begins playback on beat 1, with the first click straight away. A song with a backing track starts with its count-in, or from its position, as in 7.10.
+- Stop silences playback at once, clears the current beat and returns every tile to its idle appearance. A backing track stops with it and keeps its position (7.10).
 - The screen does not dim or lock while playing. With Keep screen awake on (7.8), it does not dim or lock while stopped either.
 
 ### 7.5 Mute
 
-- Tapping the mute button silences the click at once, including clicks that are already scheduled, or brings it back.
+- Tapping the mute button silences the click at once, including clicks that are already scheduled, or brings it back. It silences only the click, completely, whatever the backing track's mix: the track keeps playing.
 - The metronome keeps running: the glow, the number pulse, the tile lighting and the haptics carry on.
 - It works when stopped and when playing.
 - Mute is separate from the phone's volume and is not remembered between launches.
@@ -385,14 +446,15 @@ All four ways of setting the tempo work when stopped and when playing.
 
 - Unsaved edits to the previously loaded song are dropped without asking.
 - When stopped, the metronome stays stopped.
-- When playing, it keeps playing: the next beat is beat 1 of a new bar with the new settings.
+- When playing, it keeps playing: the next beat is beat 1 of a new bar with the new settings. When the song being left or the song being loaded has a playable backing track, playback stops instead (7.10).
+- The loaded song's backing track, if it has one, is at 0:00.
 
 **Tapping the title** always opens the library sheet (section 8), edited or not. Unsaved edits are kept while the library is open.
 
 **Unsaved changes** are handled with the Save button in the header (6.1), which is shown while the song is edited. It opens the Save menu, the system menu, with three things to do, in this order. Tapping outside it closes it.
 
 - **Save changes** writes the current settings into the loaded song. The menu closes and the button goes away at once, with a success haptic (6.1). There is no separate message.
-- **Save as new song** opens the New song sheet (section 10) filled with the current settings. After saving, the new song is the loaded one, and the song that was edited is left as it was.
+- **Save as new song** opens the New song sheet (section 10) filled with the current settings, without a backing track. After saving, the new song is the loaded one, and the song that was edited is left as it was, its backing track included. When either song has a playable backing track (7.10) and the metronome is playing, playback stops, as when another song is loaded.
 - **Revert**, with the saved song's tempo and time signature on a second, smaller line, for example `120 BPM · 4/4`, so that it is clear what comes back. It sets the metronome back to the song's tempo, time signature and accents, with a selection tick.
   - While playing, the bar carries on when only the tempo or the accents go back, as with any other change of tempo or accents (7.1, 7.3). When the time signature goes back, the next beat is beat 1 of a new bar (7.2).
   - There is no confirmation and no undo.
@@ -409,10 +471,10 @@ Edits also go away without the menu: loading another song, with Previous / Next 
 
 ### 7.7 Interruptions and volume
 
-- Playback stops when the app leaves the foreground, when the screen is locked, and on audio interruptions such as a phone call. It does not resume by itself.
+- Playback stops when the app leaves the foreground, when the screen is locked, and on audio interruptions such as a phone call. It does not resume by itself. A backing track keeps its position, as with Stop.
 - Playback stops if the audio output goes away, for example when headphones are unplugged. The screen never shows Playing while nothing can sound.
 - The click plays even when the ring/silent switch is on silent, as a metronome is the app's whole purpose. Other audio is paused while the metronome plays.
-- The click volume is set with the phone's regular volume controls: the side buttons and the Control Center slider. The click is ordinary media audio and the app never overrides the system volume. If "Change with Buttons" is on in the phone's sound settings, the side buttons adjust the ringer while nothing is playing; that is system behaviour.
+- The click volume is set with the phone's regular volume controls: the side buttons and the Control Center slider. With a backing track the same controls set the overall level of click and track together; the mix (section 4) sets how loud they are against each other. The click is ordinary media audio and the app never overrides the system volume. If "Change with Buttons" is on in the phone's sound settings, the side buttons adjust the ringer while nothing is playing; that is system behaviour.
 
 ### 7.8 Settings and click sound
 
@@ -463,9 +525,69 @@ The switch works when stopped and when playing, applies to this device only and 
 - The metronome never changes by itself: tempo, time signature and accents stay as they are, playing or stopped.
 - If the loaded song's settings changed, the song counts as edited and the Save button appears, because what is in the metronome now differs from the song. Revert takes the arrived version; Save keeps the metronome's and sends it to the other devices.
 - If the loaded song's name changed, the header shows the new name at once.
+- If the loaded song's backing track changed:
+  - A new first beat, count-in or mix applies at once, also while playing, as from the Sync sheet (7.11).
+  - A backing track attached on another device arrives with its file missing here (5.1). Playback is not affected and carries on; the screen changes to the layout of 6.12 with `Track missing` at once.
+  - A track that was removed or replaced stops playback only if its file was on this device and it was playing with it, and the position then goes to 0:00. Otherwise playback carries on and only the layout changes. A replaced file is missing on this device until it is picked here.
 - If the loaded song, the loaded-from setlist or the setlist the library is showing was deleted, the rules in section 5 apply.
 - An open library sheet, setlist or setlist editor updates in place. A setlist view or editor whose setlist was deleted closes and the library shows the Setlists tab.
 - Nothing is announced: no alert, banner, sound or haptic.
+
+### 7.10 Playing a song with a backing track
+
+This section applies while the loaded song has a **playable backing track**: a backing track whose file is on this device. With the file missing, the song plays like one without a track: Start begins on beat 1 with the first click straight away, no count-in, and the click alone.
+
+Every rule that stops playback when a song with a backing track is loaded, unloaded, saved as or replaced (sections 5, 7.6, 7.9, 8.2, 10.1 and 10.2) applies only to a playable backing track. A song whose file is missing counts as a song without a backing track in all of them, so playback carries on as between two songs without tracks. The layout follows the song, not the file: a song with a backing track always shows 6.12, with `Track missing` when the file is not here. The same happens for one run when the file cannot be opened at Start (section 11).
+
+**The beat grid.** The click's beats are fixed to the file. Beat 1 of bar 1 falls at the first beat, and every later beat follows at the tempo, so the beat and the bar at any place in the file follow from the first beat, the tempo and the time signature. After any jump the click, the tiles and the haptics land on the right beat of the right bar. No click sounds before the first beat, except the count-in.
+
+**Position.** The track's position is shown by the progress bar (6.12). It is 0:00 at launch and whenever a song is loaded.
+
+**Start** depends on the position:
+
+- **At 0:00** it plays the count-in: the chosen number of bars of click only, on the grid counted back from the first beat, with accents, beat effects and haptics as usual. The count-in ends exactly where the first beat falls. The file starts first-beat seconds before the first beat, so what is in the file before the first beat is heard under the end of the count-in. Start begins whichever of the two comes first.
+- **While the count-in's click sounds alone**, from Start until the file starts, the knob is at 0:00 and the elapsed time reads `Count-in` in amber. Once the file starts, also when that is before the first beat, the knob and the elapsed time follow the file's real position.
+- **When the first beat is further into the file than the count-in is long**, the file starts at once and `Count-in` is never shown. The count-in's clicks begin later, the count-in's length before the first beat.
+- **At 0:00 with count-in Off** the file starts at once and the click joins at the first beat.
+- **Away from 0:00** track and click play from the position at once, with no count-in. The click joins on the next beat of the grid, so its first click is not necessarily straight away.
+
+**Stop** silences track and click at once and keeps the position, so a passage can be tried again. Stopped during the count-in before the file has started, the position stays at 0:00; stopped after the file has started, the position is kept like any other.
+
+**End of the track.** The click runs until the file ends. Then playback stops as with Stop and the position goes back to 0:00. In a setlist the next song is not loaded.
+
+**Rewind and Fast-forward** move the position 15 seconds back or forward, stopped or playing. Rewind within the first 15 seconds goes to 0:00. Within the last 15 seconds Fast-forward is dimmed and does nothing. While playing, playback carries on from the new position without a count-in, also when that is 0:00.
+
+**The progress bar.** Dragging the knob moves the position: the knob and the elapsed time follow the finger, and the position changes when the finger lifts. While playing, playback carries on from there without a count-in. The knob's touch area is 44 × 44 pt; a tap on the line elsewhere does nothing.
+
+**Changes while playing.** Tempo, time signature and accents can all be changed while playing, as without a track. The tempo is not locked to the track.
+
+- After a tempo change the grid is worked out again from the first beat at the new tempo, and the click carries on along the new grid from its next beat that is not yet scheduled. A beat that is already scheduled is not moved. Beats never bunch up (section 11): a beat of the new grid less than half a beat interval after the last scheduled one is skipped.
+- A change of the first beat (7.11) moves the grid in the same way.
+- After a time signature change the bar is worked out again from the first beat, instead of the next beat being beat 1 of a new bar (7.2). Accents reset to beat 1 as usual. The same holds wherever else a change would start a new bar: Revert (7.6) and Edit song (10.2).
+- During the count-in, a change applies to the count-in beats still to come, which stay on the grid counted back from the first beat.
+
+**Mute** silences only the click, completely, whatever the mix. The track keeps playing, and the beat effects and haptics carry on.
+
+**Volume.** The mix (section 4) sets the click's level against the track's; the count-in's clicks use the same click level as the rest of the song. The phone's volume controls set the overall level (7.7). A limiter keeps the two together from distorting (section 11).
+
+**Changing songs.**
+
+- Loading a song from the library or with Previous / Next stops playback when the song being left or the song being loaded has a playable backing track, and the loaded song is at 0:00. Between two songs without playable backing tracks 7.6 holds and playback carries on.
+- Unload (8.2) stops playback when the loaded song has a playable backing track and is playing. The settings stay as plain settings and the track strip goes away.
+- When the loaded song's backing track is attached or replaced with Edit song (10.2), or a file is picked for a missing one, playback stops if it is playing and the position is 0:00, as the track can play once the sheet is saved. Removing a playable backing track does the same; removing one whose file is missing does not stop playback.
+
+**Interruptions** stop playback as in 7.7, and the position is kept.
+
+### 7.11 Sync sheet
+
+- Sync on the track strip opens the sheet (6.13), stopped or playing. `Done`, swiping the sheet down or tapping outside it closes it and leaves playback as it is.
+- **Play** starts track and click from the position with no count-in, also at 0:00; the count-in belongs only to Start on the metronome screen. Stop, Rewind, Fast-forward and the progress bar work as on the track strip (7.10). If the song is playing when the sheet opens, it keeps playing and the button shows Stop.
+- **Tempo** is the metronome's tempo, the same value as the dial. − / + step 1 BPM and repeat when held, and `Tap tempo` works, as in 7.1. A change applies at once, moves the dial behind the sheet and counts as a change like any other, so the Save button (6.1) is there when the sheet closes. The number cannot be tapped.
+- **First beat:** − / + move it 0.01 s earlier or later. Holding repeats as for the tempo: after 400 ms, 10 steps per second. It stays between 0.00 and the file's length. A change applies at once: while playing, the click moves as the button is pressed, so the user can nudge it until click and track sound as one.
+- **Tap on beat 1** works only while the file is playing; otherwise it is dimmed. A tap marks a downbeat: the first beat becomes the tapped position moved back by whole bars, at the current tempo and time signature, to the earliest place that is not before 0:00. At 120 BPM in 4/4 a bar is 2 seconds, so a tap at 9.30 s sets the first beat to 1.30. The tapped position is the place in the file that was being heard at the tap, so output delay, such as over Bluetooth, is allowed for.
+- **Count-in:** tapping an option selects it at once.
+- **Mix:** dragging the knob changes the mix at once, stopped or playing, so it can be set by ear while the track plays. The knob catches at the centre: within 6 pt of the centre it rests exactly on it. A selection tick plays when the knob reaches the centre.
+- First beat, count-in and mix are saved into the song at once, with no confirm step, and do not make the song edited (section 5).
 
 ## 8. Library sheet
 
@@ -517,11 +639,12 @@ There is no Edit button and no separate edit mode: everything that changes a set
   - The pill is 36 pt tall and fully rounded, surface raised with no border, 14 pt padding at the sides: a filled eject symbol (12 pt) and `Unload` (14 pt bold, dial white), 6 pt apart. Its touch area is 44 pt tall.
   - VoiceOver calls it `Unload song`.
   - Tapping it unloads the song and closes the sheet. The tempo, time signature and accents stay as they are, playing or stopped, and the click does not change. The song itself is not changed; unsaved edits stay as plain settings. Previous / Next disappear and the header shows the "nothing loaded" state.
+  - When the song has a backing track, the track strip goes away. If the track is playable (7.10) and playing, playback stops.
   - It is not shown while nothing is loaded, since there is nothing to unload, and not in a setlist.
 - Then every song (or every song the search finds), sorted by name A–Z, ignoring case and following the phone's language rules. Songs with the same name keep their order of creation.
-- Each row shows the name (17 pt), and below it tempo and time signature, for example `120 BPM · 4/4`. At the right is the **menu button**: a 40 pt round surface-raised button with a dial-white ⋯ (8.4).
+- Each row shows the name (17 pt), and below it tempo and time signature, for example `120 BPM · 4/4`. A song with a backing track has a mark, a 13 pt music-note in muted, 5 pt after its time signature on the same line, whether or not the file is on this device; on the loaded song's row `· loaded` follows the mark; the mark is the same in a setlist (8.3) and on the Add song screen (9.3). At the right is the **menu button**: a 40 pt round surface-raised button with a dial-white ⋯ (8.4).
 - The loaded song's row is marked: an amber name and `· loaded` after its details.
-- **Tapping a row** loads the song and closes the sheet. It does not start the metronome; Start is under the thumb when the sheet has closed. If the metronome is already playing, it keeps playing with the new song.
+- **Tapping a row** loads the song and closes the sheet. It does not start the metronome; Start is under the thumb when the sheet has closed. If the metronome is already playing, it keeps playing with the new song, unless either song has a playable backing track (7.10).
 - A song loaded from this view keeps the setlist that was being stepped through when it is in that setlist, so the header still shows its position and Previous / Next stay. A song that is not in that setlist, or one loaded while no setlist was being stepped through, has no loaded-from setlist, and Previous / Next are hidden.
 - **Swiping a row left** reveals **Edit** and **Delete**, as a shortcut to the same items in the row's menu.
 - Empty library: centred, `No songs yet` (17 pt, semibold, dial white) and a large amber **New song** button (48 pt tall). While the library is empty the header has no New song button; it is in the middle instead.
@@ -610,6 +733,7 @@ One sheet for creating a song (10.1) and editing one (10.2). A short sheet with:
 - **Tempo:** − and + around the value. One tap changes it by 1 BPM; holding repeats, as on the metronome screen. Tapping the value opens the tempo sheet (6.11) to type a tempo, which sets only the sheet's tempo.
 - **Time signature row:** opens the same picker as the metronome screen. Changing it resets the accents to beat 1.
 - **Accent tiles:** one per beat, tap to toggle.
+- **Backing track** row, which attaches, replaces or removes the song's backing track (10.3).
 - **Add to <setlist>** switch: shown only when the sheet was opened from 9.3, and on by default there.
 - **Cancel and the save button**, in one row at the bottom. **Cancel** is a 60 pt tall, 116 pt wide pill with no fill and a 1 pt outline in the line colour, with `Cancel` (17 pt bold, dial white), as in the tempo sheet (6.11). It is always enabled. 10 pt to its right, **the save button** fills the rest of the row: a 60 pt pill (18 pt heavy), amber with ink text when it can be used. It is surface raised with muted text, readable but plainly not ready, and does nothing while the name is empty, and in Edit song also while nothing differs from the saved song (10.2).
 
@@ -619,11 +743,11 @@ Changing values in the sheet does not affect the metronome, playing or stopped, 
 
 ### 10.1 New song
 
-Titled `New song`, with `Save song`. Opened with New song in the library (8.1, 9.3) or with Save as new song (7.6). The name field is ready for typing. All three settings start from the metronome's current values, so the quickest way to make a song is to set the metronome first. `Save song` is ready once a name is typed; spaces alone do not count.
+Titled `New song`, with `Save song`. Opened with New song in the library (8.1, 9.3) or with Save as new song (7.6). The name field is ready for typing. All three settings start from the metronome's current values, so the quickest way to make a song is to set the metronome first. The song starts without a backing track. `Save song` is ready once a name is typed; spaces alone do not count.
 
 Saving a new song from the library does not load it, with one exception: **naming the current settings.** When no song is loaded and the song is saved with the same tempo, time signature and accents as the metronome has, the new song becomes the loaded one, so the header shows its name at once and later changes bring up the Save button.
 
-- The metronome is not touched: it keeps playing or stays stopped, and no new bar starts.
+- The metronome is not touched: it keeps playing or stays stopped, and no new bar starts. When the new song has a playable backing track (7.10), playback stops if it is playing, and the track is at 0:00.
 - If the song was added to a setlist (9.3, with "Add to <setlist>" on), it counts as loaded from that setlist, so the header shows its position and Previous / Next appear. Otherwise it is loaded on its own.
 - In every other case the song is only created: when a song is already loaded, or when the values were changed in the sheet.
 
@@ -633,13 +757,34 @@ Saving a new song from the library does not load it, with one exception: **namin
 
 Titled `Edit song`, with `Save changes`. Opened with Edit in a song's row menu, or by swiping its row on the Songs tab (8.2, 8.4). The name and the three settings start from the song's saved values, also when it is the loaded song with unsaved changes. The keyboard does not come up by itself, as the change is more often to the tempo or the accents; tapping the name brings it up.
 
-`Save changes` is ready when there is a name and the name, leaving aside spaces at its ends, or the tempo, time signature or accents differ from the song's saved values. A change undone by hand, such as + then −, counts as none. Closing the sheet without saving keeps the song as it was.
+`Save changes` is ready when there is a name and the name, leaving aside spaces at its ends, or the tempo, time signature or accents differ from the song's saved values, or the backing track was attached, replaced or removed, or a file was picked for a missing one (10.3). A change undone by hand, such as + then −, counts as none. Closing the sheet without saving keeps the song as it was.
 
 `Save changes` writes only what changed, so that a part left alone does not win over a change made to it on another device (section 5).
 
 - A song that is not loaded is only changed; the metronome is not touched.
-- The loaded song with changed settings: the metronome takes them, as if the song were loaded again, and any unsaved changes are dropped. While playing, the bar carries on when only the tempo or the accents changed, and the next beat is beat 1 of a new bar when the time signature changed.
+- The loaded song with changed settings: the metronome takes them and any unsaved changes are dropped. This is not a load, so the rule that loading stops a song with a playable backing track (7.6) does not apply; a song with a track keeps playing on the track's grid (7.10). While playing, the bar carries on when only the tempo or the accents changed, and the next beat is beat 1 of a new bar when the time signature changed.
 - The loaded song with only a new name: the header shows the new name, and the metronome and any unsaved changes stay as they are.
+- The loaded song whose backing track was attached or replaced, or which had a file picked for a missing one, or whose playable backing track was removed: playback stops if it is playing, and the position is 0:00 (7.10). Removing a track whose file is missing does not stop playback. The other changes apply as above.
+
+### 10.3 Backing track
+
+The **Backing track** row sits below the accent tiles, above the Add to <setlist> switch when that is shown: a 60 pt surface-raised row with 16 pt corners, like the sheet's other rows, and 16 pt padding at the left. The music-note icon is 18 pt in muted, 10 pt before the text, and the file name or `Add backing track` is 16 pt medium in dial white.
+
+| State | The row shows | Tapping |
+|---|---|---|
+| No track | the music-note icon and `Add backing track` | the row opens the Files picker |
+| Track | the icon, the file name (cut with an ellipsis) and the remove button | the name opens the Files picker to replace the file; × removes the track |
+| File missing on this device | the icon, `Track missing` in amber and the remove button | the name opens the Files picker; × removes the track |
+
+The remove button is an 18 pt × in muted in a 44 pt square at the right end of the row. Without a track the row has no button at the right.
+
+- The Files picker offers the audio files iOS can play (section 4). A file that cannot be read as audio is not attached: the row stays as it was and an alert says `This file can't be played`, with `OK`.
+- Like everything else in the sheet, a change takes effect when the sheet is saved. Cancel and the other ways of closing the sheet drop it, a picked file included.
+- A newly attached file gets its first beat automatically: the first moment the file's level rises above −40 dB relative to full scale, rounded to 0.01 s, or 0.00 when the file starts with sound. Its count-in starts at 2 bars and its mix at the centre.
+- Replacing the file sets the first beat from the new file and keeps the count-in and the mix.
+- Removing the track forgets its first beat, count-in and mix.
+- A file picked for a missing track takes the place of the missing one. The track keeps its name, first beat, count-in and mix, and nothing is sent to other devices (5.1).
+- First beat, count-in and mix are set in the Sync sheet (6.13), not here.
 
 ## 11. Audio and timing
 
@@ -647,8 +792,12 @@ Titled `Edit song`, with `Save changes`. Opened with Edit in a song's row menu, 
 - Clicks are scheduled on the audio clock, a little ahead of time. They are never driven by a UI timer.
 - A beat is never scheduled in the past. After a large tempo jump the next beat sounds straight away and the following ones space out from it, so beats never bunch up.
 - Visual effects and haptics are triggered from the same schedule, so the three stay together.
-- Starting playback must not block the screen: the phone's audio is taken over in the background and the first click follows as soon as that is done.
+- Starting playback must not block the screen: the phone's audio is taken over in the background and the first click, or with a backing track the count-in or the track, follows as soon as that is done.
 - If starting fails, the app returns to the stopped state and gives the phone's audio back to other apps.
+- A backing track is played on the same audio clock as the click, so the relation between them is fixed to the sample: the click does not drift against the track over the file's length, at any tempo.
+- The file is read from storage as it plays, not loaded whole into memory, and is converted to the output's sample rate.
+- If the file cannot be opened at Start, the song plays as with a missing file for that run (7.10).
+- While a playable backing track (7.10) is playing, a limiter on the output keeps the sum of click and track below full scale, so the two together do not distort. It must not delay or soften the click's attack beyond the attack rule in 11.1; its other settings are left to the builder. It is not in the signal path for a song without a playable track, so 11.1 holds there unchanged; with a track, the figures in 11.1 describe the click before the limiter and before the mix (section 4).
 - Targets: each click within 2 ms of its ideal time, and no accumulated drift over 10 minutes at any tempo.
 
 ### 11.1 Click sounds
@@ -684,9 +833,9 @@ Each beat fires all of the following at the moment of its click.
 | Tile | The beat's tile switches to its sounding state at once. The previous tile fades back to idle over 150 ms. | Same. |
 | Haptic | Light impact, intensity 0.5. | Rigid impact, intensity 1.0. |
 
-There are no other beat visuals; in particular nothing ripples or moves outside the dial.
+There are no other beat visuals; in particular nothing ripples or moves outside the dial. The beats of a count-in (7.10) fire all of these like any other beat.
 
-Other haptics: a selection tick for each 1 BPM change from the dial or − / +, for each tap-tempo tap, for each key in the tempo sheet and for `Set tempo` when it changes the tempo, for each accent toggle, for Revert, and for each tap on the mute button. Beat haptics continue while muted. A medium impact on Start and Stop. The system's success notification on Save.
+Other haptics: a selection tick for each 1 BPM change from the dial or − / +, for each tap-tempo tap, for each key in the tempo sheet and for `Set tempo` when it changes the tempo, for each accent toggle, for Revert, for each tap on the mute button, and in the Sync sheet for each 0.01 s step of the first beat, each tap on `Tap on beat 1`, each change of count-in and each time the mix knob reaches the centre. Beat haptics continue while muted. A medium impact on Start and Stop, and on Play and Stop in the Sync sheet. The system's success notification on Save.
 
 The Haptics switch in settings (7.8) turns all of these off.
 
@@ -698,7 +847,10 @@ The Haptics switch in settings (7.8) turns all of these off.
   - In the tempo sheet the field reads as "Tempo" with the typed digits, each key as its digit, and the delete key as "Delete". The buttons below read "Cancel" and "Set tempo", Set tempo as dimmed while it is not ready.
   - In the song sheet the tempo value is a button: "Tempo, 120 beats per minute", with the hint "Type a tempo". The accent tiles, which have no visible heading, form a group named "Accents". The buttons at the bottom read "Cancel" and as the save button's text, the save button as dimmed while it is not ready.
   - The Save button reads as "Unsaved changes", with the hint "Save, save as a new song, or revert". Its menu items read as written, Revert with the saved values. After Save, "Saved" is announced, since the button going away cannot be heard.
-  - The tap tempo pill reads as "Tap tempo" also while it shows `Tap again`.
+  - The tap tempo pill reads as "Tap tempo" also while it shows `Tap again`, and so does the `Tap` pill of 6.12, also while it shows `Again`.
+  - On the screen for a song with a backing track (6.12), the time signature chip reads as "Time signature, 7/8". The file name reads as "Backing track, <file name>", or "Track missing". The Sync button reads as "Sync", Rewind as "Back 15 seconds" and Fast-forward as "Forward 15 seconds". The progress bar is an adjustable element that reads the position and the length, for example "1 minute 24 seconds of 3 minutes 42 seconds", or "Count-in" while the count-in's click sounds before the file has started, and steps by 15 seconds.
+  - In the Sync sheet, Play / Stop reads as "Play" or "Stop", and the playback row reads as on the track strip. The first beat is an adjustable element, "First beat, 0.48 seconds", that steps by 0.01 s. `Tap on beat 1` reads as "Tap on beat 1", dimmed while it does nothing. Each count-in option reads as, for example, "Count-in, 2 bars", with "selected" for the current one. The mix slider is an adjustable element that reads where it is, rounded to whole decibels: "Mix, centre", "Mix, track turned down 12 decibels" or "Mix, click turned down 6 decibels". It steps by 3 dB, so the centre and both ends are reached exactly.
+  - In the song sheet the Backing track row reads as "Backing track, <file name>", "Add backing track" or "Track missing", and its remove button as "Remove backing track".
   - The next-up line reads as one element, for example "Next: Seven Bridges, 168 beats per minute, 7/8", or "Last song in the setlist".
   - Each tile reads as "Beat 3, accented" or "Beat 2, not accented", with the toggle as its action.
   - The mute button reads as "Click sound, on" or "Click sound, muted".
@@ -708,7 +860,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The screen switch reads as "Keep screen awake, on" or "Keep screen awake, off".
   - The sync switch reads as "Sync songs and setlists, on" or "Sync songs and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
   - The header title reads the song name and its second line, and says that it opens the library. While the song is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the Save button appearing cannot be heard.
-  - A song row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when the row is marked (8.2, 8.3). Its menu button reads "More for Harbour Lights".
+  - A song row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "backing track" after it when the song has one, and "loaded" when the row is marked (8.2, 8.3). Its menu button reads "More for Harbour Lights".
   - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist", and its first item "Rename setlist". The tabs read "Songs" and "Setlists", with "selected" for the one shown. The Unload pill reads "Unload song", with a hint that names what is kept, for example "Unloads the current song and keeps 120 beats per minute, 4/4".
   - In a setlist's view, rows can be moved up and down with VoiceOver actions as well as by dragging.
   - The Add song screen's title reads "Add to <setlist>", and each row says whether the song is in the setlist.
@@ -804,9 +956,39 @@ iCloud sync:
 - [x] A library made before sync existed is kept in full when the app is updated. *(Unit tested.)*
 - [ ] The app can tell a signed-in device from a signed-out one, and one iCloud account from another. *(Needs a device signed in to iCloud.)*
 
+Backing tracks:
+
+- [ ] The song sheet's Backing track row attaches an audio file from the Files picker, replaces it and removes it, and the change is kept only when the sheet is saved; a file that cannot be played shows `This file can't be played` and is not attached. *(Not built.)*
+- [ ] A newly attached file gets its first beat where its level first rises above −40 dBFS, and a count-in of 2 bars; replacing the file sets a new first beat and keeps the count-in. *(Not built.)*
+- [ ] The attached file keeps playing after the original is moved or deleted, and it is restored with a device backup. *(Not built.)*
+- [ ] A loaded song with a backing track shows the layout of 6.12, the same stopped and playing; other songs and nothing loaded keep the usual layout. *(Not built.)*
+- [ ] The layout of 6.12 fits without scrolling on every supported phone, with the track strip at full size. *(Not built. The small-screen figures have not been worked out.)*
+- [ ] Start at 0:00 plays the chosen count-in of click only, and the track's first beat lands on the beat after it; with count-in Off the track starts at once and the click joins at the first beat. *(Not built.)*
+- [ ] While the count-in's click sounds before the file has started, the knob is at 0:00 and the elapsed time reads `Count-in`; once the file starts, the bar shows its real position; with a first beat later than the count-in is long, `Count-in` is never shown. Stop before the file has started leaves 0:00, and after it keeps the position. *(Not built.)*
+- [ ] Start away from 0:00 plays at once without a count-in, and the click joins on the right beat of the right bar. *(Not built.)*
+- [ ] Stop keeps the position; the end of the track stops playback and goes back to 0:00, and in a setlist the next song is not loaded. *(Not built.)*
+- [ ] Rewind and Fast-forward move 15 seconds, stopped and playing; Rewind near the start goes to 0:00, and Fast-forward is dimmed in the last 15 seconds. *(Not built.)*
+- [ ] Dragging the knob moves the position when the finger lifts, and playback carries on from there without a count-in. *(Not built.)*
+- [ ] Changing the tempo while playing keeps the click on the track's grid, with no beats bunched up; changing the time signature works the bar out from the first beat. *(Not built.)*
+- [ ] Mute silences only the click; the track, beat effects and haptics carry on. *(Not built.)*
+- [ ] Loading a song while playing stops playback when either song has a playable backing track, and keeps playing between two songs without one; a song whose file is missing counts as one without a track. Unload stops a playing song with a playable track. *(Not built.)*
+- [ ] A backing track attached on another device arrives for the loaded song with `Track missing`, and playback carries on; a track removed or replaced elsewhere stops playback only when its file was here and playing. *(Not built.)*
+- [ ] In Edit song for the loaded song, attaching, replacing or picking a file for a missing track stops playback and sets 0:00, and so does removing a playable track; removing a track whose file is missing does not stop playback. *(Not built.)*
+- [ ] An interruption stops playback and keeps the position. *(Not built.)*
+- [ ] The Sync sheet opens stopped and playing, Play starts without a count-in, and closing the sheet leaves playback as it is. *(Not built.)*
+- [ ] The Sync sheet's tempo is the metronome's tempo and shows the Save button after a change; first beat − / + move the click 0.01 s at a time while playing; first beat and count-in are saved into the song at once without making it edited. *(Not built.)*
+- [ ] The mix slider turns the track down by up to 24 dB towards Click and the click by up to 24 dB towards Track, evenly in decibels, with both at full level at the centre and neither end silent; the count-in's clicks follow the same level, and Mute still silences the click completely. *(Not built.)*
+- [ ] The mix knob catches at the centre with a selection tick, applies at once while playing, is saved into the song without making it edited, and syncs to other devices with the backing track; a new track starts at the centre, and replacing the file or picking one for a missing track keeps the mix. *(Not built.)*
+- [ ] Click and a full-level track together do not distort, by ear, on the speaker and on headphones. *(Not built. Needs a listener and a real iPhone.)*
+- [ ] Tap on beat 1 sets the first beat to the tapped place moved back by whole bars to the earliest place not before 0:00, allowing for Bluetooth delay, and is dimmed while stopped. *(Not built.)*
+- [ ] Click and track stay together to the sample over a whole file at 30, 120 and 300 BPM, on the speaker and over Bluetooth. *(Not built. Needs a listener and a real iPhone.)*
+- [ ] On a second device the song arrives with `Track missing`; Start plays the click alone; picking the file there sends nothing; removing the track syncs; a device deletes a file no song refers to. *(Not built.)*
+- [ ] Songs with a backing track show the music-note mark in every song list, also with the file missing. *(Not built.)*
+- [ ] VoiceOver reads the track strip, the Sync sheet and the Backing track row as in section 13, and every new control has a 44 × 44 pt touch area. *(Not built.)*
+
 ## 15. Not built yet
 
-Everything in this document is built. A part that is specified before it is built is listed here until it is.
+Everything in this document is built except backing tracks: the backing track of a song (sections 4, 5 and 5.1), the screen for a song with one (6.12), the Sync sheet and its mix (6.13, 7.11), playing with a track (7.10), the limiter (11), the song sheet's Backing track row (10.3), the library's mark (8.2), and their audio, haptic and VoiceOver rules (11, 12, 13). The exact small-screen figures for 6.12 have not been worked out or verified. A part that is specified before it is built is listed here until it is.
 
 ## 16. Ideas for later
 
@@ -815,3 +997,6 @@ Not part of version 1.0.
 - **Dynamic Type in rows and sheets.** Labels and text in rows and sheets scale with the phone's text size, up to the first accessibility size. The large BPM number stays fixed.
 - **Making room when iCloud is full.** When iCloud reports that it is full, the oldest delete markers are removed to make room, not only when the item count is over the limit (5.1).
 - **Play while locked.** Playback continues when the user locks the screen.
+- **Waveform for the first beat.** A waveform of the backing track with a marker for the first beat that can be dragged.
+- **Tempos with decimals.** For backing tracks that are not at a whole BPM.
+- **Syncing backing-track files.** The audio file travels to the user's other devices with the song.
