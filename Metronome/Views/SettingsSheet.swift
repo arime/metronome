@@ -171,7 +171,7 @@ struct SettingsSheet: View {
             if let detail = status.detail {
                 Text(detail)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Theme.mutedDim)
+                    .foregroundStyle(Theme.muted)
             }
         }
         .frame(minHeight: rowHeight)

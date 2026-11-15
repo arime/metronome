@@ -370,7 +370,7 @@ final class MetronomeModel {
 
     /// Unloads the song. The metronome keeps its settings, playing or stopped, and the
     /// song itself is not changed; unsaved edits simply stay as plain settings.
-    func clearSong() {
+    func unloadSong() {
         guard loadedSongID != nil else { return }
         loadedSongID = nil
         loadedFromSetlistID = nil

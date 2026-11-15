@@ -30,19 +30,6 @@ struct TempoEntrySheet: View {
             }
             field
             keypad
-            // Cancel until the digits make a tempo that can be set, so there is always a
-            // visible way back: before the first key, and while the digits are out of range.
-            Button(action: entry.isValid ? setTempo : { dismiss() }) {
-                Text(entry.isValid ? "Set tempo" : "Cancel")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(entry.isValid ? Theme.ink : Theme.dialWhite)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(entry.isValid ? Theme.amber : Color.clear, in: Capsule())
-                    .overlay(Capsule().strokeBorder(entry.isValid ? Color.clear : Theme.line, lineWidth: 1))
-                    .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, Theme.sideMargin)
         // Room for the drag indicator above, and a margin below the button.
@@ -84,16 +71,18 @@ struct TempoEntrySheet: View {
         .accessibilityValue(entry.digits.isEmpty ? "Nothing typed" : "\(entry.digits) beats per minute")
     }
 
+    /// The keys and, below them, Cancel and Set tempo, in one grid so that Cancel is exactly as
+    /// wide as a key, under the empty place, and Set tempo spans the 0 and delete columns.
     private var keypad: some View {
-        VStack(spacing: Self.keyGap) {
+        Grid(horizontalSpacing: Self.keyGap, verticalSpacing: Self.keyGap) {
             ForEach(Self.keyRows, id: \.self) { row in
-                HStack(spacing: Self.keyGap) {
+                GridRow {
                     ForEach(row, id: \.self) { digit in
                         digitKey(digit)
                     }
                 }
             }
-            HStack(spacing: Self.keyGap) {
+            GridRow {
                 Color.clear
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
@@ -112,6 +101,21 @@ struct TempoEntrySheet: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Delete")
+            }
+            // The sheet's 16 pt gap above the buttons: the grid's 8 pt plus 8 pt on each cell.
+            // (A modifier on the GridRow itself would turn it into one full-width cell.)
+            GridRow {
+                CancelPill(height: 56) { dismiss() }
+                    .padding(.top, Self.keyGap)
+                CommitPill(
+                    title: "Set tempo",
+                    font: .system(size: 17, weight: .bold),
+                    height: 56,
+                    isReady: entry.isValid,
+                    action: setTempo
+                )
+                .padding(.top, Self.keyGap)
+                .gridCellColumns(2)
             }
         }
     }

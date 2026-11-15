@@ -37,7 +37,10 @@ struct SongSheet: View {
         return nil
     }
 
-    private var canSave: Bool { Library.cleanName(name) != nil }
+    /// Edit song also needs something changed; New song only a name.
+    private var canSave: Bool {
+        (editedSong.map(SongSheetChanges.init(editing:)) ?? .newSong).canSave(name: name, settings: draft)
+    }
 
     var body: some View {
         ScrollView {
@@ -46,7 +49,7 @@ struct SongSheet: View {
                     .font(.system(size: 26, weight: .heavy))
                     .tracking(-0.52)
                     .foregroundStyle(Theme.dialWhite)
-                TextField("Name", text: $name, prompt: Text("Name").foregroundStyle(Theme.mutedDim))
+                TextField("Name", text: $name, prompt: Text("Name").foregroundStyle(Theme.muted))
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Theme.dialWhite)
                     .tint(Theme.amber)
@@ -58,10 +61,8 @@ struct SongSheet: View {
                     .accessibilityLabel("Song name")
                 tempo
                 signature
-                VStack(alignment: .leading, spacing: 14) {
-                    SectionLabel(text: "ACCENTS")
-                    accents
-                }
+                // No heading, as on the metronome screen: the tiles say what they are.
+                accents
                 if let setlist {
                     Toggle(isOn: $addToSetlist) {
                         Text("Add to \(setlist.name)")
@@ -71,18 +72,18 @@ struct SongSheet: View {
                     }
                     .tint(Theme.amber)
                 }
-                Button(action: save) {
-                    Text(editedSong == nil ? "Save song" : "Save changes")
-                        .font(.system(size: 18, weight: .heavy))
-                        // Until there is a name it is grey with muted text: still readable,
-                        // but plainly not ready. Dimmed amber made the text almost vanish.
-                        .foregroundStyle(canSave ? Theme.ink : Theme.muted)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 60)
-                        .background(canSave ? Theme.amber : Theme.surfaceRaised, in: Capsule())
+                HStack(spacing: 10) {
+                    CancelPill(height: 60) { dismiss() }
+                        .frame(width: 116)
+                    // Not ready until there is a name, and in Edit song until something changed.
+                    CommitPill(
+                        title: editedSong == nil ? "Save song" : "Save changes",
+                        font: .system(size: 18, weight: .heavy),
+                        height: 60,
+                        isReady: canSave,
+                        action: save
+                    )
                 }
-                .buttonStyle(.plain)
-                .disabled(!canSave)
             }
             .padding(.horizontal, Theme.sideMargin)
             .padding(.top, 36)
@@ -220,6 +221,9 @@ struct SongSheet: View {
                 }
             }
         }
+        // The visible heading is gone; VoiceOver still names the group.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Accents")
     }
 
     private func save() {

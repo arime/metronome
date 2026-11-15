@@ -518,7 +518,7 @@ private struct SongListView: View {
         }
     }
 
-    /// The line between the Songs tab's header and its list: the search field, and Clear song
+    /// The line between the Songs tab's header and its list: the search field, and Unload
     /// at its right end while there is a song to unload. A setlist has no such line.
     @ViewBuilder
     private var controls: some View {
@@ -527,8 +527,8 @@ private struct SongListView: View {
                 HStack(spacing: 10) {
                     SearchField(text: $query)
                     if model.loadedSong != nil {
-                        ClearSongButton(settings: model.settings) {
-                            model.clearSong()
+                        UnloadSongButton(settings: model.settings) {
+                            model.unloadSong()
                             close()
                         }
                     }
@@ -788,13 +788,13 @@ private struct SearchField: View {
 
 /// The grey pill above the Songs tab's list, shown only while a song is loaded. Tapping it
 /// unloads the song and keeps the settings.
-private struct ClearSongButton: View {
+private struct UnloadSongButton: View {
     let settings: MetronomeSettings
-    let clear: () -> Void
+    let unload: () -> Void
 
     var body: some View {
-        PillButton(text: "Clear song", symbol: "xmark", look: .neutral, action: clear)
-            .accessibilityLabel("Clear song")
+        PillButton(text: "Unload", symbol: "eject.fill", look: .neutral, action: unload)
+            .accessibilityLabel("Unload song")
             .accessibilityHint(
                 "Unloads the current song and keeps \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)"
             )
@@ -813,14 +813,57 @@ extension Song {
     }
 }
 
-extension View {
-    /// A row inside one of the sheet's lists: no system background, the sheet's own margins.
-    func sheetRow() -> some View {
-        listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+/// The side margin of the sheet's lists, the same as the header's and the controls line's.
+private let sheetRowMargin: CGFloat = 20
+
+extension EnvironmentValues {
+    /// The width of the sheet list a row is in; 0 until it has been measured.
+    @Entry var sheetListWidth: CGFloat = 0
+}
+
+/// See sheetRow().
+private struct SheetRow: ViewModifier {
+    @Environment(\.sheetListWidth) private var listWidth
+
+    func body(content: Content) -> some View {
+        let listWidth = listWidth
+        return content
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: sheetRowMargin, bottom: 0, trailing: sheetRowMargin))
             .listRowSeparatorTint(Theme.line)
             // Separators span the row instead of starting at the row's text.
             .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+            // And end at the margin, in line with the ⋯ buttons and the line above the list.
+            // Left to the system they end at the list's own layout margin, which is 16 pt on
+            // narrower phones. The row's own width is no measure: in a setlist the drag handle
+            // stands outside it. The guide counts from the row's leading edge, at the margin.
+            .alignmentGuide(.listRowSeparatorTrailing) { dimensions in
+                listWidth > 0 ? listWidth - 2 * sheetRowMargin : dimensions.width
+            }
+    }
+}
+
+/// See sheetList().
+private struct SheetList: ViewModifier {
+    @State private var width: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .environment(\.sheetListWidth, width)
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { newWidth in
+                width = newWidth
+            }
+    }
+}
+
+extension View {
+    /// A row inside one of the sheet's lists: no system background, the sheet's own margins.
+    func sheetRow() -> some View {
+        modifier(SheetRow())
     }
 
     /// Invisible and out of reach, but still taking its space.
@@ -830,10 +873,9 @@ extension View {
             .accessibilityHidden(isHidden)
     }
 
-    /// A plain list on the sheet's own background.
+    /// A plain list on the sheet's own background. It passes its width to its rows' separators.
     func sheetList() -> some View {
-        listStyle(.plain)
-            .scrollContentBackground(.hidden)
+        modifier(SheetList())
     }
 
     /// A binding that is true while an optional has a value, and clears it when set to false.

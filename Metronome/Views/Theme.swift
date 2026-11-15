@@ -49,3 +49,48 @@ struct SectionLabel: View {
             .foregroundStyle(color)
     }
 }
+
+/// Closes a sheet without saving: an outlined pill with no fill, always enabled. Sits at the
+/// left of the sheet's commit button; the caller gives it its width.
+struct CancelPill: View {
+    let height: CGFloat
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("Cancel")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(Theme.dialWhite)
+                .frame(maxWidth: .infinity)
+                .frame(height: height)
+                .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 1))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// A sheet's commit button: amber with ink text when ready. Until then it is surface raised
+/// with muted text, still readable but plainly not ready, and disabled. Dimmed amber made the
+/// text almost vanish.
+struct CommitPill: View {
+    let title: String
+    let font: Font
+    let height: CGFloat
+    let isReady: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(font)
+                .foregroundStyle(isReady ? Theme.ink : Theme.muted)
+                .frame(maxWidth: .infinity)
+                .frame(height: height)
+                .background(isReady ? Theme.amber : Theme.surfaceRaised, in: Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!isReady)
+    }
+}

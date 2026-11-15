@@ -80,7 +80,7 @@ struct SongModelTests {
         #expect(model.nextSong?.id == songs[1].id)
         model.loadSong(songs[2].id, from: setlist)
         #expect(model.nextSong == nil)
-        model.clearSong()
+        model.unloadSong()
         model.loadSong(songs[0].id, from: nil)
         #expect(model.nextSong == nil)
     }
@@ -141,10 +141,10 @@ struct SongModelTests {
 
     @Test func withoutALoadedSetlistTheLibraryKeepsTheListChosenLast() {
         let (model, songs, setlist) = modelWithSetlist()
-        model.clearSong()
+        model.unloadSong()
         model.selectFilter(setlist)
         model.loadSong(songs[0].id, from: nil)
-        model.clearSong()
+        model.unloadSong()
         model.showLoadedSetlist()
         #expect(model.selectedSetlistID == setlist)
         model.selectFilter(nil)
@@ -198,13 +198,13 @@ struct SongModelTests {
         #expect(store.load() == song.settings)
     }
 
-    @Test func clearingTheSongKeepsTheSettingsAndPlayback() {
+    @Test func unloadingTheSongKeepsTheSettingsAndPlayback() {
         let (model, songs, setlist) = modelWithSetlist()
         model.loadSong(songs[1].id, from: setlist, start: true)
         model.nudgeBPM(by: 4)
         let edited = model.settings
         engine.lastUpdate = nil
-        model.clearSong()
+        model.unloadSong()
         #expect(model.loadedSong == nil)
         #expect(model.loadedFromSetlistID == nil)
         #expect(model.position == nil)
@@ -218,11 +218,11 @@ struct SongModelTests {
         #expect(model.library.song(id: songs[1].id)?.settings.bpm == 100)
     }
 
-    @Test func clearingTheSongIsRemembered() {
+    @Test func unloadingTheSongIsRemembered() {
         let model = makeModel()
         let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
         model.loadSong(song.id, from: nil)
-        model.clearSong()
+        model.unloadSong()
         #expect(makeModel().loadedSong == nil)
     }
 
@@ -467,7 +467,7 @@ struct SongModelTests {
         model.goToNext()
         #expect(model.isSaveOffered == false)
         model.setBPM(104)
-        model.clearSong()
+        model.unloadSong()
         #expect(model.isSaveOffered == false)
     }
 

@@ -2,7 +2,7 @@
 
 This is the single specification for the app. It describes how version 1.0 is meant to work and is kept up to date as decisions change. Parts that are specified here but not built yet are listed in section 15.
 
-Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Songs & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen. The page *Main view UX review (draft)* holds the tempo sheet (board A), the next-up line (board C), and earlier ways of offering unsaved changes that were replaced (boards B, D, E, V4 and the others in their rows). The page *Tester feedback (draft)* holds the round Save button in the header with its menu (boards W1 and W2; board W3 shows a Saved tick that was later dropped). The page *Library UX review (draft)* holds the library's tabs (boards K, L and M) and, in its third row, a setlist's view without an edit mode (board N, with renaming in board P and an empty setlist beside them) and the Add song screen (boards Q and R); board O is an alternative that was not chosen.
+Design source: Paper file "Snappy Metronome". The page *v1.0* holds the metronome screen, the time signature picker, the beat effects and the app icon. The page *v1.0 — Songs & setlists (draft)* holds the library and setlist boards. The page *v1.0 — Settings & click sounds (draft)* holds the metronome screen with the settings button and Previous / Next beside Start, and the settings sheet; its three boards named *iCloud sync · A / B / C* show the settings sheet with the iCloud card in its states, and its other boards are alternatives that were not chosen. The page *Main view UX review (draft)* holds the tempo sheet (board A), the next-up line (board C), and earlier ways of offering unsaved changes that were replaced (boards B, D, E, V4 and the others in their rows). The page *Tester feedback (draft)* holds the round Save button in the header with its menu (boards W1 and W2; board W3 shows a Saved tick that was later dropped), and the song sheet and the tempo sheet with Cancel beside the commit button (boards X2 and X3); board X1 is an alternative that was not chosen. The page *Library UX review (draft)* holds the library's tabs (boards K, L and M) and, in its third row, a setlist's view without an edit mode (board N, with renaming in board P and an empty setlist beside them) and the Add song screen (boards Q and R); board O is an alternative that was not chosen.
 
 ## 1. Summary
 
@@ -275,7 +275,7 @@ When accent tiles are narrower than 44 pt (seven beats in a row), each tile's to
 | tick | `#606066` | unlit ticks on the dial |
 | dial white | `#F3EEE6` | primary text; sounding unaccented tile |
 | muted | `#8A8780` | labels, secondary text |
-| muted dim | `#6B6963` | idle unaccented tile numbers, position numbers |
+| muted dim | `#6B6963` | large text only (18 pt and up, or 14 pt bold and up): idle unaccented tile numbers, position numbers, the placeholders of the tempo sheet and a new setlist's name; the `Syncing…` dot |
 | amber | `#FFB224` | the single accent colour |
 | amber tint | `#1E1A12` | idle accented tile fill, muted button fill |
 | red | `#E5484D` | remove and delete actions only |
@@ -301,7 +301,7 @@ The cards and lines are 10 pt apart, and each line below a card keeps 8 pt below
 
 - The same header line style: `ICLOUD`, with nothing at the right.
 - One 44 pt row: `Sync songs and setlists` (16 pt, dial white) and, at the right, a standard iOS switch tinted amber when on.
-- While the switch is on, a second 44 pt row inside the card, the **status line**, under a divider inset 16 pt from both edges: an 8 pt dot, the status (15 pt) and, at the right, a detail (13 pt, muted dim). While the switch is off there is no status line.
+- While the switch is on, a second 44 pt row inside the card, the **status line**, under a divider inset 16 pt from both edges: an 8 pt dot, the status (15 pt) and, at the right, a detail (13 pt, muted). While the switch is off there is no status line.
 
 | Status | Dot | Text | Detail |
 |---|---|---|---|
@@ -329,7 +329,7 @@ A bottom sheet over a dimmed screen, sized to its content, opened by tapping the
 - A grabber, the title `Tempo` (26 pt heavy, dial white) and, at the right, the range `30 to 300 BPM` (13 pt, muted).
 - **The field:** a 92 pt tall surface-raised card with 20 pt corners and a 1.5 pt amber outline. It shows the typed digits (64 pt, heavy, dial white), an amber caret and `BPM` in amber. Before the first key it shows the current tempo in muted dim, as a reminder of where the tempo is now.
 - **The keys:** the digits 1 to 9 in three rows of three, then a last row with an empty place, 0 and a delete key. Each key is 54 pt tall with 8 pt gaps; digit keys are surface raised with 16 pt corners and a 26 pt bold digit, and the delete key is an icon with no fill. The sheet has its own keys, not the system keyboard, so they are large, match the app and appear with the sheet.
-- **Cancel / Set tempo:** a 56 pt pill. Until the digits are a tempo from 30 to 300, it reads `Cancel` (17 pt, bold, dial white) with a 1 pt outline in the line colour and no fill, and closes the sheet without changes. Once they are, it becomes the amber `Set tempo` (ink text). Deleting digits until they are no longer a valid tempo turns it back into Cancel.
+- **Cancel and Set tempo:** a row of two 56 pt pills, 16 pt below the keys, on the keys' columns. **Cancel** is as wide as one key, under the empty place: `Cancel` (17 pt, bold, dial white) with a 1 pt outline in the line colour and no fill. It is always enabled and closes the sheet without changes. **Set tempo** spans the other two columns, under 0 and the delete key, 8 pt from Cancel: amber with ink text (17 pt, bold) when the digits are a tempo from 30 to 300; otherwise surface raised with muted text, not ready, like the song sheet's save button (section 10), and it does nothing.
 
 ## 7. Metronome behaviour
 
@@ -344,7 +344,7 @@ All four ways of setting the tempo work when stopped and when playing.
   - **Dead zone:** within 0.1 dial diameters of the centre (30 pt on the 300 pt dial), the finger's angle is ignored, because there a tiny movement swings it a long way. A finger passing through it changes nothing; once it comes out, the turn carries on from there without a jump.
 - **Typing.** Tapping the number opens the tempo sheet (6.11).
   - A digit key adds a digit, up to three; a leading zero is ignored. The delete key removes the last digit.
-  - `Set tempo` sets the tempo and closes the sheet. Until the digits are a tempo from 30 to 300, the button is `Cancel` instead (6.11), so there is always a visible way back.
+  - `Set tempo` sets the tempo and closes the sheet. It is not ready until the digits are a tempo from 30 to 300 (6.11).
   - When the digits are above 300, the range at the top right turns amber.
   - `Cancel`, swiping the sheet down or tapping outside it closes it without changes. Nothing changes before `Set tempo`.
 - **− / +.** One tap changes the tempo by 1 BPM. Holding repeats: after 400 ms, 10 steps per second. The repeat ends the moment the finger lifts, however quickly taps follow each other.
@@ -399,7 +399,7 @@ All four ways of setting the tempo work when stopped and when playing.
 
 Saving takes two taps, button and menu item, as it is a deliberate choice made between songs, and the menu keeps Revert and Save as new song in plain sight.
 
-Edits also go away without the menu: loading another song, with Previous / Next or from the library, drops them without asking, and **Clear song** in the library (8.2) keeps them as plain settings.
+Edits also go away without the menu: loading another song, with Previous / Next or from the library, drops them without asking, and **Unload** in the library (8.2) keeps them as plain settings.
 
 **Previous and Next** load the previous or next song in the loaded-from setlist's order.
 
@@ -477,6 +477,7 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 - Tapping a setlist on the Setlists tab opens that setlist (8.3), one level down. A ‹ takes the user back up to the Setlists tab.
 - Each level slides in like a navigation stack: a deeper one (a setlist, then Add song) comes in from the right over 0.3 s, and going back the level above comes in from the left. Switching tabs does not slide.
 - The content starts 36 pt below the top of the sheet, so the grabber has room above the header.
+- Every list has 20 pt side margins. The 1 pt dividers between rows, in `line`, run from margin to margin, so they end in line with the ⋯ buttons, the header's button and the controls line's divider (8.2), also where a setlist's drag handles stand at the right.
 
 **Where it opens.**
 
@@ -502,8 +503,8 @@ There is no Edit button and no separate edit mode: everything that changes a set
 
 ### 8.2 The Songs tab
 
-- **The controls line**, between the header and the list: the search field, and at its right end **Clear song** while a song is loaded, 10 pt apart. Below it come 12 pt of space, a 1 pt divider in `line` and then the songs. It stays in place while the songs scroll. It is there whenever the library has songs; an empty library shows only its empty state, and a setlist has no such line.
-- **Search**, a field filling the line to the left of Clear song, or the whole line while nothing is loaded.
+- **The controls line**, between the header and the list: the search field, and at its right end **Unload** while a song is loaded, 10 pt apart. Below it come 12 pt of space, a 1 pt divider in `line` and then the songs. It stays in place while the songs scroll. It is there whenever the library has songs; an empty library shows only its empty state, and a setlist has no such line.
+- **Search**, a field filling the line to the left of Unload, or the whole line while nothing is loaded.
   - It is 36 pt tall and fully rounded, surface raised with no border, 12 pt padding at the sides: a magnifying glass (15 pt semibold, muted) and, 8 pt after it, the text (15 pt regular, dial white, amber cursor), with the placeholder `Search` in muted.
   - While it has text, a muted ⓧ at its right end empties it. Its touch area is 44 pt.
   - The list shows only the songs whose name contains the text, ignoring case, accents (`a` finds `ä`) and spaces at the ends of the text, in the usual order. Empty text, or only spaces, shows every song.
@@ -512,8 +513,9 @@ There is no Edit button and no separate edit mode: everything that changes a set
   - The text starts empty each time the library opens and is not remembered. Going to the Setlists tab and back empties it too.
   - Rows found by a search work as everywhere else: tapping one loads it, its menu and swipe are the same, and the loaded song is still marked.
   - VoiceOver calls the field `Search songs` and the ⓧ `Clear search`.
-- **Clear song**, a pill at the right end of the controls line, shown only while a song is loaded. It is how the user goes back to having no song loaded.
-  - The pill is 36 pt tall and fully rounded, surface raised with no border, 14 pt padding at the sides: an ✕ (12 pt) and `Clear song` (14 pt bold, dial white), 6 pt apart. Its touch area is 44 pt tall.
+- **Unload**, a pill at the right end of the controls line, shown only while a song is loaded. It is how the user goes back to having no song loaded.
+  - The pill is 36 pt tall and fully rounded, surface raised with no border, 14 pt padding at the sides: a filled eject symbol (12 pt) and `Unload` (14 pt bold, dial white), 6 pt apart. Its touch area is 44 pt tall.
+  - VoiceOver calls it `Unload song`.
   - Tapping it unloads the song and closes the sheet. The tempo, time signature and accents stay as they are, playing or stopped, and the click does not change. The song itself is not changed; unsaved edits stay as plain settings. Previous / Next disappear and the header shows the "nothing loaded" state.
   - It is not shown while nothing is loaded, since there is nothing to unload, and not in a setlist.
 - Then every song (or every song the search finds), sorted by name A–Z, ignoring case and following the phone's language rules. Songs with the same name keep their order of creation.
@@ -604,18 +606,20 @@ Opened with Add song in a setlist's view, from the row after the last song or fr
 
 One sheet for creating a song (10.1) and editing one (10.2). A short sheet with:
 
-- **Name field.** Save is disabled while the name is empty. Names are limited to 60 characters; spaces at the ends are removed.
+- **Name field**, with the placeholder `Name` in muted. Save is disabled while the name is empty. Names are limited to 60 characters; spaces at the ends are removed.
 - **Tempo:** − and + around the value. One tap changes it by 1 BPM; holding repeats, as on the metronome screen. Tapping the value opens the tempo sheet (6.11) to type a tempo, which sets only the sheet's tempo.
 - **Time signature row:** opens the same picker as the metronome screen. Changing it resets the accents to beat 1.
 - **Accent tiles:** one per beat, tap to toggle.
 - **Add to <setlist>** switch: shown only when the sheet was opened from 9.3, and on by default there.
-- **The save button**, a 60 pt pill (18 pt heavy). Amber with ink text when it can be used; while the name is empty it is surface raised with muted text, readable but plainly not ready.
+- **Cancel and the save button**, in one row at the bottom. **Cancel** is a 60 pt tall, 116 pt wide pill with no fill and a 1 pt outline in the line colour, with `Cancel` (17 pt bold, dial white), as in the tempo sheet (6.11). It is always enabled. 10 pt to its right, **the save button** fills the rest of the row: a 60 pt pill (18 pt heavy), amber with ink text when it can be used. It is surface raised with muted text, readable but plainly not ready, and does nothing while the name is empty, and in Edit song also while nothing differs from the saved song (10.2).
 
 Changing values in the sheet does not affect the metronome, playing or stopped, until the sheet is saved.
 
+**Closing without saving.** Cancel, swiping the sheet down and tapping outside it all close the sheet at once without saving and without asking.
+
 ### 10.1 New song
 
-Titled `New song`, with `Save song`. Opened with New song in the library (8.1, 9.3) or with Save as new song (7.6). The name field is ready for typing. All three settings start from the metronome's current values, so the quickest way to make a song is to set the metronome first.
+Titled `New song`, with `Save song`. Opened with New song in the library (8.1, 9.3) or with Save as new song (7.6). The name field is ready for typing. All three settings start from the metronome's current values, so the quickest way to make a song is to set the metronome first. `Save song` is ready once a name is typed; spaces alone do not count.
 
 Saving a new song from the library does not load it, with one exception: **naming the current settings.** When no song is loaded and the song is saved with the same tempo, time signature and accents as the metronome has, the new song becomes the loaded one, so the header shows its name at once and later changes bring up the Save button.
 
@@ -627,7 +631,9 @@ Saving a new song from the library does not load it, with one exception: **namin
 
 ### 10.2 Edit song
 
-Titled `Edit song`, with `Save changes`. Opened with Edit in a song's row menu, or by swiping its row on the Songs tab (8.2, 8.4). The name and the three settings start from the song's saved values, also when it is the loaded song with unsaved changes. The keyboard does not come up by itself, as the change is more often to the tempo or the accents; tapping the name brings it up. Swiping the sheet away keeps the song as it was.
+Titled `Edit song`, with `Save changes`. Opened with Edit in a song's row menu, or by swiping its row on the Songs tab (8.2, 8.4). The name and the three settings start from the song's saved values, also when it is the loaded song with unsaved changes. The keyboard does not come up by itself, as the change is more often to the tempo or the accents; tapping the name brings it up.
+
+`Save changes` is ready when there is a name and the name, leaving aside spaces at its ends, or the tempo, time signature or accents differ from the song's saved values. A change undone by hand, such as + then −, counts as none. Closing the sheet without saving keeps the song as it was.
 
 `Save changes` writes only what changed, so that a part left alone does not win over a change made to it on another device (section 5).
 
@@ -689,8 +695,8 @@ The Haptics switch in settings (7.8) turns all of these off.
 - **Reduce Motion:** the number pulse is disabled. Tile changes and the glow remain.
 - **VoiceOver:**
   - The dial is an adjustable element ("Tempo, 120 beats per minute, Allegro") that steps by 1 BPM. It has the action "Type a tempo", which opens the tempo sheet.
-  - In the tempo sheet the field reads as "Tempo" with the typed digits, each key as its digit, and the delete key as "Delete".
-  - In the song sheet the tempo value is a button: "Tempo, 120 beats per minute", with the hint "Type a tempo".
+  - In the tempo sheet the field reads as "Tempo" with the typed digits, each key as its digit, and the delete key as "Delete". The buttons below read "Cancel" and "Set tempo", Set tempo as dimmed while it is not ready.
+  - In the song sheet the tempo value is a button: "Tempo, 120 beats per minute", with the hint "Type a tempo". The accent tiles, which have no visible heading, form a group named "Accents". The buttons at the bottom read "Cancel" and as the save button's text, the save button as dimmed while it is not ready.
   - The Save button reads as "Unsaved changes", with the hint "Save, save as a new song, or revert". Its menu items read as written, Revert with the saved values. After Save, "Saved" is announced, since the button going away cannot be heard.
   - The tap tempo pill reads as "Tap tempo" also while it shows `Tap again`.
   - The next-up line reads as one element, for example "Next: Seven Bridges, 168 beats per minute, 7/8", or "Last song in the setlist".
@@ -703,7 +709,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The sync switch reads as "Sync songs and setlists, on" or "Sync songs and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
   - The header title reads the song name and its second line, and says that it opens the library. While the song is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the Save button appearing cannot be heard.
   - A song row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its menu button reads "More for Harbour Lights".
-  - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist", and its first item "Rename setlist". The tabs read "Songs" and "Setlists", with "selected" for the one shown.
+  - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist", and its first item "Rename setlist". The tabs read "Songs" and "Setlists", with "selected" for the one shown. The Unload pill reads "Unload song".
   - In a setlist's view, rows can be moved up and down with VoiceOver actions as well as by dragging.
   - The Add song screen's title reads "Add to <setlist>", and each row says whether the song is in the setlist.
   - Beat changes during playback are not announced.
@@ -719,7 +725,8 @@ Metronome:
 - [x] Tempo can be set by the dial, − / + and tap tempo, when stopped and when playing, and never leaves 30…300. *(A tap tempo series has not been tapped by hand; its rules are unit tested.)*
 - [ ] A turn anywhere on the dial, number included, turns the knob by the angle travelled; the dead zone at the centre changes nothing and leaving it does not jump; a tap on the number still opens the tempo sheet. *(The turning and dead zone rules are unit tested. On the iPhone 17 Pro simulator a quarter turn begun on the number took 187 to 269, a straight drag through the centre changed nothing, and a tap opened the sheet. How it feels under a finger needs a real iPhone.)*
 - [ ] The knob's ridges and pointer turn with the tempo, and the number stays clear of the pointer at every tempo. *(Seen in the simulator at 187 and 269 on a 340 pt dial, where the pointer was moved out to clear the last digit. A small dial was not seen.)*
-- [x] Tapping the number opens the tempo sheet; typing a tempo and Set tempo sets it, and only tempos from 30 to 300 can be set. *(The digit rules are unit tested; typing 174 was tried in the simulator.)*
+- [x] Tapping the number opens the tempo sheet; typing a tempo and Set tempo sets it, and only tempos from 30 to 300 can be set. *(The digit rules are unit tested; typing 174 was tried in the simulator, and with the two-button row, typing 40 and Set tempo set 40.)*
+- [x] The tempo sheet shows Cancel under the empty place of the keys and Set tempo under 0 and delete; Set tempo is not ready until the digits are a tempo from 30 to 300, and Cancel closes the sheet without changes whatever is typed. *(Seen in the simulator on an iPhone 17 Pro from the dial: Cancel lined up with the keys' first column and Set tempo with the other two; Set tempo was grey before the first key and at 400, with the range amber, and amber at 140; Cancel at 140 closed the sheet with the tempo still 184. Swiping down, tapping outside, other screen widths and VoiceOver were not tried.)*
 - [ ] The tap tempo pill reads Tap again with an amber outline during a series and goes back two seconds after the last tap. *(The label and outline were seen in the simulator; going back after two seconds was not watched.)*
 - [x] Unlit ticks are visible against the background, and nothing in the header moves when Start is pressed. *(Seen in the simulator.)*
 - [x] On a tall screen the dial grows up to 340 pt and never wider than the space between the margins. *(Unit tested, and seen on an iPhone 17 Pro.)*
@@ -738,12 +745,17 @@ Metronome:
 Songs and setlists:
 
 - [x] A song can be created, loaded, edited and deleted; the library is sorted A–Z.
-- [x] Clear song unloads the loaded song and keeps the settings and playback; it is only on the Songs tab, and only while a song is loaded. *(Unloading is unit tested. In the simulator the pill showed with a song loaded, tapping it unloaded the song, closed the sheet and kept the tempo and time signature, and with nothing loaded the songs started right below the header. Playback carrying on and VoiceOver were not tried on screen.)*
-- [x] Search on the Songs tab narrows the list by name, ignoring case, accents and the spaces at the ends, and shows `No matches` when nothing matches. *(Matching is unit tested, accents included. In the simulator the field showed beside Clear song with a song loaded and across the whole line without one, did not take focus when the library opened, filtered the list as text was typed (the loaded song staying amber), showed `No matches`, and ⓧ emptied it; a song tapped in a filtered list was the one loaded. The simulator had a hardware keyboard, so the on-screen keyboard, its Search key and scrolling it away were not seen, and nor were VoiceOver or the row menu in a filtered list.)*
+- [x] Unload unloads the loaded song and keeps the settings and playback; it is only on the Songs tab, and only while a song is loaded. *(Unloading is unit tested. In the simulator on an iPhone 17 Pro the pill showed with its `Unload` label and eject symbol with a song loaded, tapping it unloaded the song, closed the sheet and kept the tempo and time signature, and with nothing loaded the songs started right below the header. Playback carrying on and VoiceOver were not tried on screen.)*
+- [x] Search on the Songs tab narrows the list by name, ignoring case, accents and the spaces at the ends, and shows `No matches` when nothing matches. *(Matching is unit tested, accents included. In the simulator the field showed beside Unload with a song loaded and across the whole line without one, did not take focus when the library opened, filtered the list as text was typed (the loaded song staying amber), showed `No matches`, and ⓧ emptied it; a song tapped in a filtered list was the one loaded. The simulator had a hardware keyboard, so the on-screen keyboard, its Search key and scrolling it away were not seen, and nor were VoiceOver or the row menu in a filtered list.)*
 - [x] Tapping a row loads without starting, and keeps playing when the metronome is running. *(Unit tested.)*
-- [x] The row menu offers Add to setlist, Edit, Remove from setlist and Delete in every list, and the swipe on the Songs tab gives the shortcuts of 8.2. *(Adding to a setlist, New setlist, Delete and Remove were tried in the simulator before Edit replaced Rename. Edit from the menu on the Songs tab was tried after it; the Edit swipe and Edit in a setlist view were not.)*
+- [x] The row menu offers Add to setlist, Edit, Remove from setlist and Delete in every list, and the swipe on the Songs tab gives the shortcuts of 8.2. *(Adding to a setlist, New setlist, Delete and Remove were tried in the simulator before Edit replaced Rename. Edit from the menu and the Edit swipe on the Songs tab were tried after it; Edit in a setlist view was not.)*
 - [x] Edit song changes a song's name, tempo, time signature and accents as 10.2 says. *(The rules for the loaded and the unloaded song are unit tested. Changing a tempo by typing it and saving was tried in the simulator.)*
 - [x] Tapping the tempo in the song sheet opens the tempo sheet, and Set tempo sets only the sheet's tempo. *(Tried in the simulator from Edit song; New song uses the same sheet and was not tried separately.)*
+- [x] In Edit song, `Save changes` is not ready until the name or a setting differs from the saved song; spaces at the ends of the name and a change undone by hand do not count. *(Unit tested. In the simulator on an iPhone 17 Pro it was grey on opening and turned amber after one tap on +.)*
+- [x] The song sheet has Cancel at the left of the save button, in one row at the bottom, in New song and Edit song. *(Seen in the simulator on an iPhone 17 Pro in both.)*
+- [ ] Cancel, swiping the song sheet down and tapping outside it each close it at once without saving and without asking, with or without changes. *(In the simulator on an iPhone 17 Pro: in New song with a typed name, Cancel closed the sheet and made no song; in Edit song with the tempo changed by +, swiping down closed it with no question and the song unchanged. Cancel in Edit song, swiping New song down and tapping outside were not tried; an earlier tap outside made with the simulator tool did not close the sheet, so tapping outside has not been seen working. VoiceOver was not tried.)*
+- [x] The song sheet shows the accent tiles below the time signature row with no heading. *(Seen in the simulator on an iPhone 17 Pro, in Edit song and New song. The "Accents" group with VoiceOver was not tried.)*
+- [x] Row dividers in the library's lists end at the 20 pt margin, in line with the ⋯ buttons and the controls line's divider. *(Measured on simulator screenshots on an iPhone 17 Pro, of the Songs tab and of a setlist with its drag handles. The Setlists tab and the Add song screen use the same rows and were not looked at.)*
 - [x] Taking a song out of a setlist shows the Undo bar, and Undo puts it back in its place. *(Unit tested, including the loaded song's position, and tried in the simulator.)*
 - [x] The library opens on the Songs tab, or inside the loaded song's setlist when it came from one, and scrolls to its row. *(Choosing the setlist is unit tested, and both ways of opening were seen in the simulator. In the simulator the list stayed at its top on an iPhone 17 Pro, where the loaded row fits, and scrolled just far enough to show it on an iPhone SE, where it does not. A library of several screens has not been tried.)*
 - [x] A song loaded from the Songs tab keeps the setlist being stepped through when it is in it. *(Unit tested.)*
