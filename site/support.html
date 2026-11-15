@@ -14,19 +14,24 @@
   </head>
   <body>
     <main>
-      <header>
-        <img src="icon.png" alt="" />
-        <div>
-          <h1>Support</h1>
-          <p>Snappy Metronome</p>
-        </div>
+      <header class="site-header">
+        <a class="brand" href="./">
+          <img src="icon.png" alt="" />
+          Snappy Metronome
+        </a>
+        <nav>
+          <a href="./">Home</a>
+          <a href="support.html" aria-current="page">Support</a>
+          <a href="privacy.html">Privacy policy</a>
+        </nav>
       </header>
 
-      <nav>
-        <a href="./">Home</a>
-        <a href="support.html" aria-current="page">Support</a>
-        <a href="privacy.html">Privacy policy</a>
-      </nav>
+      <section class="hero">
+        <h1>Support</h1>
+        <p class="tagline">Help and contact for Snappy Metronome.</p>
+      </section>
+
+      <div class="prose">
 
       <div class="card">
         <h2 style="margin-top: 0">Contact</h2>
@@ -124,10 +129,14 @@
         turns off every haptic in the app.
       </p>
 
+      </div>
+
       <footer>
         <p>
-          Snappy Metronome by Ari Metsähalme · <a href="./">Home</a> ·
-          <a href="privacy.html">Privacy policy</a>
+          Snappy Metronome by Ari Metsähalme ·
+          <a href="support.html">Support</a> ·
+          <a href="privacy.html">Privacy policy</a> ·
+          <a href="https://github.com/arime/metronome">Source on GitHub</a>
         </p>
       </footer>
     </main>

@@ -14,19 +14,24 @@
   </head>
   <body>
     <main>
-      <header>
-        <img src="icon.png" alt="" />
-        <div>
-          <h1>Privacy policy</h1>
-          <p>Snappy Metronome · effective 11 November 2026</p>
-        </div>
+      <header class="site-header">
+        <a class="brand" href="./">
+          <img src="icon.png" alt="" />
+          Snappy Metronome
+        </a>
+        <nav>
+          <a href="./">Home</a>
+          <a href="support.html">Support</a>
+          <a href="privacy.html" aria-current="page">Privacy policy</a>
+        </nav>
       </header>
 
-      <nav>
-        <a href="./">Home</a>
-        <a href="support.html">Support</a>
-        <a href="privacy.html" aria-current="page">Privacy policy</a>
-      </nav>
+      <section class="hero">
+        <h1>Privacy policy</h1>
+        <p class="tagline">Effective 11 November 2026.</p>
+      </section>
+
+      <div class="prose">
 
       <div class="card">
         <p>
@@ -75,8 +80,9 @@
         </li>
         <li>
           When you switch sync off on your last device, the app removes its data
-          from iCloud the next time that device is online. To have it removed in
-          any other case, email me and I will tell you how.
+          from iCloud the next time that device is online. If you delete the app
+          while sync is on, your songs and setlists stay in your iCloud account,
+          where only you and the app can reach them.
         </li>
       </ul>
 
@@ -121,10 +127,14 @@
         <a href="mailto:metsari+metronome@proton.me">metsari+metronome@proton.me</a>.
       </p>
 
+      </div>
+
       <footer>
         <p>
-          Snappy Metronome by Ari Metsähalme · <a href="./">Home</a> ·
-          <a href="support.html">Support</a>
+          Snappy Metronome by Ari Metsähalme ·
+          <a href="support.html">Support</a> ·
+          <a href="privacy.html">Privacy policy</a> ·
+          <a href="https://github.com/arime/metronome">Source on GitHub</a>
         </p>
       </footer>
     </main>
