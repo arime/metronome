@@ -48,6 +48,8 @@ final class MetronomeModel {
     @ObservationIgnored private let hapticsPlayer: HapticsPlaying
     @ObservationIgnored private let sync: LibrarySync?
     @ObservationIgnored private let now: () -> Date
+    @ObservationIgnored private let trackFiles: TrackFileStore
+    @ObservationIgnored private let lengthOfTrack: (URL) -> TimeInterval?
     /// The player while haptics are on, nil while they are off; every haptic goes through here.
     private var haptics: HapticsPlaying? { hapticsEnabled ? hapticsPlayer : nil }
     @ObservationIgnored private var taps = TapTempo()
@@ -55,8 +57,12 @@ final class MetronomeModel {
 
     init(engine: ClickEngine, store: SettingsStore, haptics: HapticsPlaying, libraryStore: LibraryStore,
          sync: LibrarySync? = nil, now: @escaping () -> Date = Date.init,
-         saveOfferDelay: Duration = .milliseconds(500)) {
+         saveOfferDelay: Duration = .milliseconds(500),
+         trackFiles: TrackFileStore = TrackFileStore(),
+         lengthOfTrack: @escaping (URL) -> TimeInterval? = { try? TrackAudio.length(of: $0) }) {
         self.saveOfferDelay = saveOfferDelay
+        self.trackFiles = trackFiles
+        self.lengthOfTrack = lengthOfTrack
         self.sync = sync
         self.now = now
         self.engine = engine
@@ -75,7 +81,9 @@ final class MetronomeModel {
         loadedFromSetlistID = state.loadedFromSetlistID
         selectedSetlistID = state.selectedSetlistID
         engine.onBeat = { [weak self] beat in self?.beatSounded(beat) }
-        engine.onStopped = { [weak self] in self?.becomeStopped() }
+        engine.onStopped = { [weak self] in self?.engineStopped() }
+        engine.onTrackEnded = { [weak self] in self?.trackEnded() }
+        readTrackLength()
         isSaveOffered = isEdited
         if let sync {
             syncEnabled = sync.isOn
@@ -96,8 +104,10 @@ final class MetronomeModel {
         }
     }
 
+    /// A backing track stops with the click and keeps its position.
     func stop() {
         guard isPlaying else { return }
+        keepTrackPosition()
         engine.stop()
         becomeStopped()
     }
@@ -106,7 +116,32 @@ final class MetronomeModel {
         stop()
     }
 
-    private func start() {
+    /// With a playable track, starts track and click together: with the count-in when
+    /// `countIn` is true and the position is 0:00, otherwise from the position at once.
+    /// A file that cannot be opened plays the click alone for this run.
+    private func start(countIn: Bool = true) {
+        if let track = loadedTrack, let url = trackFiles.url(for: track.fileID) {
+            let grid = TrackGrid(
+                firstBeat: track.firstBeatSeconds, bpm: settings.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
+            )
+            let fromTheTop = countIn && trackPosition == 0
+            let playback = TrackPlayback(
+                fileURL: url,
+                firstBeat: track.firstBeatSeconds,
+                startTime: fromTheTop ? grid.startTime(countIn: track.countIn) : trackPosition,
+                firstClickIndex: fromTheTop ? grid.firstClickIndex(countIn: track.countIn) : 0,
+                clickGain: TrackMix.clickGain(at: track.mix),
+                trackGain: TrackMix.trackGain(at: track.mix)
+            )
+            do {
+                try engine.start(with: settings, track: playback)
+                isPlaying = true
+                isPlayingTrack = true
+                return
+            } catch {
+                // Falls through to the click alone.
+            }
+        }
         do {
             try engine.start(with: settings)
             isPlaying = true
@@ -117,7 +152,27 @@ final class MetronomeModel {
 
     private func becomeStopped() {
         isPlaying = false
+        isPlayingTrack = false
         currentBeat = nil
+    }
+
+    /// An interruption, a route change or an engine failure: the track keeps its position, as with Stop.
+    private func engineStopped() {
+        keepTrackPosition()
+        becomeStopped()
+    }
+
+    /// The file played to its end: stopped, and back to 0:00. A late call after Stop changes nothing.
+    private func trackEnded() {
+        guard isPlayingTrack else { return }
+        trackPosition = 0
+        becomeStopped()
+    }
+
+    /// Stopped during the count-in, before the file started, the position stays at 0:00.
+    private func keepTrackPosition() {
+        guard isPlayingTrack else { return }
+        trackPosition = max(0, engine.trackTime ?? trackPosition)
     }
 
     private func beatSounded(_ beat: ScheduledBeat) {
@@ -162,6 +217,84 @@ final class MetronomeModel {
         guard enabled != keepScreenAwake else { return }
         keepScreenAwake = enabled
         store.saveKeepScreenAwake(enabled)
+    }
+
+    // MARK: - Backing track
+
+    /// The loaded song's track, whether its file is here or not.
+    var loadedTrack: BackingTrack? { loadedSong?.track }
+
+    /// The loaded song has a track and its file is on this device.
+    var isTrackPlayable: Bool {
+        loadedTrack.map { trackFiles.hasFile($0.fileID) } ?? false
+    }
+
+    /// The loaded song has a track but its file is not on this device.
+    var isTrackMissing: Bool {
+        loadedTrack.map { !trackFiles.hasFile($0.fileID) } ?? false
+    }
+
+    /// The file's length in seconds; read when a song with a playable track becomes the loaded one.
+    private(set) var trackLength: TimeInterval?
+    /// Where the track is while stopped. Not saved: 0:00 at launch and whenever a song is loaded.
+    private(set) var trackPosition: TimeInterval = 0
+    /// True while playing and this run was started with the file.
+    private(set) var isPlayingTrack = false
+
+    /// The place in the file being heard; the position while not playing the file.
+    /// 0:00 during the count-in, before the file starts.
+    var trackTime: TimeInterval {
+        guard isPlayingTrack, let time = engine.trackTime else { return trackPosition }
+        return min(max(time, 0), trackLength ?? .infinity)
+    }
+
+    /// True while the count-in's click sounds alone, before the file has started.
+    var isCountingIn: Bool {
+        isPlayingTrack && (engine.trackTime ?? 0) < 0
+    }
+
+    /// Fast-forward does nothing within the last 15 seconds.
+    var canSkipForward: Bool {
+        guard isTrackPlayable, let trackLength else { return false }
+        return trackTime < trackLength - Self.skipInterval
+    }
+
+    private static let skipInterval: TimeInterval = 15
+
+    /// Rewind (-15) or Fast-forward (+15). Rewind within the first 15 seconds goes to 0:00.
+    func skipTrack(by seconds: TimeInterval) {
+        guard isTrackPlayable, seconds < 0 || canSkipForward else { return }
+        moveTrack(to: trackTime + seconds)
+    }
+
+    /// From the progress bar, when the finger lifts.
+    func seekTrack(to time: TimeInterval) {
+        guard isTrackPlayable else { return }
+        moveTrack(to: time)
+    }
+
+    /// Stopped, moves the position; playing the file, carries on from there with no count-in.
+    private func moveTrack(to time: TimeInterval) {
+        let clamped = min(max(time, 0), trackLength ?? .infinity)
+        if isPlayingTrack {
+            engine.seekTrack(to: clamped)
+        } else {
+            trackPosition = clamped
+        }
+    }
+
+    /// Play / Stop in the Sync sheet: always from the position, with no count-in.
+    func toggleTrackPlaybackWithoutCountIn() {
+        haptics?.transport()
+        if isPlaying {
+            stop()
+        } else {
+            start(countIn: false)
+        }
+    }
+
+    private func readTrackLength() {
+        trackLength = loadedTrack.flatMap { trackFiles.url(for: $0.fileID) }.flatMap(lengthOfTrack)
     }
 
     // MARK: - Tempo
@@ -211,9 +344,10 @@ final class MetronomeModel {
         userChangedSettings()
     }
 
+    /// With a track the bar is worked out again from the first beat, so no change starts a new bar.
     private func settingsChanged(startNewBar: Bool) {
         store.save(settings)
-        if isPlaying { engine.update(settings, startNewBar: startNewBar) }
+        if isPlaying { engine.update(settings, startNewBar: startNewBar && !isPlayingTrack) }
     }
 
     /// Replaces all the settings at once, as loading a song does.
@@ -327,6 +461,8 @@ final class MetronomeModel {
         let members = source.flatMap(library.setlist(id:))?.songIDs ?? []
         loadedFromSetlistID = members.contains(id) ? source : nil
         if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: now()) }
+        trackPosition = 0
+        readTrackLength()
         apply(song.settings)
         persistLibrary()
         haptics?.selection()
