@@ -6,7 +6,8 @@ import Foundation
 ///
 /// `scripts/screenshots.sh` launches the app with `-screenshotScene <name>`. The scene's
 /// library and settings live in their own defaults domain, so the simulator's real data is
-/// never touched, and there is no sound, haptics or iCloud.
+/// never touched, and there is no iCloud. The App Store scenes have no sound or haptics; the
+/// two track scenes play and vibrate for real, so the click and the track can be heard together.
 enum ScreenshotScene: String, CaseIterable {
     /// The metronome playing a song loaded from a setlist, with an accented beat sounding.
     case playing

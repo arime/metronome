@@ -15,6 +15,8 @@ struct MetronomeApp: App {
             return
         }
         #endif
+        // Copies of picked files a crash or a kill left behind; no song sheet is open yet.
+        PickedFileReader.emptyFolder()
         let cloud = UbiquitousCloudStore()
         self.cloud = cloud
         _model = State(initialValue: MetronomeModel(

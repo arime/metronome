@@ -130,6 +130,44 @@ final class TrackFilesTests {
         #expect(throws: TrackAudioError.unreadable) { try TrackAudio.firstSound(in: url) }
     }
 
+    // MARK: - Picked files
+
+    private var picks: URL { root.appending(path: "Picks") }
+
+    @Test func aPickIsCopiedUnderItsOwnNameAndRead() throws {
+        let source = try makeWAV(seconds: 1.0, silenceFor: 0.25)
+        let picked = try PickedFileReader.read(source, into: picks)
+        #expect(picked.fileName == source.lastPathComponent)
+        #expect(picked.url.lastPathComponent == source.lastPathComponent)
+        #expect(picked.url.path().hasPrefix(picks.path()))
+        #expect(picked.firstBeat == 25)
+        #expect(FileManager.default.fileExists(atPath: picked.url.path()))
+        #expect(FileManager.default.fileExists(atPath: source.path()))
+    }
+
+    @Test func discardingAPickRemovesItsCopyAndFolder() throws {
+        let picked = try PickedFileReader.read(try makeWAV(seconds: 1.0), into: picks)
+        PickedFileReader.discard(picked)
+        #expect(!FileManager.default.fileExists(atPath: picked.url.deletingLastPathComponent().path()))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: picks.path()).isEmpty)
+    }
+
+    @Test func aFileThatCannotBeReadLeavesNoCopy() throws {
+        let notes = try makeFile(named: "Notes.mp3", contents: "These are not audio.")
+        #expect(throws: TrackAudioError.unreadable) { try PickedFileReader.read(notes, into: picks) }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: picks.path()).isEmpty)
+    }
+
+    @Test func emptyingTheFolderRemovesLeftoversAndNothingElse() throws {
+        let first = try PickedFileReader.read(try makeWAV(seconds: 1.0), into: picks)
+        let second = try PickedFileReader.read(try makeWAV(seconds: 1.0), into: picks)
+        let other = try makeFile(named: "Other.txt", contents: "kept")
+        PickedFileReader.emptyFolder(picks)
+        #expect(!FileManager.default.fileExists(atPath: first.url.path()))
+        #expect(!FileManager.default.fileExists(atPath: second.url.path()))
+        #expect(FileManager.default.fileExists(atPath: other.path()))
+    }
+
     @Test func firstSoundIsTheSameAt48kAnd44k() throws {
         let at44 = try makeWAV(seconds: 2.0, sampleRate: 44100, silenceFor: 0.73)
         let at48 = try makeWAV(seconds: 2.0, sampleRate: 48000, silenceFor: 0.73)

@@ -28,3 +28,29 @@ struct SongSheetChanges: Equatable {
         return cleaned != self.name || settings != savedSettings || track != .keep
     }
 }
+
+/// What the song sheet's Backing track row shows: the track as saving would leave it (spec 10.3).
+enum TrackRowState: Equatable {
+    case none, file(String), missing
+
+    /// `saved` is the song's track before the sheet, nil for a new song; `isSavedMissing` when its
+    /// file is not on this device. A file picked for a missing track keeps the track's name.
+    init(saved: BackingTrack?, isSavedMissing: Bool, edit: TrackEdit) {
+        switch edit {
+        case .remove:
+            self = .none
+        case .attach(let picked):
+            if let saved, isSavedMissing {
+                self = .file(saved.fileName)
+            } else {
+                self = .file(picked.fileName)
+            }
+        case .keep:
+            if let saved {
+                self = isSavedMissing ? .missing : .file(saved.fileName)
+            } else {
+                self = .none
+            }
+        }
+    }
+}

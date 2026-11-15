@@ -29,8 +29,8 @@ struct SongSheet: View {
     /// The edited song has a track whose file is not on this device. Read once, when the sheet opens.
     @State private var isSavedTrackMissing = false
     @State private var isFilePickerShown = false
-    /// True while a picked file is copied and read; the row is dimmed and the save button waits.
-    @State private var isReadingPick = false
+    /// The file being copied and read; while set the row is dimmed and the save button waits.
+    @State private var pickToRead: URL?
     @State private var isUnplayableShown = false
     /// The sheet's height. Starts near the usual height, then follows the content.
     @State private var sheetHeight: CGFloat = 560
@@ -53,22 +53,24 @@ struct SongSheet: View {
                 .canSave(name: name, settings: draft, track: trackEdit)
     }
 
-    /// The track as saving would leave it.
-    private enum TrackState: Equatable {
-        case none, file(String), missing
+    private var isReadingPick: Bool {
+        pickToRead != nil
     }
 
-    private var trackState: TrackState {
-        switch trackEdit {
-        case .attach(let picked): .file(picked.fileName)
-        case .remove: .none
-        case .keep:
-            if let track = editedSong?.track {
-                isSavedTrackMissing ? .missing : .file(track.fileName)
-            } else {
-                .none
-            }
-        }
+    private var trackState: TrackRowState {
+        TrackRowState(saved: editedSong?.track, isSavedMissing: isSavedTrackMissing, edit: trackEdit)
+    }
+
+    /// The file picked in this sheet, while there is one; its copy is the sheet's to delete.
+    private var pickedTrack: PickedTrack? {
+        if case .attach(let picked) = trackEdit { return picked }
+        return nil
+    }
+
+    /// Changes the track edit, deleting the copy of a pick it no longer holds.
+    private func setTrackEdit(_ edit: TrackEdit) {
+        if let old = pickedTrack, edit != trackEdit { PickedFileReader.discard(old) }
+        trackEdit = edit
     }
 
     var body: some View {
@@ -161,9 +163,33 @@ struct SongSheet: View {
         }
         .fileImporter(isPresented: $isFilePickerShown, allowedContentTypes: [.audio]) { result in
             switch result {
-            case .success(let url): read(url)
+            case .success(let url):
+                pickToRead = url
+            case .failure(let error):
+                // Closing the picker is not a failure to read a file.
+                if (error as? CocoaError)?.code != .userCancelled { isUnplayableShown = true }
+            }
+        }
+        // Copies and reads the picked file away from the main actor, as a long, mostly silent file
+        // is read to its end. Closing the sheet cancels this; a copy that arrives then is deleted.
+        .task(id: pickToRead) {
+            guard let url = pickToRead else { return }
+            let result = await Task.detached(priority: .userInitiated) {
+                Result { try PickedFileReader.read(url) }
+            }.value
+            if Task.isCancelled {
+                if case .success(let picked) = result { PickedFileReader.discard(picked) }
+                return
+            }
+            switch result {
+            case .success(let picked): setTrackEdit(.attach(picked))
             case .failure: isUnplayableShown = true
             }
+            pickToRead = nil
+        }
+        // A pick that was not saved is not needed any more; after a save the model has its own copy.
+        .onDisappear {
+            if let pickedTrack { PickedFileReader.discard(pickedTrack) }
         }
         .alert("This file can't be played", isPresented: $isUnplayableShown) {
             Button("OK", role: .cancel) {}
@@ -226,7 +252,7 @@ struct SongSheet: View {
         .allowsHitTesting(!isReadingPick)
     }
 
-    private func trackLabel(for state: TrackState) -> String {
+    private func trackLabel(for state: TrackRowState) -> String {
         switch state {
         case .none: "Add backing track"
         case .file(let fileName): "Backing track, \(fileName)"
@@ -237,23 +263,7 @@ struct SongSheet: View {
     /// Back to no track. A file picked for a song that had none just goes away, so saving
     /// never asks to remove a track that is not there.
     private func removeTrack() {
-        trackEdit = editedSong?.track == nil ? .keep : .remove
-    }
-
-    /// Copies and reads the picked file away from the main actor, as a long, mostly silent
-    /// file is read to its end. A file that cannot be read leaves the row as it was.
-    private func read(_ url: URL) {
-        isReadingPick = true
-        Task {
-            do {
-                trackEdit = .attach(try await Task.detached(priority: .userInitiated) {
-                    try PickedFileReader.read(url)
-                }.value)
-            } catch {
-                isUnplayableShown = true
-            }
-            isReadingPick = false
-        }
+        setTrackEdit(editedSong?.track == nil ? .keep : .remove)
     }
 
     private var tempo: some View {
@@ -353,8 +363,9 @@ struct SongSheet: View {
     }
 
     private func save() {
-        var picked: PickedTrack?
-        if case .attach(let track) = trackEdit { picked = track }
+        let picked = pickedTrack
+        // The model copies the picked file into its own store; the sheet's copy then goes.
+        defer { if let picked { PickedFileReader.discard(picked) } }
         switch purpose {
         case .edit(let song):
             model.editSong(song.id, name: name, settings: draft, track: trackEdit)
@@ -364,33 +375,5 @@ struct SongSheet: View {
             model.createSong(name: name, settings: draft, addingTo: addToSetlist ? setlist?.id : nil, track: picked)
         }
         dismiss()
-    }
-}
-
-/// Turns a file chosen in the Files picker into a `PickedTrack`: a copy in a new temporary
-/// folder, under the file's own name, checked as audio and with its first sound found.
-private enum PickedFileReader {
-    static func read(_ picked: URL) throws -> PickedTrack {
-        let manager = FileManager.default
-        let folder = manager.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
-        let copy = folder.appending(path: picked.lastPathComponent)
-        do {
-            // A file from the picker can be opened only while access is held; the copy is made then.
-            let isAccessing = picked.startAccessingSecurityScopedResource()
-            defer { if isAccessing { picked.stopAccessingSecurityScopedResource() } }
-            try manager.createDirectory(at: folder, withIntermediateDirectories: true)
-            try manager.copyItem(at: picked, to: copy)
-        } catch {
-            try? manager.removeItem(at: folder)
-            throw error
-        }
-        do {
-            _ = try TrackAudio.length(of: copy)
-            let firstBeat = try TrackAudio.firstSound(in: copy)
-            return PickedTrack(url: copy, fileName: picked.lastPathComponent, firstBeat: firstBeat)
-        } catch {
-            try? manager.removeItem(at: folder)
-            throw error
-        }
     }
 }

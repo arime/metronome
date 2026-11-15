@@ -101,4 +101,37 @@ import Testing
     @Test func aTrackAloneDoesNotReplaceTheName() {
         #expect(SongSheetChanges.newSong.canSave(name: "", settings: saved, track: .attach(pickedTrack)) == false)
     }
+
+    // MARK: - The Backing track row
+
+    private let savedTrack = BackingTrack(fileID: UUID(), fileName: "Song.m4a", firstBeat: 48)
+
+    @Test func theRowShowsNoTrack() {
+        #expect(TrackRowState(saved: nil, isSavedMissing: false, edit: .keep) == .none)
+    }
+
+    @Test func theRowShowsTheSavedTrack() {
+        #expect(TrackRowState(saved: savedTrack, isSavedMissing: false, edit: .keep) == .file("Song.m4a"))
+    }
+
+    @Test func theRowShowsASavedTrackAsMissing() {
+        #expect(TrackRowState(saved: savedTrack, isSavedMissing: true, edit: .keep) == .missing)
+    }
+
+    @Test func theRowShowsAFilePickedForASongWithoutATrack() {
+        #expect(TrackRowState(saved: nil, isSavedMissing: false, edit: .attach(pickedTrack)) == .file("Take.wav"))
+    }
+
+    @Test func theRowShowsAFilePickedToReplaceTheSavedOne() {
+        #expect(TrackRowState(saved: savedTrack, isSavedMissing: false, edit: .attach(pickedTrack)) == .file("Take.wav"))
+    }
+
+    @Test func aFilePickedForAMissingTrackKeepsTheSavedName() {
+        #expect(TrackRowState(saved: savedTrack, isSavedMissing: true, edit: .attach(pickedTrack)) == .file("Song.m4a"))
+    }
+
+    @Test func theRowShowsARemovedTrackAsNone() {
+        #expect(TrackRowState(saved: savedTrack, isSavedMissing: false, edit: .remove) == .none)
+        #expect(TrackRowState(saved: savedTrack, isSavedMissing: true, edit: .remove) == .none)
+    }
 }
