@@ -4,51 +4,25 @@ import Testing
 
 private struct TrackOpenFailed: Error {}
 
-/// Each test gets its own stores and a temporary directory for the track files, removed when the test ends.
+/// Each test gets its own bench: stores and a temporary directory for the track files.
 @MainActor
 @Suite
-final class TrackModelTests {
-    private let root: URL
-    private let trackFiles: TrackFileStore
-    private let engine = FakeClickEngine()
-    private let haptics = FakeHaptics()
-    private let settingsStore = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
-    private let libraryStore = LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+struct TrackModelTests {
+    private let bench: TrackTestBench
+    private var engine: FakeClickEngine { bench.engine }
 
     init() throws {
-        root = FileManager.default.temporaryDirectory.appending(path: "TrackModelTests-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        trackFiles = TrackFileStore(directory: root.appending(path: "Tracks"))
+        bench = try TrackTestBench()
     }
 
-    deinit {
-        try? FileManager.default.removeItem(at: root)
-    }
-
-    /// A model whose loaded song is at 120 BPM in 4/4 with a track whose first beat is 0.48 s.
-    /// With `missing` the track's file is not stored.
     private func makeModel(
         length: TimeInterval = 222, countIn: CountIn = .twoBars, mix: Double = 0, missing: Bool = false
     ) throws -> MetronomeModel {
-        let track = BackingTrack(fileID: UUID(), fileName: "Song.m4a", firstBeat: 48, countIn: countIn, mix: mix)
-        var library = Library()
-        let added = library.addSong(name: "Song", settings: MetronomeSettings(), track: track, now: Date())
-        let song = try #require(added)
-        libraryStore.save(LibraryState(library: library, loadedSongID: song.id))
-        if !missing {
-            let source = root.appending(path: "Song.m4a")
-            try Data("audio".utf8).write(to: source)
-            try trackFiles.store(source, as: track.fileID)
-        }
-        return relaunch(length: length)
+        try bench.makeModel(length: length, countIn: countIn, mix: mix, missing: missing)
     }
 
-    /// A new model on the same stores, as after the app is opened again.
     private func relaunch(length: TimeInterval = 222) -> MetronomeModel {
-        MetronomeModel(
-            engine: engine, store: settingsStore, haptics: haptics, libraryStore: libraryStore,
-            trackFiles: trackFiles, lengthOfTrack: { _ in length }
-        )
+        bench.relaunch(length: length)
     }
 
     // MARK: - Start
@@ -93,6 +67,18 @@ final class TrackModelTests {
         #expect(model.isPlaying == false)
         #expect(model.trackPosition == 84.2)
         #expect(engine.stopCount == 1)
+    }
+
+    @Test func theKeptPositionStaysInsideTheFile() throws {
+        let model = try makeModel(length: 100)
+        model.togglePlayback()
+        engine.trackTime = 100.4
+        model.togglePlayback()
+        #expect(model.trackPosition == 100)
+        model.togglePlayback()
+        engine.trackTime = 100.4
+        engine.onStopped?()
+        #expect(model.trackPosition == 100)
     }
 
     @Test func stoppingDuringTheCountInStaysAtZero() throws {

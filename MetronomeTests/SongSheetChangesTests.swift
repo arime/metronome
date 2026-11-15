@@ -84,4 +84,21 @@ import Testing
         settings.setBPM(96)
         #expect(SongSheetChanges.newSong.canSave(name: "", settings: settings) == false)
     }
+
+    // MARK: - Backing track
+
+    private var pickedTrack: PickedTrack {
+        PickedTrack(url: URL(filePath: "/tmp/Take.wav"), fileName: "Take.wav", firstBeat: 0)
+    }
+
+    @Test func attachingOrRemovingATrackMakesSaveReady() {
+        let changes = SongSheetChanges(editing: song)
+        #expect(changes.canSave(name: "Harbour Lights", settings: saved, track: .attach(pickedTrack)))
+        #expect(changes.canSave(name: "Harbour Lights", settings: saved, track: .remove))
+        #expect(changes.canSave(name: "Harbour Lights", settings: saved, track: .keep) == false)
+    }
+
+    @Test func aTrackAloneDoesNotReplaceTheName() {
+        #expect(SongSheetChanges.newSong.canSave(name: "", settings: saved, track: .attach(pickedTrack)) == false)
+    }
 }
