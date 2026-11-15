@@ -98,6 +98,48 @@ struct SongModelTests {
         #expect(model.position == nil)
     }
 
+    @Test func nothingIsMarkedWhileNoSongIsLoaded() {
+        let (model, songs, setlist) = modelWithSetlist()
+        #expect(!model.marksLoaded(songs[0].id, inSetlist: nil))
+        #expect(!model.marksLoaded(songs[0].id, inSetlist: setlist))
+    }
+
+    @Test func aSongLoadedFromASetlistIsMarkedThereAndInAllSongs() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
+        #expect(model.marksLoaded(songs[1].id, inSetlist: setlist))
+        #expect(model.marksLoaded(songs[1].id, inSetlist: nil))
+        #expect(!model.marksLoaded(songs[0].id, inSetlist: setlist))
+        #expect(!model.marksLoaded(songs[0].id, inSetlist: nil))
+    }
+
+    @Test func aSongLoadedOnItsOwnIsMarkedOnlyInAllSongs() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: nil)
+        #expect(model.loadedFromSetlistID == nil)
+        #expect(model.marksLoaded(songs[1].id, inSetlist: nil))
+        #expect(!model.marksLoaded(songs[1].id, inSetlist: setlist))
+    }
+
+    @Test func aSongLoadedFromAnotherSetlistIsNotMarkedInThisOne() {
+        let (model, songs, setlist) = modelWithSetlist()
+        let other = model.createSetlist()
+        model.setSong(songs[1].id, inSetlist: other, included: true)
+        model.loadSong(songs[1].id, from: other)
+        #expect(model.marksLoaded(songs[1].id, inSetlist: other))
+        #expect(model.marksLoaded(songs[1].id, inSetlist: nil))
+        #expect(!model.marksLoaded(songs[1].id, inSetlist: setlist))
+    }
+
+    @Test func aSongLoadedFromAllSongsStaysMarkedInTheSetlistBeingSteppedThrough() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
+        model.loadSong(songs[2].id, from: nil)
+        #expect(model.marksLoaded(songs[2].id, inSetlist: setlist))
+        #expect(model.marksLoaded(songs[2].id, inSetlist: nil))
+        #expect(!model.marksLoaded(songs[0].id, inSetlist: setlist))
+    }
+
     @Test func removingASongFromASetlistCanBeUndoneInPlace() {
         let (model, songs, setlist) = modelWithSetlist()
         let removal = model.removeSong(songs[1].id, fromSetlist: setlist)

@@ -552,7 +552,7 @@ private struct SongListView: View {
                     SongRow(
                         song: song,
                         number: setlist == nil ? nil : index + 1,
-                        isLoaded: song.id == model.loadedSongID,
+                        isLoaded: model.marksLoaded(song.id, inSetlist: setlist?.id),
                         load: {
                             model.loadSong(song.id, from: setlist?.id)
                             close()
@@ -584,14 +584,14 @@ private struct SongListView: View {
             // A setlist's rows always show their drag handles; there is no separate edit mode.
             .environment(\.editMode, editMode)
             .scrollDismissesKeyboard(.immediately)
-            // The library opens where the user is: with the loaded song's row in view.
-            // Without an anchor the list moves only as far as it must, so a row that is
-            // already on screen leaves the list at its top.
+            // The library opens where the user is: with the marked row in view. Without an
+            // anchor the list moves only as far as it must, so a row that is already on
+            // screen leaves the list at its top.
             .onAppear {
                 guard !hasScrolledToLoaded else { return }
                 hasScrolledToLoaded = true
-                if let loaded = model.loadedSongID, shownSongs.contains(where: { $0.id == loaded }) {
-                    proxy.scrollTo(loaded)
+                if let marked = shownSongs.first(where: { model.marksLoaded($0.id, inSetlist: setlist?.id) }) {
+                    proxy.scrollTo(marked.id)
                 }
             }
         }

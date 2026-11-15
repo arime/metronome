@@ -483,7 +483,7 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 
 - On the Songs tab, so that a song can be picked at once.
 - When the loaded song was loaded from a setlist, inside that setlist, where the user is.
-- Either way the list is scrolled only as far as is needed for the loaded song's row to be in view, when the list has it. This happens once, as the list first appears; a search that hides and brings back the list does not scroll it again.
+- Either way the list is scrolled only as far as is needed for the marked row (8.2, 8.3) to be in view, when the list has one. This happens once, as the list first appears; a search that hides and brings back the list does not scroll it again.
 
 ### 8.1 Header
 
@@ -520,7 +520,7 @@ There is no Edit button and no separate edit mode: everything that changes a set
   - It is not shown while nothing is loaded, since there is nothing to unload, and not in a setlist.
 - Then every song (or every song the search finds), sorted by name A–Z, ignoring case and following the phone's language rules. Songs with the same name keep their order of creation.
 - Each row shows the name (17 pt), and below it tempo and time signature, for example `120 BPM · 4/4`. At the right is the **menu button**: a 40 pt round surface-raised button with a dial-white ⋯ (8.4).
-- The loaded song's row has an amber name and `· loaded` after its details.
+- The loaded song's row is marked: an amber name and `· loaded` after its details.
 - **Tapping a row** loads the song and closes the sheet. It does not start the metronome; Start is under the thumb when the sheet has closed. If the metronome is already playing, it keeps playing with the new song.
 - A song loaded from this view keeps the setlist that was being stepped through when it is in that setlist, so the header still shows its position and Previous / Next stay. A song that is not in that setlist, or one loaded while no setlist was being stepped through, has no loaded-from setlist, and Previous / Next are hidden.
 - **Swiping a row left** reveals **Edit** and **Delete**, as a shortcut to the same items in the row's menu.
@@ -532,7 +532,7 @@ There is no button on a row that loads and starts in one tap. A button that look
 
 - Only the setlist's songs, in the setlist's order, each with its position number at the left.
 - Above the list: the count, such as `8 SONGS`. An empty setlist shows no count.
-- Rows, tapping and the menu button work as in 8.2. A song loaded from this view has this setlist as its loaded-from setlist, so the header shows the position and Previous / Next.
+- Rows, tapping and the menu button work as in 8.2, except that the loaded song's row is marked only when the song was loaded from this setlist, and its position number is then amber too. A song loaded from this view has this setlist as its loaded-from setlist, so the header shows the position and Previous / Next.
 - **Reordering:** every row has a drag handle (≡) at its right end, after the menu button, always shown. Dragging the handle moves the row at once; the new order is the setlist's order, and the numbers follow.
 - **Removing:** **Remove from setlist** in the row's menu (8.4), with Undo (8.5). Rows cannot be swiped here: a list that shows drag handles does not take swipes.
 - **Adding:** **Add song**, an amber row after the last song, opens 9.3. New songs go to the end, where the row is.
@@ -708,7 +708,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The screen switch reads as "Keep screen awake, on" or "Keep screen awake, off".
   - The sync switch reads as "Sync songs and setlists, on" or "Sync songs and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
   - The header title reads the song name and its second line, and says that it opens the library. While the song is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the Save button appearing cannot be heard.
-  - A song row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its menu button reads "More for Harbour Lights".
+  - A song row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when the row is marked (8.2, 8.3). Its menu button reads "More for Harbour Lights".
   - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist", and its first item "Rename setlist". The tabs read "Songs" and "Setlists", with "selected" for the one shown. The Unload pill reads "Unload song", with a hint that names what is kept, for example "Unloads the current song and keeps 120 beats per minute, 4/4".
   - In a setlist's view, rows can be moved up and down with VoiceOver actions as well as by dragging.
   - The Add song screen's title reads "Add to <setlist>", and each row says whether the song is in the setlist.
@@ -757,7 +757,8 @@ Songs and setlists:
 - [x] The song sheet shows the accent tiles below the time signature row with no heading. *(Seen in the simulator on an iPhone 17 Pro, in Edit song and New song. The "Accents" group with VoiceOver was not tried.)*
 - [x] Row dividers in the library's lists end at the 20 pt margin, in line with the ⋯ buttons and the controls line's divider. *(Measured on simulator screenshots on an iPhone 17 Pro, of the Songs tab and of a setlist with its drag handles. The Setlists tab and the Add song screen use the same rows and were not looked at.)*
 - [x] Taking a song out of a setlist shows the Undo bar, and Undo puts it back in its place. *(Unit tested, including the loaded song's position, and tried in the simulator.)*
-- [x] The library opens on the Songs tab, or inside the loaded song's setlist when it came from one, and scrolls to its row. *(Choosing the setlist is unit tested, and both ways of opening were seen in the simulator. In the simulator the list stayed at its top on an iPhone 17 Pro, where the loaded row fits, and scrolled just far enough to show it on an iPhone SE, where it does not. A library of several screens has not been tried.)*
+- [x] The library opens on the Songs tab, or inside the loaded song's setlist when it came from one, and scrolls to the marked row. *(Choosing the setlist is unit tested, and both ways of opening were seen in the simulator. In the simulator the list stayed at its top on an iPhone 17 Pro, where the loaded row fits, and scrolled just far enough to show it on an iPhone SE, where it does not. A library of several screens has not been tried.)*
+- [x] The Songs tab always marks the loaded song; a setlist marks it only when it was loaded from that setlist. *(Unit tested, including a song loaded from another setlist and one loaded from the Songs tab while stepping through the setlist. In the simulator on an iPhone 17 Pro, with Seven Bridges loaded on its own it was marked on the Songs tab and unmarked in Friday gig, and loaded from Friday gig it was marked there with its number amber. VoiceOver was not tried.)*
 - [x] A song loaded from the Songs tab keeps the setlist being stepped through when it is in it. *(Unit tested.)*
 - [x] The header shows the right title and second line in every state of 6.1.
 - [x] Changing a loaded song's settings shows the Save button in the header and leaves the title as it is; Save changes, Save as new song and Revert in its menu do what 7.6 says, and the title opens the library also while edited. *(Save and Revert, with the bar carrying on or starting over, are unit tested. On the iPhone 17 Pro simulator the button, its menu with Revert's saved values, and Save changes were tried. Save changes taking the button away at once, with no green tick, is unit tested and was seen in the simulator.)*

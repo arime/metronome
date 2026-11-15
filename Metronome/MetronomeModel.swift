@@ -274,6 +274,12 @@ final class MetronomeModel {
         return (index, ids.count)
     }
 
+    /// Whether a list of songs marks this song as the loaded one. All the songs (`setlistID`
+    /// nil) mark it wherever it is; a setlist only when the song was loaded from that setlist.
+    func marksLoaded(_ songID: UUID, inSetlist setlistID: UUID?) -> Bool {
+        songID == loadedSongID && (setlistID == nil || setlistID == loadedFromSetlistID)
+    }
+
     var canGoPrevious: Bool {
         position.map { $0.index > 0 } ?? false
     }
