@@ -209,7 +209,7 @@ One tile per beat, right below the time signature row, with no heading: the tile
 
 | Tile state | Fill | Border | Number |
 |---|---|---|---|
-| Not accented, idle | surface | none | muted, semibold |
+| Not accented, idle | surface | none | muted dim, semibold |
 | Accented, idle | dark amber tint | 1.5 pt amber | amber, heavy |
 | Not accented, sounding | dial white | none | ink, semibold |
 | Accented, sounding | amber, with amber glow | none | ink, heavy |
@@ -275,7 +275,7 @@ When accent tiles are narrower than 44 pt (seven beats in a row), each tile's to
 | tick | `#606066` | unlit ticks on the dial |
 | dial white | `#F3EEE6` | primary text; sounding unaccented tile |
 | muted | `#8A8780` | labels, secondary text |
-| muted dim | `#6B6963` | large text only (18 pt and up, or 14 pt bold and up): idle unaccented tile numbers, position numbers, the placeholders of the tempo sheet and a new setlist's name; the `Syncing…` dot |
+| muted dim | `#6B6963` | large text only (18 pt and up, or 14 pt bold and up): idle unaccented tile numbers, position numbers, the placeholders of the tempo sheet and a new setlist's name; the `Syncing…` dot and the › on the Setlists tab's rows |
 | amber | `#FFB224` | the single accent colour |
 | amber tint | `#1E1A12` | idle accented tile fill, muted button fill |
 | red | `#E5484D` | remove and delete actions only |
@@ -709,7 +709,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The sync switch reads as "Sync songs and setlists, on" or "Sync songs and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
   - The header title reads the song name and its second line, and says that it opens the library. While the song is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the Save button appearing cannot be heard.
   - A song row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "loaded" when it is. Its menu button reads "More for Harbour Lights".
-  - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist", and its first item "Rename setlist". The tabs read "Songs" and "Setlists", with "selected" for the one shown. The Unload pill reads "Unload song".
+  - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist", and its first item "Rename setlist". The tabs read "Songs" and "Setlists", with "selected" for the one shown. The Unload pill reads "Unload song", with a hint that names what is kept, for example "Unloads the current song and keeps 120 beats per minute, 4/4".
   - In a setlist's view, rows can be moved up and down with VoiceOver actions as well as by dragging.
   - The Add song screen's title reads "Add to <setlist>", and each row says whether the song is in the setlist.
   - Beat changes during playback are not announced.
@@ -726,7 +726,7 @@ Metronome:
 - [ ] A turn anywhere on the dial, number included, turns the knob by the angle travelled; the dead zone at the centre changes nothing and leaving it does not jump; a tap on the number still opens the tempo sheet. *(The turning and dead zone rules are unit tested. On the iPhone 17 Pro simulator a quarter turn begun on the number took 187 to 269, a straight drag through the centre changed nothing, and a tap opened the sheet. How it feels under a finger needs a real iPhone.)*
 - [ ] The knob's ridges and pointer turn with the tempo, and the number stays clear of the pointer at every tempo. *(Seen in the simulator at 187 and 269 on a 340 pt dial, where the pointer was moved out to clear the last digit. A small dial was not seen.)*
 - [x] Tapping the number opens the tempo sheet; typing a tempo and Set tempo sets it, and only tempos from 30 to 300 can be set. *(The digit rules are unit tested; typing 174 was tried in the simulator, and with the two-button row, typing 40 and Set tempo set 40.)*
-- [x] The tempo sheet shows Cancel under the empty place of the keys and Set tempo under 0 and delete; Set tempo is not ready until the digits are a tempo from 30 to 300, and Cancel closes the sheet without changes whatever is typed. *(Seen in the simulator on an iPhone 17 Pro from the dial: Cancel lined up with the keys' first column and Set tempo with the other two; Set tempo was grey before the first key and at 400, with the range amber, and amber at 140; Cancel at 140 closed the sheet with the tempo still 184. Swiping down, tapping outside, other screen widths and VoiceOver were not tried.)*
+- [x] The tempo sheet shows Cancel under the empty place of the keys and Set tempo under 0 and delete; Set tempo is not ready until the digits are a tempo from 30 to 300, and Cancel closes the sheet without changes whatever is typed. *(Seen in the simulator on an iPhone 17 Pro from the dial: Cancel lined up with the keys' first column and Set tempo with the other two; Set tempo was grey before the first key and at 400, with the range amber, and amber at 140; Cancel at 140 closed the sheet with the tempo still 184. Opened from Edit song by tapping the tempo, Set tempo was not ready before the first key, Cancel was one key wide under the empty place, and Cancel went back to the song sheet with 121 still showing. Swiping down, tapping outside, other screen widths and VoiceOver were not tried.)*
 - [ ] The tap tempo pill reads Tap again with an amber outline during a series and goes back two seconds after the last tap. *(The label and outline were seen in the simulator; going back after two seconds was not watched.)*
 - [x] Unlit ticks are visible against the background, and nothing in the header moves when Start is pressed. *(Seen in the simulator.)*
 - [x] On a tall screen the dial grows up to 340 pt and never wider than the space between the margins. *(Unit tested, and seen on an iPhone 17 Pro.)*
@@ -753,7 +753,7 @@ Songs and setlists:
 - [x] Tapping the tempo in the song sheet opens the tempo sheet, and Set tempo sets only the sheet's tempo. *(Tried in the simulator from Edit song; New song uses the same sheet and was not tried separately.)*
 - [x] In Edit song, `Save changes` is not ready until the name or a setting differs from the saved song; spaces at the ends of the name and a change undone by hand do not count. *(Unit tested. In the simulator on an iPhone 17 Pro it was grey on opening and turned amber after one tap on +.)*
 - [x] The song sheet has Cancel at the left of the save button, in one row at the bottom, in New song and Edit song. *(Seen in the simulator on an iPhone 17 Pro in both.)*
-- [ ] Cancel, swiping the song sheet down and tapping outside it each close it at once without saving and without asking, with or without changes. *(In the simulator on an iPhone 17 Pro: in New song with a typed name, Cancel closed the sheet and made no song; in Edit song with the tempo changed by +, swiping down closed it with no question and the song unchanged. Cancel in Edit song, swiping New song down and tapping outside were not tried; an earlier tap outside made with the simulator tool did not close the sheet, so tapping outside has not been seen working. VoiceOver was not tried.)*
+- [ ] Cancel, swiping the song sheet down and tapping outside it each close it at once without saving and without asking, with or without changes. *(In the simulator on an iPhone 17 Pro: in New song with a typed name, Cancel closed the sheet and made no song; in Edit song, after one tap on + (120 to 121) had turned `Save changes` amber, Cancel closed the sheet and the song still showed 120 BPM in the library; in Edit song with the tempo changed by +, swiping down closed it with no question and the song unchanged. Swiping New song down and tapping outside were not tried; an earlier tap outside made with the simulator tool did not close the sheet, so tapping outside has not been seen working. VoiceOver was not tried.)*
 - [x] The song sheet shows the accent tiles below the time signature row with no heading. *(Seen in the simulator on an iPhone 17 Pro, in Edit song and New song. The "Accents" group with VoiceOver was not tried.)*
 - [x] Row dividers in the library's lists end at the 20 pt margin, in line with the ⋯ buttons and the controls line's divider. *(Measured on simulator screenshots on an iPhone 17 Pro, of the Songs tab and of a setlist with its drag handles. The Setlists tab and the Add song screen use the same rows and were not looked at.)*
 - [x] Taking a song out of a setlist shows the Undo bar, and Undo puts it back in its place. *(Unit tested, including the loaded song's position, and tried in the simulator.)*
