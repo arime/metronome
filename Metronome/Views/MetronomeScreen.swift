@@ -62,6 +62,7 @@ struct MetronomeScreen: View {
             switch ScreenshotScene.current {
             case .library?, .setlist?: isLibraryShown = true
             case .settings?: isSettingsShown = true
+            case .trackSync?: isSyncShown = true
             default: break
             }
         }

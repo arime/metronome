@@ -714,10 +714,7 @@ private struct SongRow<MenuContent: View>: View {
                             .font(.system(size: 17, weight: isLoaded ? .bold : .semibold))
                             .foregroundStyle(isLoaded ? Theme.amber : Theme.dialWhite)
                             .lineLimit(1)
-                        Text(song.detail + (isLoaded ? " · loaded" : ""))
-                            .font(.system(size: 13))
-                            .foregroundStyle(Theme.muted)
-                            .lineLimit(1)
+                        SongDetailLine(song: song, isLoaded: isLoaded)
                     }
                     Spacer(minLength: 0)
                 }
@@ -737,6 +734,32 @@ private struct SongRow<MenuContent: View>: View {
             .accessibilityLabel("More for \(song.name)")
         }
         .frame(height: 62)
+    }
+}
+
+/// A song row's second line: tempo and time signature, a music note when the song has a
+/// backing track (whether or not its file is here), and `· loaded` on the loaded song's row.
+/// The same on the Songs tab, in a setlist and on the Add song screen.
+struct SongDetailLine: View {
+    let song: Song
+    var isLoaded = false
+
+    var body: some View {
+        HStack(spacing: 5) {
+            if song.track == nil {
+                Text(song.detail + (isLoaded ? " · loaded" : ""))
+            } else {
+                Text(song.detail)
+                Image(systemName: "music.note")
+                    .font(.system(size: 13))
+                if isLoaded {
+                    Text("· loaded")
+                }
+            }
+        }
+        .font(.system(size: 13))
+        .foregroundStyle(Theme.muted)
+        .lineLimit(1)
     }
 }
 
@@ -807,9 +830,10 @@ extension Song {
         "\(settings.bpm) BPM · \(settings.timeSignature.rawValue)"
     }
 
-    /// For example "Harbour Lights, 120 beats per minute, 4/4".
+    /// For example "Harbour Lights, 120 beats per minute, 4/4", and ", backing track" when it has one.
     var spokenDescription: String {
         "\(name), \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)"
+            + (track == nil ? "" : ", backing track")
     }
 }
 

@@ -330,6 +330,12 @@ final class MetronomeModel {
         track.map { trackFiles.hasFile($0.fileID) } ?? false
     }
 
+    /// Whether a song's backing-track file is on this device; false for a song without a track.
+    /// The song sheet asks it for the song being edited, which need not be the loaded one.
+    func hasTrackFile(for song: Song) -> Bool {
+        isPlayable(song.track)
+    }
+
     /// Copies a picked file into the store; false when it cannot be copied. The picked file stays.
     private func store(_ picked: PickedTrack, as fileID: UUID) -> Bool {
         do {

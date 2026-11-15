@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Creates or edits a song. A new song starts from the metronome's current settings;
 /// an edited one from its own. The tempo, time signature and accents in the sheet can be
@@ -23,6 +24,14 @@ struct SongSheet: View {
     @State private var addToSetlist = true
     @State private var isPickerShown = false
     @State private var isTempoEntryShown = false
+    /// What saving does to the backing track; the row shows the result.
+    @State private var trackEdit = TrackEdit.keep
+    /// The edited song has a track whose file is not on this device. Read once, when the sheet opens.
+    @State private var isSavedTrackMissing = false
+    @State private var isFilePickerShown = false
+    /// True while a picked file is copied and read; the row is dimmed and the save button waits.
+    @State private var isReadingPick = false
+    @State private var isUnplayableShown = false
     /// The sheet's height. Starts near the usual height, then follows the content.
     @State private var sheetHeight: CGFloat = 560
     @FocusState private var isNameFocused: Bool
@@ -37,9 +46,29 @@ struct SongSheet: View {
         return nil
     }
 
-    /// Edit song also needs something changed; New song only a name.
+    /// Edit song also needs something changed; New song only a name. Never while a picked file is read.
     private var canSave: Bool {
-        (editedSong.map(SongSheetChanges.init(editing:)) ?? .newSong).canSave(name: name, settings: draft)
+        !isReadingPick
+            && (editedSong.map(SongSheetChanges.init(editing:)) ?? .newSong)
+                .canSave(name: name, settings: draft, track: trackEdit)
+    }
+
+    /// The track as saving would leave it.
+    private enum TrackState: Equatable {
+        case none, file(String), missing
+    }
+
+    private var trackState: TrackState {
+        switch trackEdit {
+        case .attach(let picked): .file(picked.fileName)
+        case .remove: .none
+        case .keep:
+            if let track = editedSong?.track {
+                isSavedTrackMissing ? .missing : .file(track.fileName)
+            } else {
+                .none
+            }
+        }
     }
 
     var body: some View {
@@ -63,6 +92,7 @@ struct SongSheet: View {
                 signature
                 // No heading, as on the metronome screen: the tiles say what they are.
                 accents
+                backingTrack
                 if let setlist {
                     Toggle(isOn: $addToSetlist) {
                         Text("Add to \(setlist.name)")
@@ -110,6 +140,7 @@ struct SongSheet: View {
                 // the name, as the change is more often to the tempo or accents.
                 name = editedSong.name
                 draft = editedSong.settings
+                isSavedTrackMissing = editedSong.track != nil && !model.hasTrackFile(for: editedSong)
             } else {
                 draft = model.settings
                 isNameFocused = true
@@ -127,6 +158,101 @@ struct SongSheet: View {
         .sheet(isPresented: $isTempoEntryShown) {
             TempoEntrySheet(current: draft.bpm) { draft.setBPM($0) }
                 .environment(model)
+        }
+        .fileImporter(isPresented: $isFilePickerShown, allowedContentTypes: [.audio]) { result in
+            switch result {
+            case .success(let url): read(url)
+            case .failure: isUnplayableShown = true
+            }
+        }
+        .alert("This file can't be played", isPresented: $isUnplayableShown) {
+            Button("OK", role: .cancel) {}
+        }
+    }
+
+    /// Attaches, replaces or removes the track (spec 10.3). The text opens the Files picker in
+    /// every state; × is a separate target that only removes.
+    private var backingTrack: some View {
+        let state = trackState
+        return HStack(spacing: 0) {
+            Button {
+                isNameFocused = false
+                isFilePickerShown = true
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "music.note")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Theme.muted)
+                    Group {
+                        switch state {
+                        case .none:
+                            Text("Add backing track").foregroundStyle(Theme.dialWhite)
+                        case .file(let fileName):
+                            Text(fileName).foregroundStyle(Theme.dialWhite)
+                        case .missing:
+                            Text("Track missing").foregroundStyle(Theme.amber)
+                        }
+                    }
+                    .font(.system(size: 16, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    Spacer(minLength: 0)
+                }
+                .padding(.leading, 16)
+                // Without ×, the text keeps clear of the row's right end.
+                .padding(.trailing, state == .none ? 16 : 0)
+                .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(trackLabel(for: state))
+            .accessibilityAddTraits(.isButton)
+            if state != .none {
+                Button(action: removeTrack) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Theme.muted)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove backing track")
+            }
+        }
+        .frame(height: 60)
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .opacity(isReadingPick ? 0.4 : 1)
+        .allowsHitTesting(!isReadingPick)
+    }
+
+    private func trackLabel(for state: TrackState) -> String {
+        switch state {
+        case .none: "Add backing track"
+        case .file(let fileName): "Backing track, \(fileName)"
+        case .missing: "Track missing"
+        }
+    }
+
+    /// Back to no track. A file picked for a song that had none just goes away, so saving
+    /// never asks to remove a track that is not there.
+    private func removeTrack() {
+        trackEdit = editedSong?.track == nil ? .keep : .remove
+    }
+
+    /// Copies and reads the picked file away from the main actor, as a long, mostly silent
+    /// file is read to its end. A file that cannot be read leaves the row as it was.
+    private func read(_ url: URL) {
+        isReadingPick = true
+        Task {
+            do {
+                trackEdit = .attach(try await Task.detached(priority: .userInitiated) {
+                    try PickedFileReader.read(url)
+                }.value)
+            } catch {
+                isUnplayableShown = true
+            }
+            isReadingPick = false
         }
     }
 
@@ -227,14 +353,44 @@ struct SongSheet: View {
     }
 
     private func save() {
+        var picked: PickedTrack?
+        if case .attach(let track) = trackEdit { picked = track }
         switch purpose {
         case .edit(let song):
-            model.editSong(song.id, name: name, settings: draft)
+            model.editSong(song.id, name: name, settings: draft, track: trackEdit)
         case .saveAsNew:
-            model.saveAsNewSong(name: name, settings: draft)
+            model.saveAsNewSong(name: name, settings: draft, track: picked)
         case .library:
-            model.createSong(name: name, settings: draft, addingTo: addToSetlist ? setlist?.id : nil)
+            model.createSong(name: name, settings: draft, addingTo: addToSetlist ? setlist?.id : nil, track: picked)
         }
         dismiss()
+    }
+}
+
+/// Turns a file chosen in the Files picker into a `PickedTrack`: a copy in a new temporary
+/// folder, under the file's own name, checked as audio and with its first sound found.
+private enum PickedFileReader {
+    static func read(_ picked: URL) throws -> PickedTrack {
+        let manager = FileManager.default
+        let folder = manager.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        let copy = folder.appending(path: picked.lastPathComponent)
+        do {
+            // A file from the picker can be opened only while access is held; the copy is made then.
+            let isAccessing = picked.startAccessingSecurityScopedResource()
+            defer { if isAccessing { picked.stopAccessingSecurityScopedResource() } }
+            try manager.createDirectory(at: folder, withIntermediateDirectories: true)
+            try manager.copyItem(at: picked, to: copy)
+        } catch {
+            try? manager.removeItem(at: folder)
+            throw error
+        }
+        do {
+            _ = try TrackAudio.length(of: copy)
+            let firstBeat = try TrackAudio.firstSound(in: copy)
+            return PickedTrack(url: copy, fileName: picked.lastPathComponent, firstBeat: firstBeat)
+        } catch {
+            try? manager.removeItem(at: folder)
+            throw error
+        }
     }
 }

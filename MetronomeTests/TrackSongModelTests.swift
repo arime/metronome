@@ -191,6 +191,14 @@ struct TrackSongModelTests {
 
     // MARK: - Attaching, replacing and removing
 
+    @Test func whetherASongsFileIsHereIsReadForAnySong() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        #expect(model.hasTrackFile(for: setup.song) == false)
+        #expect(model.hasTrackFile(for: setup.plain) == false)
+        #expect(model.hasTrackFile(for: setup.other))
+    }
+
     @Test func attachingAFileInEditStoresItAndGuessesNothingItself() throws {
         let setup = try makeModel()
         let model = setup.model

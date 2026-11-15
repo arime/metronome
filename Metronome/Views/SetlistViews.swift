@@ -265,9 +265,7 @@ struct AddSongsView: View {
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(Theme.dialWhite)
                                 .lineLimit(1)
-                            Text(song.detail)
-                                .font(.system(size: 13))
-                                .foregroundStyle(Theme.muted)
+                            SongDetailLine(song: song)
                         }
                         Spacer(minLength: 0)
                         Image(systemName: isIncluded ? "checkmark.circle.fill" : "circle")
