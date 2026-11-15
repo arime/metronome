@@ -7,64 +7,21 @@ struct TrackTempoRow: View {
     /// The screen's side margin, which the picker shares.
     var sideMargin: CGFloat = Theme.sideMargin
     @State private var isPickerShown = false
-    @ScaledMetric(relativeTo: .subheadline) private var tapLabelSize = 15.0
-    /// Goes up by one per tap; restarts the wait for the end of the series.
-    @State private var tapCount = 0
-    /// True from a tap until the series would start over, two seconds later.
-    @State private var isTapping = false
 
     private let height = ScreenLayout.trackRowHeight
 
     var body: some View {
         HStack(spacing: 8) {
             StepButton(symbol: "minus", label: "Slower", size: height) { model.nudgeBPM(by: -1) }
-            tapPill
+            // The shorter labels fit the narrower pill.
+            TapTempoPill(
+                idleLabel: "Tap", seriesLabel: "Again", height: height,
+                iconSpacing: 6, horizontalPadding: 10, minimumScaleFactor: 0.6
+            )
             StepButton(symbol: "plus", label: "Faster", size: height) { model.nudgeBPM(by: 1) }
             signatureChip
         }
         .frame(height: height)
-    }
-
-    /// As in the tempo controls, with the shorter labels the narrower pill needs.
-    private var tapPill: some View {
-        Button {
-            model.tapTempo(at: ProcessInfo.processInfo.systemUptime)
-            tapCount += 1
-            isTapping = true
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "hand.tap")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.amber)
-                // Both labels are laid out, so the pill keeps its width when they swap.
-                // They take no touches themselves, so a touch always reaches the button.
-                ZStack {
-                    tapLabel("Tap").opacity(isTapping ? 0 : 1)
-                    tapLabel("Again").opacity(isTapping ? 1 : 0)
-                }
-                .allowsHitTesting(false)
-            }
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity)
-            .frame(height: height)
-            .overlay(Capsule().strokeBorder(isTapping ? Theme.amber : Theme.line, lineWidth: isTapping ? 1.5 : 1))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Tap tempo")
-        .task(id: tapCount) {
-            guard tapCount > 0 else { return }
-            try? await Task.sleep(for: .seconds(TapTempo.seriesTimeout))
-            if !Task.isCancelled { isTapping = false }
-        }
-    }
-
-    private func tapLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: tapLabelSize, weight: .semibold))
-            .foregroundStyle(Theme.dialWhite)
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
     }
 
     /// The value and a chevron, with no label; opens the picker like the time signature row.

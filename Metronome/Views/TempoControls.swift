@@ -4,56 +4,73 @@ import SwiftUI
 struct TempoControls: View {
     nonisolated static let height: CGFloat = 60
     @Environment(MetronomeModel.self) private var model
-    @ScaledMetric(relativeTo: .subheadline) private var tapLabelSize = 15.0
+
+    var body: some View {
+        HStack(spacing: 12) {
+            StepButton(symbol: "minus", label: "Slower", size: Self.height) { model.nudgeBPM(by: -1) }
+            TapTempoPill(height: Self.height)
+            StepButton(symbol: "plus", label: "Faster", size: Self.height) { model.nudgeBPM(by: 1) }
+        }
+    }
+}
+
+/// The outlined Tap tempo pill, with the hand icon. It fills the width it is given. While a
+/// series is open, from a tap until it would start over two seconds later, the outline is
+/// amber and the label changes. Used on both tempo rows and in the Sync sheet.
+struct TapTempoPill: View {
+    @Environment(MetronomeModel.self) private var model
+    var idleLabel = "Tap tempo"
+    var seriesLabel = "Tap again"
+    let height: CGFloat
+    var iconSpacing: CGFloat = 8
+    var horizontalPadding: CGFloat = 20
+    var minimumScaleFactor: CGFloat = 0.7
+    @ScaledMetric(relativeTo: .subheadline) private var labelSize = 15.0
     /// Goes up by one per tap; restarts the wait for the end of the series.
     @State private var tapCount = 0
     /// True from a tap until the series would start over, two seconds later.
     @State private var isTapping = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            StepButton(symbol: "minus", label: "Slower", size: Self.height) { model.nudgeBPM(by: -1) }
-            Button {
-                model.tapTempo(at: ProcessInfo.processInfo.systemUptime)
-                tapCount += 1
-                isTapping = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "hand.tap")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Theme.amber)
-                    // Both labels are laid out, so the pill keeps its width when they swap.
-                    // They take no touches themselves: a touch on the invisible one would
-                    // otherwise be lost instead of reaching the button.
-                    ZStack {
-                        tapLabel("Tap tempo").opacity(isTapping ? 0 : 1)
-                        tapLabel("Tap again").opacity(isTapping ? 1 : 0)
-                    }
-                    .allowsHitTesting(false)
+        Button {
+            model.tapTempo(at: ProcessInfo.processInfo.systemUptime)
+            tapCount += 1
+            isTapping = true
+        } label: {
+            HStack(spacing: iconSpacing) {
+                Image(systemName: "hand.tap")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Theme.amber)
+                // Both labels are laid out, so the pill keeps its width when they swap.
+                // They take no touches themselves: a touch on the invisible one would
+                // otherwise be lost instead of reaching the button.
+                ZStack {
+                    label(idleLabel).opacity(isTapping ? 0 : 1)
+                    label(seriesLabel).opacity(isTapping ? 1 : 0)
                 }
-                .padding(.horizontal, 20)
-                .frame(maxWidth: .infinity)
-                .frame(height: Self.height)
-                .overlay(Capsule().strokeBorder(isTapping ? Theme.amber : Theme.line, lineWidth: isTapping ? 1.5 : 1))
-                .contentShape(Capsule())
+                .allowsHitTesting(false)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Tap tempo")
-            .task(id: tapCount) {
-                guard tapCount > 0 else { return }
-                try? await Task.sleep(for: .seconds(TapTempo.seriesTimeout))
-                if !Task.isCancelled { isTapping = false }
-            }
-            StepButton(symbol: "plus", label: "Faster", size: Self.height) { model.nudgeBPM(by: 1) }
+            .padding(.horizontal, horizontalPadding)
+            .frame(maxWidth: .infinity)
+            .frame(height: height)
+            .overlay(Capsule().strokeBorder(isTapping ? Theme.amber : Theme.line, lineWidth: isTapping ? 1.5 : 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Tap tempo")
+        .task(id: tapCount) {
+            guard tapCount > 0 else { return }
+            try? await Task.sleep(for: .seconds(TapTempo.seriesTimeout))
+            if !Task.isCancelled { isTapping = false }
         }
     }
 
-    private func tapLabel(_ text: String) -> some View {
+    private func label(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: tapLabelSize, weight: .semibold))
+            .font(.system(size: labelSize, weight: .semibold))
             .foregroundStyle(Theme.dialWhite)
             .lineLimit(1)
-            .minimumScaleFactor(0.7)
+            .minimumScaleFactor(minimumScaleFactor)
     }
 }
 
