@@ -86,7 +86,7 @@ enum SyncClock {
 
 /// A song together with the time each of its parts last changed, so two copies can be combined.
 struct SongRecord: Codable, Equatable, Sendable, Identifiable {
-    static let nameKey = "name", tempoKey = "tempo", meterKey = "meter"
+    static let nameKey = "name", tempoKey = "tempo", meterKey = "meter", trackKey = "track"
 
     let id: UUID
     var created: Date
@@ -114,7 +114,8 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
         return .object(["signature": signature, "accents": .array(accents)])
     }
 
-    /// nil when deleted, or when a known part is missing or unreadable.
+    /// nil when deleted, or when the name, tempo or meter part is missing or unreadable.
+    /// A missing, empty or unreadable track part only means no track.
     var song: Song? {
         guard deleted == nil,
               let name = parts[Self.nameKey]?.value.decoded(String.self),
@@ -123,7 +124,12 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
               let signature = meter["signature"]?.decoded(TimeSignature.self),
               let accents = meter["accents"]?.decoded([Int].self)
         else { return nil }
-        return Song(id: id, name: name, settings: MetronomeSettings(bpm: bpm, timeSignature: signature, accents: Set(accents)))
+        return Song(
+            id: id,
+            name: name,
+            settings: MetronomeSettings(bpm: bpm, timeSignature: signature, accents: Set(accents)),
+            track: parts[Self.trackKey]?.value.decoded(BackingTrack.self)
+        )
     }
 
     /// The latest part time; `created` when there are no parts.
@@ -140,6 +146,17 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
     mutating func setSettings(_ settings: MetronomeSettings, now: Date) {
         set(Self.tempoKey, to: Self.tempoValue(settings), now: now)
         set(Self.meterKey, to: Self.meterValue(settings), now: now)
+    }
+
+    /// Stamps the part only when the value differs. nil writes JSON null, so the removal syncs;
+    /// a song that never had a track keeps no part.
+    mutating func setTrack(_ track: BackingTrack?, now: Date) {
+        guard let track else {
+            if parts[Self.trackKey] != nil { set(Self.trackKey, to: .null, now: now) }
+            return
+        }
+        guard let value = try? JSONValue(encoding: track) else { return }
+        set(Self.trackKey, to: value, now: now)
     }
 
     private mutating func set(_ key: String, to value: JSONValue, now: Date) {

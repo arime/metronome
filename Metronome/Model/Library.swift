@@ -5,6 +5,7 @@ struct Song: Codable, Equatable, Identifiable, Sendable {
     let id: UUID
     var name: String
     var settings: MetronomeSettings
+    var track: BackingTrack? = nil
 }
 
 extension Song {
@@ -142,10 +143,11 @@ struct Library: Codable, Equatable, Sendable {
 
     /// Its creation time is later than every other song's, so creation order survives equal clock readings.
     @discardableResult
-    mutating func addSong(name: String, settings: MetronomeSettings, now: Date) -> Song? {
+    mutating func addSong(name: String, settings: MetronomeSettings, track: BackingTrack? = nil, now: Date) -> Song? {
         guard let name = Self.cleanName(name) else { return nil }
         let created = SyncClock.stamp(now, after: songRecords.values.map(\.created).max())
-        let record = SongRecord(id: UUID(), name: name, settings: settings.sanitized(), created: created, now: now)
+        var record = SongRecord(id: UUID(), name: name, settings: settings.sanitized(), created: created, now: now)
+        record.setTrack(track, now: now)
         songRecords[record.id] = record
         return record.song
     }
@@ -159,6 +161,17 @@ struct Library: Codable, Equatable, Sendable {
     mutating func updateSong(_ id: UUID, settings: MetronomeSettings, now: Date) {
         guard song(id: id) != nil else { return }
         songRecords[id]?.setSettings(settings.sanitized(), now: now)
+    }
+
+    /// nil removes the track.
+    mutating func setTrack(_ id: UUID, to track: BackingTrack?, now: Date) {
+        guard song(id: id) != nil else { return }
+        songRecords[id]?.setTrack(track, now: now)
+    }
+
+    /// The file identifiers of every song that is not deleted.
+    var referencedFileIDs: Set<UUID> {
+        Set(songs.compactMap { $0.track?.fileID })
     }
 
     /// Leaves a marker. Setlists are not edited: the song is hidden from them,
