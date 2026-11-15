@@ -235,6 +235,12 @@ final class AudioClickEngine: ClickEngine {
             track?.firstClickIndex = 0
             return
         }
+        // The engine can have stopped before its notification arrives; playing a node
+        // of a stopped engine raises an exception.
+        guard engine.isRunning else {
+            stoppedExternally()
+            return
+        }
         startPlayers(at: time, firstClickIndex: 0)
         scheduleDueBeats()
     }
