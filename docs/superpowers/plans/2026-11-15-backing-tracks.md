@@ -323,7 +323,7 @@ Each beat's sample time is worked out from its own index (`startSampleTime + ((g
 @Test func aSlowerTempoMovesLaterBeatsOntoTheNewGrid() // 120 -> 60 after 4 beats: next beat is a multiple of 1 s after firstBeat
 @Test func aNudgedFirstBeatMovesLaterBeats()          // firstBeat 0.48 -> 0.49: later beats are 480 samples later
 @Test func aNewGridBeatRightAfterTheLastOneIsSkipped() // the next new-grid beat 0.1 interval after the last returned: skipped, the one after is returned
-@Test func rapidTempoChangesNeverBunchOrStall()       // Review Focus 4: 200 calls stepping bpm 120...180...120 every 25 ms of horizon: gaps between consecutive beats all >= 0.5 * and <= 2.0 * the larger interval
+@Test func rapidTempoChangesNeverBunchOrStall()       // Review Focus 4: 200 calls stepping bpm 120...180...120 every 25 ms of horizon: each gap >= 0.5 * the interval of the grid the later beat is on, and <= 2.0 * the larger interval
 @Test func beatTimesDoNotDriftOverTenMinutes()        // Review Focus 5: 44,100 Hz and 48,000 Hz, 137 BPM: beat 1370 is within 1 sample of the exact time
 @Test func noBeatAtOrAfterTheEndOfTheFile()
 @Test func aTimeSignatureChangeTakesTheBarFromTheFirstBeat() // 4/4 -> 3/4 mid-file: bar beat of the next beat == new grid.barBeat(ofBeat: n)

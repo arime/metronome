@@ -123,7 +123,17 @@ private final class ScreenshotEngine: ClickEngine {
         Task { @MainActor [weak self] in self?.onBeat?(beat) }
     }
 
+    var onTrackEnded: (() -> Void)?
+    var trackTime: TimeInterval? { nil }
+
+    func start(with settings: MetronomeSettings, track: TrackPlayback) throws {
+        try start(with: settings)
+    }
+
     func update(_ settings: MetronomeSettings, startNewBar: Bool) {}
+    func seekTrack(to time: TimeInterval) {}
+    func setFirstBeat(_ firstBeat: TimeInterval) {}
+    func setMix(clickGain: Float, trackGain: Float) {}
     func setMuted(_ muted: Bool) {}
     func setSound(_ sound: ClickSound) {}
     func preview(_ sound: ClickSound) {}

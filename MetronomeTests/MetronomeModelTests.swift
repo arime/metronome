@@ -16,6 +16,24 @@ final class FakeClickEngine: ClickEngine {
         startCount += 1
     }
 
+    var onTrackEnded: (() -> Void)?
+    var startedTracks: [TrackPlayback] = []
+    var trackStartError: Error?
+    var seeks: [TimeInterval] = []
+    var firstBeats: [TimeInterval] = []
+    var mixes: [(click: Float, track: Float)] = []
+    var trackTime: TimeInterval?
+
+    func start(with settings: MetronomeSettings, track: TrackPlayback) throws {
+        if let trackStartError { throw trackStartError }
+        startedTracks.append(track)
+        startCount += 1
+    }
+
+    func seekTrack(to time: TimeInterval) { seeks.append(time) }
+    func setFirstBeat(_ firstBeat: TimeInterval) { firstBeats.append(firstBeat) }
+    func setMix(clickGain: Float, trackGain: Float) { mixes.append((click: clickGain, track: trackGain)) }
+
     var muted = false
 
     var lastUpdateStartedNewBar: Bool?
