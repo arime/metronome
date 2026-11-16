@@ -16,6 +16,15 @@ struct MetronomeScreen: View {
             }
         }
         .background(Theme.ink.ignoresSafeArea())
+        // On the Group and not the header, which Sync mode takes away.
+        .sheet(isPresented: $isLibraryShown) {
+            LibrarySheet()
+                .environment(model)
+        }
+        .sheet(isPresented: $isSettingsShown) {
+            SettingsSheet()
+                .environment(model)
+        }
         // Labels follow Dynamic Type up to the largest size that still fits the layout.
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         #if DEBUG
@@ -92,14 +101,6 @@ struct MetronomeScreen: View {
         }
         .frame(height: 40)
         .animation(.easeOut(duration: 0.15), value: model.isSaveOffered)
-        .sheet(isPresented: $isLibraryShown) {
-            LibrarySheet()
-                .environment(model)
-        }
-        .sheet(isPresented: $isSettingsShown) {
-            SettingsSheet()
-                .environment(model)
-        }
     }
 
     /// Previous and Next sit beside Start only for a song loaded from a setlist, with the

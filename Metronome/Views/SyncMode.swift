@@ -113,6 +113,8 @@ private struct TapPad: View {
     }
 
     private var pad: some View {
+        // Read at most every 0.1 s, so it only dims the pad. A touch always goes to the model,
+        // which takes it only when it can count, so none is lost as the file starts.
         let canTap = model.canTapDownbeat
         let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
         return labels
@@ -127,12 +129,12 @@ private struct TapPad: View {
             .onChange(of: isPressed) { _, pressed in
                 if pressed { model.tapDownbeat() }
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Tap on beat 1")
-            .accessibilityValue(model.tapRun.spokenCountLine ?? "")
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { model.tapDownbeat() }
-            .disabled(!canTap)
+            // A button for VoiceOver, dimmed when a tap cannot count.
+            .accessibilityRepresentation {
+                Button("Tap on beat 1") { model.tapDownbeat() }
+                    .accessibilityValue(model.tapRun.spokenCountLine ?? "")
+                    .disabled(!canTap)
+            }
             // Laid over the pad and not inside it, so a touch on it never reaches the pad's gesture.
             .overlay(alignment: .topTrailing) {
                 StartOverButton(isDimmedAlone: canTap)

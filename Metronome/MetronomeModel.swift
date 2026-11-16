@@ -601,8 +601,8 @@ final class MetronomeModel {
     }
 
     /// In Sync mode the time signature and the accents go into the song at once, as they are, an
-    /// earlier unsaved accent change included; the metronome's tempo is never written. When then
-    /// nothing differs from the song, the Save button goes away at once, as after Save.
+    /// earlier unsaved accent change included; the metronome's tempo is never written. Nothing
+    /// then differs from the song, so the Save button goes away at once, as after Save.
     private func meterChanged() {
         guard isSyncModeShown, let id = loadedSongID else {
             userChangedSettings()
@@ -610,7 +610,7 @@ final class MetronomeModel {
         }
         library.updateSongMeter(id, settings: settings, now: now())
         persistSoon()
-        if isEdited { userChangedSettings() } else { syncSaveOffer() }
+        syncSaveOffer()
     }
 
     /// With a track the bar is worked out again from the offset, so no change starts a new bar.
