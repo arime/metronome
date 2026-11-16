@@ -40,6 +40,14 @@ struct TrackModelTests {
         #expect(model.isPlayingTrack)
     }
 
+    @Test func startAtZeroWithOneBarPlaysOneBarOfCountIn() throws {
+        let model = try makeModel(countIn: .oneBar)
+        model.togglePlayback()
+        let started = try #require(engine.startedTracks.last)
+        #expect(started.startTime == 0.48 - 2.0)
+        #expect(started.firstClickIndex == -4)
+    }
+
     @Test func countInOffStartsTheFileAtOnce() throws {
         let model = try makeModel(countIn: .off)
         model.togglePlayback()
@@ -89,6 +97,47 @@ struct TrackModelTests {
         #expect(model.trackTime == 0)
         model.togglePlayback()
         #expect(model.trackPosition == 0)
+    }
+
+    @Test func stopWithinTheFirstSecondGoesToZeroAndCountsInAgain() throws {
+        let model = try makeModel()
+        model.togglePlayback()
+        engine.trackTime = 0.4
+        model.togglePlayback()
+        #expect(model.trackPosition == 0)
+        model.togglePlayback()
+        let started = try #require(engine.startedTracks.last)
+        #expect(started.firstClickIndex == -8)
+    }
+
+    @Test func stopAfterTheFirstSecondKeepsThePositionWithoutCountIn() throws {
+        let model = try makeModel()
+        model.togglePlayback()
+        engine.trackTime = 1.2
+        model.togglePlayback()
+        #expect(model.trackPosition == 1.2)
+        model.togglePlayback()
+        let started = try #require(engine.startedTracks.last)
+        #expect(started.startTime == 1.2)
+        #expect(started.firstClickIndex == 0)
+    }
+
+    @Test func anInterruptionWithinTheFirstSecondGoesToZero() throws {
+        let model = try makeModel()
+        model.togglePlayback()
+        engine.trackTime = 0.7
+        engine.onStopped?()
+        #expect(model.trackPosition == 0)
+    }
+
+    @Test func aSeekWithinTheFirstSecondLandsOnZero() throws {
+        let model = try makeModel()
+        model.seekTrack(to: 0.6)
+        #expect(model.trackPosition == 0)
+        model.togglePlayback()
+        engine.trackTime = 20
+        model.seekTrack(to: 0.6)
+        #expect(engine.seeks == [0])
     }
 
     @Test func theEndOfTheTrackStopsAndGoesBackToZero() throws {

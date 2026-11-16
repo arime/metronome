@@ -183,10 +183,16 @@ final class MetronomeModel {
         becomeStopped()
     }
 
-    /// Stopped during the count-in, before the file started, the position stays at 0:00.
+    /// Stopped during the count-in, before the file started, the position stays at 0:00. A position
+    /// within the first second shows as 0:00, so it becomes 0:00 and the next Start counts in.
     private func keepTrackPosition() {
         guard isPlayingTrack else { return }
-        trackPosition = clampedToTrack(engine.trackTime ?? trackPosition)
+        trackPosition = roundedToStart(clampedToTrack(engine.trackTime ?? trackPosition))
+    }
+
+    /// Below one second, 0:00: whatever the elapsed time shows as 0:00 starts with the count-in.
+    private func roundedToStart(_ time: TimeInterval) -> TimeInterval {
+        time < 1 ? 0 : time
     }
 
     private func beatSounded(_ beat: ScheduledBeat) {
@@ -285,10 +291,10 @@ final class MetronomeModel {
         moveTrack(to: trackTime + seconds)
     }
 
-    /// From the progress bar, when the finger lifts.
+    /// From the progress bar, when the finger lifts. A drag to within the first second lands on 0:00.
     func seekTrack(to time: TimeInterval) {
         guard isTrackPlayable else { return }
-        moveTrack(to: time)
+        moveTrack(to: roundedToStart(time))
     }
 
     /// Stopped, moves the position; playing the file, carries on from there with no count-in.

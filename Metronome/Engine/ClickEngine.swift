@@ -22,7 +22,8 @@ protocol ClickEngine: AnyObject {
     /// an interruption, an audio route change or an engine failure.
     /// `trackTime` still answers while it runs, so the track's position can be kept.
     var onStopped: (() -> Void)? { get set }
-    /// Called once when the file has played to its end. Not called after stop() or a seek.
+    /// Called once when the file has played to its end, and also when a start or a seek lands at
+    /// or past the file's end. Not called after stop(), or for the part a seek leaves behind.
     var onTrackEnded: (() -> Void)? { get set }
 
     /// Starts on beat 1 with the first click immediately.

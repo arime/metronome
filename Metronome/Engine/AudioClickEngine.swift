@@ -295,7 +295,7 @@ final class AudioClickEngine: ClickEngine {
         let generation = trackGeneration
         guard frameCount > 0 else {
             // Started at the very end: the file is over before it begins.
-            Task { [weak self] in self?.trackFinished(token: token, generation: generation) }
+            Task { [weak self] in self?.trackFinished(token: token, generation: generation, heardToEnd: true) }
             return
         }
         // On the track player's timeline, which counts in the file's rate.
@@ -308,12 +308,27 @@ final class AudioClickEngine: ClickEngine {
         }
     }
 
-    /// The file has been heard to its end, or its segment was dropped by a stop or a seek.
-    private func trackFinished(token: Int, generation: Int) {
+    /// The file has been heard to its end, or its segment was dropped by a stop, a seek or the
+    /// system stopping the engine. The last can arrive before the interruption's notification,
+    /// so it counts as the end only while the engine runs and the place heard is within
+    /// `endTolerance` of the file's end; otherwise playback ended from outside and the position
+    /// is kept. `heardToEnd` is set when the run started at or past the end.
+    private func trackFinished(token: Int, generation: Int, heardToEnd: Bool = false) {
         guard runToken == token, trackGeneration == generation, trackClock != nil else { return }
+        if !heardToEnd {
+            guard engine.isRunning, let length = track?.length, let heard = trackTime,
+                  heard >= length - Self.endTolerance
+            else {
+                stoppedExternally()
+                return
+            }
+        }
         tearDown()
         onTrackEnded?()
     }
+
+    /// How far before the file's end the place heard may be when the file's last audio has played.
+    private static let endTolerance: TimeInterval = 0.5
 
     /// Back to a plain run's state: no file, and the click at full level.
     private func forgetTrack() {

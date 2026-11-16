@@ -145,11 +145,8 @@ struct TrackProgressBar: View {
 
     var body: some View {
         // The position is read from the engine and not observed, so it is redrawn while playing.
-        if model.isPlaying {
-            TimelineView(.periodic(from: .now, by: 0.1)) { _ in row }
-        } else {
-            row
-        }
+        // The timeline stays in place, paused while stopped, so a drag survives Start and Stop.
+        TimelineView(.animation(minimumInterval: 0.1, paused: !model.isPlaying)) { _ in row }
     }
 
     private var row: some View {
@@ -170,6 +167,8 @@ struct TrackProgressBar: View {
         .opacity(isMissing ? 0.4 : 1)
         .allowsHitTesting(!isMissing)
         .disabled(isMissing)
+        // It would read "0 seconds of 0 seconds"; the strip already says `Track missing`.
+        .accessibilityHidden(isMissing)
     }
 
     /// The line with the knob, and the times below it.
