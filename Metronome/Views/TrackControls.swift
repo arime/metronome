@@ -60,7 +60,7 @@ struct TrackTempoRow: View {
 }
 
 /// The card below the tiles: the file's name and Sync, then the playback row.
-/// Its height is fixed at `ScreenLayout.trackStripHeight`; it never shrinks.
+/// Its height is fixed; it never shrinks.
 struct TrackStrip: View {
     @Environment(MetronomeModel.self) private var model
     let openSync: () -> Void
@@ -101,7 +101,7 @@ struct TrackStrip: View {
         .padding(.bottom, 12)
         .padding(.leading, 16)
         .padding(.trailing, 14)
-        .frame(height: ScreenLayout.trackStripHeight)
+        .frame(height: 108)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 

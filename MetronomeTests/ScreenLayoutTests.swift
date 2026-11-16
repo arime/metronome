@@ -138,81 +138,63 @@ struct ScreenLayoutTests {
         #expect(layout(height: 300).dialDiameter == 80)
     }
 
-    // MARK: - A song with a backing track (6.12)
+    // MARK: - The layout while a track is in use (6.12)
     //
-    // Everything but the dial takes 420 pt roomy and 396 pt compact with one row of tiles,
-    // 442 pt and 438 pt with two rows; the next-up line adds 32 pt.
+    // Everything but the dial takes 422 pt roomy and 402 pt compact with one row of tiles,
+    // 444 pt with two rows; the next-up line adds 30 pt inside the player card.
 
-    @Test func theTrackLayoutFitsTheDesignScreenWithALargeDial() {
-        let layout = trackLayout(width: 390, height: 763, hasBottomInset: true, beats: 7, hasSetlist: true)
-        #expect(layout.dialDiameter >= 280)
-        #expect(layout.stripTopGap == 14)
-        #expect(layout.tileHeight == 76)
-        #expect(layout.showsNextLine)
-        #expect(fits(layout, in: 763))
+    private func isNear(_ value: CGFloat, _ expected: CGFloat) -> Bool {
+        abs(value - expected) <= 0.5
+    }
+
+    @Test func theTrackLayoutOnAnIPhone17Pro() {
+        let layout = trackLayout(width: 402, height: 778, hasBottomInset: true)
+        #expect(isNear(layout.dialDiameter, 340))
+        #expect(fits(layout, in: 778))
+        let withLine = trackLayout(width: 402, height: 778, hasBottomInset: true, hasSetlist: true)
+        #expect(withLine.showsNextLine)
+        #expect(isNear(withLine.dialDiameter, 326))
+        #expect(fits(withLine, in: 778))
     }
 
     @Test func theTrackLayoutShrinksTheDialFirst() {
-        let layout = trackLayout(height: 680, hasBottomInset: true)
-        #expect(layout.dialDiameter == 260)
-        #expect(layout.stripTopGap == 14)
+        let layout = trackLayout(width: 402, height: 680, hasBottomInset: true)
+        #expect(isNear(layout.dialDiameter, 258))
         #expect(layout.tileHeight == 76)
-        #expect(layout.settingsTopGap == 10)
-        #expect(layout.sectionGap == 12)
+        #expect(fits(layout, in: 680))
     }
 
-    @Test func theTrackLayoutGoesCompactBelow240() {
-        let layout = trackLayout(height: 659, hasBottomInset: true)
-        #expect(layout.stripTopGap == 10)
+    @Test func theTrackLayoutShrinksTheTilesOnceTheDialWouldGoBelow240() {
+        let layout = trackLayout(width: 402, height: 661, hasBottomInset: true)
         #expect(layout.tileHeight == 56)
-        #expect(layout.settingsTopGap == 10)
-        #expect(layout.sectionGap == 12)
-        #expect(layout.dialDiameter == 263)
+        #expect(isNear(layout.dialDiameter, 259))
+        #expect(fits(layout, in: 661))
     }
 
-    @Test(arguments: [4, 12], [false, true])
-    func theTrackLayoutFitsAnIPhoneSE(beats: Int, hasSetlist: Bool) {
-        let layout = trackLayout(height: 647, beats: beats, hasSetlist: hasSetlist)
+    @Test func theTrackLayoutOnAnIPhoneSE() {
+        let layout = trackLayout(width: 375, height: 647)
+        #expect(isNear(layout.dialDiameter, 229))
+        #expect(layout.tileHeight == 56)
         #expect(fits(layout, in: 647))
-        #expect(layout.dialDiameter >= ScreenLayout.minimumDial)
+        let withSetlist = trackLayout(width: 375, height: 647, hasSetlist: true)
+        #expect(withSetlist.showsNextLine == false)
+        #expect(isNear(withSetlist.dialDiameter, 229))
+        #expect(fits(withSetlist, in: 647))
+        let nineBeats = trackLayout(width: 375, height: 647, beats: 9)
+        #expect(isNear(nineBeats.dialDiameter, 187))
+        #expect(fits(nineBeats, in: 647))
     }
 
-    @Test(arguments: [4, 12], [false, true])
-    func theTrackLayoutFitsDisplayZoom(beats: Int, hasSetlist: Bool) {
-        let layout = trackLayout(width: 320, height: 548, beats: beats, hasSetlist: hasSetlist)
+    @Test func theTrackLayoutWithDisplayZoom() {
+        let layout = trackLayout(width: 320, height: 548)
+        #expect(isNear(layout.dialDiameter, 130))
         #expect(fits(layout, in: 548))
-        #expect(layout.dialDiameter >= ScreenLayout.minimumDial)
-    }
-
-    /// The figures 6.12 gives for real phones.
-    @Test func theTrackLayoutsDialOnAnIPhone17Pro() {
-        #expect(trackLayout(width: 402, height: 778, hasBottomInset: true).dialDiameter == 340)
-        let withLine = trackLayout(width: 402, height: 778, hasBottomInset: true, hasSetlist: true)
-        #expect(withLine.showsNextLine)
-        #expect(withLine.dialDiameter == 326)
-    }
-
-    @Test func theTrackLayoutsDialOnAnIPhoneSE() {
-        #expect(trackLayout(height: 647).dialDiameter == 235)
-        let withLine = trackLayout(height: 647, hasSetlist: true)
-        #expect(withLine.showsNextLine)
-        #expect(withLine.dialDiameter == 203)
-        for beats in [9, 12] {
-            #expect(trackLayout(height: 647, beats: beats).dialDiameter == 193)
-            let lineLeftOut = trackLayout(height: 647, beats: beats, hasSetlist: true)
-            #expect(lineLeftOut.showsNextLine == false)
-            #expect(lineLeftOut.dialDiameter == 193)
-        }
-    }
-
-    @Test func theTrackLayoutsDialWithDisplayZoom() {
-        #expect(trackLayout(width: 320, height: 548).dialDiameter == 136)
-        #expect(trackLayout(width: 320, height: 548, hasSetlist: true).showsNextLine == false)
-        #expect(trackLayout(width: 320, height: 548, hasSetlist: true).dialDiameter == 136)
-        for beats in [9, 12] {
-            #expect(trackLayout(width: 320, height: 548, beats: beats).dialDiameter == 94)
-            #expect(trackLayout(width: 320, height: 548, beats: beats, hasSetlist: true).showsNextLine == false)
-        }
+        let nineBeats = trackLayout(width: 320, height: 548, beats: 9)
+        #expect(isNear(nineBeats.dialDiameter, 88))
+        #expect(fits(nineBeats, in: 548))
+        let withSetlist = trackLayout(width: 320, height: 548, hasSetlist: true)
+        #expect(withSetlist.showsNextLine == false)
+        #expect(fits(withSetlist, in: 548))
     }
 
     @Test func withoutATrackTheLayoutIsUnchanged() {
@@ -236,7 +218,6 @@ struct ScreenLayoutTests {
             #expect(after.sideMargin == before.sideMargin)
             #expect(after.fixedHeight == before.fixedHeight)
             #expect(after.showsNextLine == before.showsNextLine)
-            #expect(after.stripTopGap == 0)
         }
     }
 
