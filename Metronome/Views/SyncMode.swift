@@ -20,31 +20,39 @@ struct SyncModeView: View {
                 SyncModeHeader()
                     .frame(height: SyncModeLayout.headerHeight - 8)
                     .padding(.top, 8)
-                ScrollView {
-                    VStack(spacing: 0) {
-                        TimeSignatureRow(sideMargin: layout.sideMargin)
-                            .padding(.top, SyncModeLayout.rowTopGap)
-                        // Two-row signatures keep their 44 pt tiles whatever the single-row height is.
-                        AccentTiles(singleRowTileHeight: layout.tileHeight)
-                            .padding(.top, SyncModeLayout.tilesTopGap)
-                        TapPad(showsHandIcon: layout.showsHandIcon)
-                            .frame(height: layout.padHeight)
-                            .padding(.top, SyncModeLayout.padGap)
-                        SyncSteppers()
-                            .padding(.top, SyncModeLayout.padGap)
-                        CountInRow()
-                            .padding(.top, SyncModeLayout.countInTopGap)
-                        MixRow()
-                            .padding(.top, SyncModeLayout.mixTopGap)
-                    }
+                // A scroll view only where the parts do not fit, so that elsewhere none can delay or
+                // claim a touch on the pad.
+                if layout.scrollOverflow > 0 {
+                    ScrollView { parts(layout) }
+                } else {
+                    parts(layout)
+                        .frame(maxHeight: .infinity, alignment: .top)
                 }
-                .scrollDisabled(layout.scrollOverflow <= 0)
-                .scrollIndicators(layout.scrollOverflow > 0 ? .automatic : .hidden)
                 PlaybackCard()
                     .padding(.top, SyncModeLayout.cardTopGap)
             }
             .padding(.horizontal, layout.sideMargin)
             .padding(.bottom, layout.bottomPadding)
+        }
+    }
+
+    /// Everything between the header and the playback card.
+    private func parts(_ layout: SyncModeLayout) -> some View {
+        VStack(spacing: 0) {
+            TimeSignatureRow(sideMargin: layout.sideMargin)
+                .padding(.top, SyncModeLayout.rowTopGap)
+            // Two-row signatures keep their 44 pt tiles whatever the single-row height is.
+            AccentTiles(singleRowTileHeight: layout.tileHeight)
+                .padding(.top, SyncModeLayout.tilesTopGap)
+            TapPad(showsHandIcon: layout.showsHandIcon)
+                .frame(height: layout.padHeight)
+                .padding(.top, SyncModeLayout.padGap)
+            SyncSteppers()
+                .padding(.top, SyncModeLayout.padGap)
+            CountInRow()
+                .padding(.top, SyncModeLayout.countInTopGap)
+            MixRow()
+                .padding(.top, SyncModeLayout.mixTopGap)
         }
     }
 }
