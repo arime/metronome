@@ -173,9 +173,9 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
         set(Self.tempoKey, to: value, now: now)
     }
 
-    /// Writes the song's tempo into a track part that has none, keeping the part's time, so the
-    /// track keeps the tempo it reads as when the song's tempo is about to change. Nothing is sent
-    /// for the part.
+    /// Before the song's tempo is changed on this device, writes it into a track part that has
+    /// none, keeping the part's time, so the track keeps the tempo it reads as and the part gets
+    /// no new time.
     private mutating func keepTrackTempo() {
         guard let part = parts[Self.trackKey], case .object(var fields) = part.value, fields["bpm"] == nil,
               let bpm = parts[Self.tempoKey]?.value.decoded(Int.self)
@@ -212,18 +212,10 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
         if let marker = deleted, marker <= lastChange { deleted = nil }
     }
 
-    /// When the copies' tempos differ, each copy's track part without a tempo first takes that
-    /// copy's own tempo, so whichever tempo wins, the track keeps the tempo it read as. Both copies
-    /// are treated alike, so the result is the same in either order.
     func merged(with other: SongRecord) -> SongRecord {
-        var mine = self, theirs = other
-        if parts[Self.tempoKey]?.value != other.parts[Self.tempoKey]?.value {
-            mine.keepTrackTempo()
-            theirs.keepTrackTempo()
-        }
-        var result = mine
+        var result = self
         result.created = min(created, other.created)
-        result.parts = Part.merge(mine.parts, theirs.parts)
+        result.parts = Part.merge(parts, other.parts)
         result.deleted = [deleted, other.deleted].compactMap { $0 }.max()
         result.dropMarkerIfEdited()
         return result

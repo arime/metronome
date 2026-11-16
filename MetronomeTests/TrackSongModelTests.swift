@@ -644,6 +644,23 @@ struct TrackSongModelTests {
         #expect(bEngine.stopCount == 0)
     }
 
+    @Test func aTrackTempoArrivingWithBackingTracksOffLeavesTheClickAlone() throws {
+        let (a, b, bEngine, _, song, _) = try twoDevicesPlayingATrack()
+        b.togglePlayback()
+        b.toggleBackingTracks()
+        b.togglePlayback()
+        #expect(b.isPlaying)
+        bEngine.lastUpdate = nil
+        clock.advance()
+        a.loadSong(song.id, from: nil)
+        a.nudgeTrackTempo(by: 2)
+        a.savePendingChanges()
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedTrack?.bpm == 102)
+        #expect(bEngine.lastUpdate == nil)
+        #expect(b.isPlaying)
+    }
+
     @Test func aTrackRemovedOnAnotherDeviceStopsItsPlayingTrack() throws {
         let (a, b, bEngine, bFiles, song, _) = try twoDevicesPlayingATrack()
         let fileID = try #require(song.track?.fileID)

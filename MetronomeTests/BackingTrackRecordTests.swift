@@ -213,29 +213,20 @@ import Testing
         #expect(library.songRecords[record.id]?.parts[SongRecord.trackKey]?.time == t(1))
     }
 
-    @Test func aSongTempoFromAnotherDeviceLeavesTheTrackTempo() throws {
+    @Test func mergingLeavesATrackPartWithoutATempoAlone() throws {
         let record = recordWithoutTrackTempo()
-        // The other device's copy, as an earlier build changes the tempo: the track part untouched.
+        // Another copy whose tempo changed while its track part stayed as it was.
         var other = record
         other.parts[SongRecord.tempoKey] = Part(time: t(5), value: .number(100))
-        var library = Library()
-        library.merge(songs: [record], setlists: [])
-        library.merge(songs: [other], setlists: [])
-        let merged = try #require(library.songRecords[record.id])
-        #expect(merged.song?.settings.bpm == 100)
-        #expect(merged.song?.track?.bpm == 96)
-        #expect(merged.parts[SongRecord.trackKey]?.time == t(1))
-        #expect(merged == other.merged(with: record))
-    }
-
-    @Test func aSongTempoSetHereThenSyncedKeepsTheTrackTempoOnBothDevices() throws {
-        let record = recordWithoutTrackTempo()
-        var here = record
-        here.setSettings(settings(100), now: t(5))
-        let there = record.merged(with: here)
-        #expect(there.song?.track?.bpm == 96)
-        #expect(here.merged(with: record).song?.track?.bpm == 96)
-        #expect(there == here.merged(with: record))
+        let merged = record.merged(with: other)
+        var expected = record
+        expected.parts[SongRecord.tempoKey] = other.parts[SongRecord.tempoKey]
+        #expect(merged == expected)
+        guard case .object(let fields)? = merged.parts[SongRecord.trackKey]?.value else {
+            Issue.record("not an object"); return
+        }
+        #expect(fields["bpm"] == nil)
+        #expect(merged.merged(with: other) == merged)
     }
 
     @Test func theTrackTempoIsKeptInRange() throws {
