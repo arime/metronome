@@ -110,6 +110,34 @@ import Testing
         #expect(library.referencedFileIDs == [kept.fileID])
     }
 
+    /// A song whose track part holds `value` as it arrived, for example from a later version.
+    private func record(trackPart value: JSONValue) -> SongRecord {
+        var record = record()
+        record.parts[SongRecord.trackKey] = Part(time: t(5), value: value)
+        return record
+    }
+
+    /// A track part as this version writes it, with `changes` on top.
+    private func trackPart(_ fileID: UUID, _ changes: [String: JSONValue] = [:]) -> JSONValue {
+        let fields: [String: JSONValue] = [
+            "fileID": .string(fileID.uuidString), "fileName": .string("Song.m4a"),
+            "firstBeat": .number(48), "countIn": .number(2), "mix": .number(0),
+        ]
+        return .object(fields.merging(changes) { $1 })
+    }
+
+    @Test func aTrackPartThisVersionCannotReadStillKeepsItsFile() {
+        let unknownCountIn = UUID(), extraField = UUID()
+        let laterCountIn = record(trackPart: trackPart(unknownCountIn, ["countIn": .number(4)]))
+        let laterField = record(trackPart: trackPart(extraField, ["swing": .number(0.6)]))
+        let empty = record(trackPart: .null)
+        let noIdentifier = record(trackPart: .object(["fileName": .string("Song.m4a")]))
+        #expect(laterCountIn.song?.track == nil)
+        var library = Library()
+        library.merge(songs: [laterCountIn, laterField, empty, noIdentifier], setlists: [])
+        #expect(library.referencedFileIDs == [unknownCountIn, extraField])
+    }
+
     @Test func aLibraryWithTracksEncodesAndDecodesUnchanged() throws {
         var library = Library()
         let song = library.addSong(name: "With", settings: settings(100), track: track(), now: t(0))!

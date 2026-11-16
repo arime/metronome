@@ -91,6 +91,20 @@ final class TrackFilesTests {
         #expect(!store.hasFile(alsoGone))
     }
 
+    @Test func removeAllDeletesCopiesLeftHalfMade() throws {
+        let kept = UUID()
+        try store.store(try makeFile(named: "A.wav", contents: "a"), as: kept)
+        let directory = root.appending(path: "Store")
+        let orphan = directory.appending(path: ".incoming-\(UUID().uuidString)")
+        let other = directory.appending(path: "Notes.txt")
+        try Data("half".utf8).write(to: orphan)
+        try Data("other".utf8).write(to: other)
+        store.removeAll(except: [kept])
+        #expect(!FileManager.default.fileExists(atPath: orphan.path()))
+        #expect(FileManager.default.fileExists(atPath: other.path()))
+        #expect(store.hasFile(kept))
+    }
+
     @Test func anUnknownIdentifierHasNoFile() {
         #expect(!store.hasFile(UUID()))
         #expect(store.url(for: UUID()) == nil)

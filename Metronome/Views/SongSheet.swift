@@ -32,6 +32,7 @@ struct SongSheet: View {
     /// The file being copied and read; while set the row is dimmed and the save button waits.
     @State private var pickToRead: URL?
     @State private var isUnplayableShown = false
+    @State private var isTrackNotStoredShown = false
     /// The sheet's height. Starts near the usual height, then follows the content.
     @State private var sheetHeight: CGFloat = 560
     @FocusState private var isNameFocused: Bool
@@ -192,6 +193,9 @@ struct SongSheet: View {
             if let pickedTrack { PickedFileReader.discard(pickedTrack) }
         }
         .alert("This file can't be played", isPresented: $isUnplayableShown) {
+            Button("OK", role: .cancel) {}
+        }
+        .alert("The track couldn't be saved", isPresented: $isTrackNotStoredShown) {
             Button("OK", role: .cancel) {}
         }
     }
@@ -362,18 +366,24 @@ struct SongSheet: View {
         .accessibilityLabel("Accents")
     }
 
+    /// When the picked file cannot be stored nothing is saved: the sheet stays open with
+    /// everything entered, the pick included, and says so (10.3).
     private func save() {
         let picked = pickedTrack
-        // The model copies the picked file into its own store; the sheet's copy then goes.
-        defer { if let picked { PickedFileReader.discard(picked) } }
-        switch purpose {
+        let saved = switch purpose {
         case .edit(let song):
             model.editSong(song.id, name: name, settings: draft, track: trackEdit)
         case .saveAsNew:
-            model.saveAsNewSong(name: name, settings: draft, track: picked)
+            model.saveAsNewSong(name: name, settings: draft, track: picked) != nil
         case .library:
-            model.createSong(name: name, settings: draft, addingTo: addToSetlist ? setlist?.id : nil, track: picked)
+            model.createSong(name: name, settings: draft, addingTo: addToSetlist ? setlist?.id : nil, track: picked) != nil
         }
+        guard saved else {
+            isTrackNotStoredShown = true
+            return
+        }
+        // The model has copied the picked file into its own store; the sheet's copy goes.
+        if let picked { PickedFileReader.discard(picked) }
         dismiss()
     }
 }

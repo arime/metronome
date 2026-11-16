@@ -132,6 +132,16 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
         )
     }
 
+    /// The file identifier in the track part, read on its own, so a part this version cannot read
+    /// whole, for example one written by a later version, still names its file. nil when the part
+    /// is missing, empty or has no readable identifier.
+    var trackFileID: UUID? {
+        guard case .object(let fields)? = parts[Self.trackKey]?.value,
+              case .string(let id)? = fields["fileID"]
+        else { return nil }
+        return UUID(uuidString: id)
+    }
+
     /// The latest part time; `created` when there are no parts.
     var lastChange: Date {
         parts.values.map(\.time).max() ?? created

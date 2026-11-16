@@ -644,11 +644,16 @@ final class MetronomeModel {
     }
 
     /// Creates a song and makes it the loaded one. It is in no setlist. When either song has a
-    /// playable track, playback stops. A picked file that cannot be stored leaves the song without a track.
+    /// playable track, playback stops. nil when the name is empty or a picked file cannot be
+    /// stored; then nothing changes (10.3).
     @discardableResult
     func saveAsNewSong(name: String, settings newSettings: MetronomeSettings, track picked: PickedTrack? = nil) -> Song? {
         guard Library.cleanName(name) != nil else { return nil }
-        let track = picked.flatMap { newTrack($0) }
+        var track: BackingTrack?
+        if let picked {
+            guard let stored = newTrack(picked) else { return nil }
+            track = stored
+        }
         if isTrackPlayable || track != nil { stop() }
         guard let song = library.addSong(name: name, settings: newSettings, track: track, now: now()) else { return nil }
         loadedSongID = song.id
@@ -665,8 +670,8 @@ final class MetronomeModel {
     /// exception: when nothing is loaded and the song holds exactly what the metronome is
     /// set to, the user has just named the current settings, so it becomes the loaded song,
     /// loaded from the setlist it was added to. The metronome itself is not touched, except
-    /// that a loaded song with a playable track stops it. A picked file that cannot be stored
-    /// leaves the song without a track.
+    /// that a loaded song with a playable track stops it. nil when the name is empty or a picked
+    /// file cannot be stored; then nothing changes (10.3).
     @discardableResult
     func createSong(
         name: String, settings newSettings: MetronomeSettings, addingTo setlistID: UUID?, track picked: PickedTrack? = nil
@@ -674,7 +679,11 @@ final class MetronomeModel {
         guard Library.cleanName(name) != nil else { return nil }
         let moment = now()
         let namesCurrentSettings = loadedSongID == nil && newSettings == settings
-        let track = picked.flatMap { newTrack($0) }
+        var track: BackingTrack?
+        if let picked {
+            guard let stored = newTrack(picked) else { return nil }
+            track = stored
+        }
         guard let song = library.addSong(name: name, settings: newSettings, track: track, now: moment) else { return nil }
         if let setlistID { library.add(song.id, toSetlist: setlistID, now: moment) }
         if namesCurrentSettings {
@@ -708,10 +717,14 @@ final class MetronomeModel {
     ///
     /// The track: a file picked for a missing one is stored under its identifier and the part is
     /// left alone; any other file gets a new identifier and a new part. On the loaded song, a file
-    /// picked or a playable track removed stops playback and goes to 0:00. A file that cannot be
-    /// stored leaves the track as it was; the name and settings are still saved.
-    func editSong(_ id: UUID, name: String, settings newSettings: MetronomeSettings, track edit: TrackEdit = .keep) {
-        guard let song = library.song(id: id), Library.cleanName(name) != nil else { return }
+    /// picked or a playable track removed stops playback and goes to 0:00.
+    ///
+    /// Returns false only when a picked file cannot be stored; then nothing is saved at all, so the
+    /// song sheet can stay open with what the user entered (10.3). True otherwise, also when there
+    /// was nothing to save.
+    @discardableResult
+    func editSong(_ id: UUID, name: String, settings newSettings: MetronomeSettings, track edit: TrackEdit = .keep) -> Bool {
+        guard let song = library.song(id: id), Library.cleanName(name) != nil else { return true }
         let moment = now()
         let isLoaded = loadedSongID == id
         var filePicked = false
@@ -724,11 +737,12 @@ final class MetronomeModel {
             if song.track != nil { newPart = .some(nil) }
         case .attach(let picked):
             if let missing = song.track, !trackFiles.hasFile(missing.fileID) {
-                filePicked = store(picked, as: missing.fileID)
-            } else if let track = newTrack(picked, replacing: song.track) {
-                filePicked = true
+                guard store(picked, as: missing.fileID) else { return false }
+            } else {
+                guard let track = newTrack(picked, replacing: song.track) else { return false }
                 newPart = .some(track)
             }
+            filePicked = true
         }
         let removesPlayable = newPart != nil && !filePicked && isTrackPlayable
         if isLoaded, filePicked || removesPlayable { stop() }
@@ -748,6 +762,7 @@ final class MetronomeModel {
         if isLoaded, filePicked || newPart != nil { loadedTrackReplaced() }
         syncSaveOffer()
         persistLibrary()
+        return true
     }
 
     /// The metronome keeps its settings if the deleted song was the loaded one; playing with

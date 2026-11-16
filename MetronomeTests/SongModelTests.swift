@@ -10,7 +10,7 @@ struct SongModelTests {
     private let libraryStore = LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
 
     private func makeModel() -> MetronomeModel {
-        MetronomeModel(engine: engine, store: store, haptics: haptics, libraryStore: libraryStore)
+        MetronomeModel(engine: engine, store: store, haptics: haptics, libraryStore: libraryStore, trackFiles: .temporary())
     }
 
     private func settings(_ bpm: Int, _ signature: TimeSignature = .fourFour) -> MetronomeSettings {
@@ -422,7 +422,7 @@ struct SongModelTests {
     private func modelWithShortSaveOfferDelay() -> MetronomeModel {
         MetronomeModel(
             engine: engine, store: store, haptics: haptics, libraryStore: libraryStore,
-            saveOfferDelay: .milliseconds(20)
+            saveOfferDelay: .milliseconds(20), trackFiles: .temporary()
         )
     }
 

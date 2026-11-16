@@ -169,9 +169,10 @@ struct Library: Codable, Equatable, Sendable {
         songRecords[id]?.setTrack(track, now: now)
     }
 
-    /// The file identifiers of every song that is not deleted.
+    /// The file identifiers of every song that is not deleted. Read leniently from the track part,
+    /// so a file is never deleted because its part holds something this version does not know (5.1).
     var referencedFileIDs: Set<UUID> {
-        Set(songs.compactMap { $0.track?.fileID })
+        Set(songRecords.values.filter { $0.deleted == nil }.compactMap(\.trackFileID))
     }
 
     /// Leaves a marker. Setlists are not edited: the song is hidden from them,

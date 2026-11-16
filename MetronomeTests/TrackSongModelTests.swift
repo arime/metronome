@@ -315,6 +315,69 @@ struct TrackSongModelTests {
         #expect(model.trackPosition == 0)
     }
 
+    // MARK: - A file that cannot be stored
+
+    /// A pick whose file is gone, so copying it into the store fails, as on a full phone.
+    private func unstorable() -> PickedTrack {
+        PickedTrack(url: bench.root.appending(path: "Gone/Take.wav"), fileName: "Take.wav", firstBeat: 48)
+    }
+
+    @Test func editSongSavesNothingWhenTheFileCannotBeStored() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        let library = model.library
+        let stored = bench.libraryStore.load()
+        var settings = setup.other.settings
+        settings.setBPM(150)
+        model.togglePlayback()
+        #expect(model.editSong(setup.plain.id, name: "Renamed", settings: settings, track: .attach(unstorable())) == false)
+        #expect(model.editSong(setup.other.id, name: "Renamed", settings: settings, track: .attach(unstorable())) == false)
+        #expect(model.editSong(setup.song.id, name: "Renamed", settings: settings, track: .attach(unstorable())) == false)
+        #expect(model.library == library)
+        #expect(bench.libraryStore.load() == stored)
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+    }
+
+    @Test func editSongSavesNothingWhenTheFileForAMissingTrackCannotBeStored() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        let library = model.library
+        #expect(model.editSong(setup.song.id, name: "Renamed", settings: setup.song.settings, track: .attach(unstorable())) == false)
+        #expect(model.library == library)
+        #expect(model.isTrackMissing)
+    }
+
+    @Test func aSavedEditReportsSuccess() throws {
+        let setup = try makeModel()
+        #expect(setup.model.editSong(setup.plain.id, name: "Renamed", settings: setup.plain.settings))
+        #expect(setup.model.editSong(setup.plain.id, name: "Plain", settings: setup.plain.settings, track: .attach(try picked())))
+    }
+
+    @Test func createSongSavesNothingWhenTheFileCannotBeStored() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        let library = model.library
+        #expect(model.createSong(name: "New", settings: model.settings, addingTo: setup.setlist, track: unstorable()) == nil)
+        // Naming the current settings with nothing loaded does not load anything either.
+        model.unloadSong()
+        #expect(model.createSong(name: "New", settings: model.settings, addingTo: nil, track: unstorable()) == nil)
+        #expect(model.library == library)
+        #expect(model.loadedSongID == nil)
+    }
+
+    @Test func saveAsNewSongSavesNothingWhenTheFileCannotBeStored() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        let library = model.library
+        model.togglePlayback()
+        #expect(model.saveAsNewSong(name: "Copy", settings: model.settings, track: unstorable()) == nil)
+        #expect(model.library == library)
+        #expect(model.loadedSongID == setup.song.id)
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+    }
+
     // MARK: - The Sync sheet
 
     @Test func nudgingTheFirstBeatSavesAtOnceWithoutEdited() throws {

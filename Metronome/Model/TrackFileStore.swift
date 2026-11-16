@@ -28,7 +28,7 @@ struct TrackFileStore: Sendable {
     func store(_ source: URL, as fileID: UUID) throws {
         let manager = FileManager.default
         try manager.createDirectory(at: directory, withIntermediateDirectories: true)
-        let incoming = directory.appending(path: ".incoming-\(UUID().uuidString)")
+        let incoming = directory.appending(path: Self.incomingPrefix + UUID().uuidString)
         try manager.copyItem(at: source, to: incoming)
         for old in copies() where Self.identifier(of: old) == fileID {
             try? manager.removeItem(at: old)
@@ -45,13 +45,21 @@ struct TrackFileStore: Sendable {
         }
     }
 
-    /// Deletes every copy whose identifier is not in the set.
+    /// Deletes every copy whose identifier is not in the set, and any copy left half made
+    /// when the app was ended during `store`.
     func removeAll(except keep: Set<UUID>) {
         for url in copies() {
-            guard let id = Self.identifier(of: url), !keep.contains(id) else { continue }
+            if let id = Self.identifier(of: url) {
+                guard !keep.contains(id) else { continue }
+            } else {
+                guard url.lastPathComponent.hasPrefix(Self.incomingPrefix) else { continue }
+            }
             try? FileManager.default.removeItem(at: url)
         }
     }
+
+    /// The name of a copy being made starts with this.
+    private static let incomingPrefix = ".incoming-"
 
     /// The files in the directory; empty when it does not exist yet.
     private func copies() -> [URL] {

@@ -2,6 +2,14 @@ import Foundation
 import Testing
 @testable import Metronome
 
+extension TrackFileStore {
+    /// A store in a new temporary directory. Every model built in the tests gets one of its own,
+    /// so no save can delete the track files of the app installed on the simulator.
+    static func temporary() -> TrackFileStore {
+        TrackFileStore(directory: FileManager.default.temporaryDirectory.appending(path: "TrackFiles-\(UUID().uuidString)"))
+    }
+}
+
 /// Stores, fakes and a temporary directory for track files, removed when the bench goes away.
 /// Shared by the suites that test a model with backing tracks.
 @MainActor

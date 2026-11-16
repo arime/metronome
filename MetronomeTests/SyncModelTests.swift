@@ -48,7 +48,8 @@ struct SyncModelTests {
             haptics: haptics,
             libraryStore: LibraryStore(defaults: libraryDefaults),
             sync: sync,
-            now: { clock.now() }
+            now: { clock.now() },
+            trackFiles: .temporary()
         )
         if on { model.setSyncEnabled(true) }
         return Device(model: model, engine: engine, haptics: haptics, sync: sync, libraryDefaults: libraryDefaults)

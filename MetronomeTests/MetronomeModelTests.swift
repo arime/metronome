@@ -74,7 +74,8 @@ struct MetronomeModelTests {
     private func makeModel() -> MetronomeModel {
         MetronomeModel(
             engine: engine, store: store, haptics: haptics,
-            libraryStore: LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+            libraryStore: LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            trackFiles: .temporary()
         )
     }
 
