@@ -4,7 +4,6 @@ import SwiftUI
 /// the offset, the count-in and the mix. Changes apply at once; closing leaves playback as it is.
 struct SyncSheet: View {
     @Environment(MetronomeModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
     /// The sheet's height. Starts near the usual height, then follows the content.
     @State private var sheetHeight: CGFloat = 640
 
@@ -69,18 +68,11 @@ struct SyncSheet: View {
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
         .presentationBackground(Theme.surface)
-        // There is nothing to sync once the file cannot play, for example when another
-        // device removed the track.
-        .onChange(of: model.isTrackPlayable) { _, isPlayable in
-            if !isPlayable { dismiss() }
-        }
-        // However the sheet closes, what was set in it is saved and sent now.
-        .onDisappear { model.savePendingChanges() }
     }
 
     /// The text is drawn as before, at the row's right edge; the touch area is at least 44 × 44.
     private var doneButton: some View {
-        Button { dismiss() } label: {
+        Button { model.leaveSyncMode() } label: {
             Text("Done")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Theme.amber)
@@ -187,14 +179,14 @@ struct SyncSheet: View {
     }
 }
 
-/// Plays from the position with no count-in, or stops. 52 pt round.
+/// The screen's Start / Stop, so at 0:00 it counts in. 52 pt round.
 private struct PlayStopButton: View {
     @Environment(MetronomeModel.self) private var model
 
     var body: some View {
         let isPlaying = model.isPlaying
         Button {
-            model.toggleTrackPlaybackWithoutCountIn()
+            model.togglePlayback()
         } label: {
             Image(systemName: isPlaying ? "stop.fill" : "play.fill")
                 .font(.system(size: 18, weight: .bold))

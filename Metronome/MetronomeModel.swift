@@ -129,23 +129,22 @@ final class MetronomeModel {
         becomeStopped()
     }
 
-    /// Also saves a Sync sheet change still waiting to be saved.
+    /// Also saves a Sync mode change still waiting to be saved. Sync mode stays shown.
     func appDidLeaveForeground() {
         stop()
         savePendingChanges()
     }
 
-    /// With a playable track, starts track and click together: with the count-in when
-    /// `countIn` is true and the position is 0:00, otherwise from the position at once.
-    /// A file that cannot be opened plays the click alone for this run. Either way the click
-    /// plays at the tempo in effect.
-    private func start(countIn: Bool = true) {
+    /// With a playable track, starts track and click together: with the count-in at 0:00,
+    /// otherwise from the position at once. A file that cannot be opened plays the click alone
+    /// for this run. Either way the click plays at the tempo in effect.
+    private func start() {
         let settings = settingsInEffect
         if isTrackPlayable, let track = loadedTrack, let url = trackFiles.url(for: track.fileID) {
             let grid = TrackGrid(
                 offset: track.offsetSeconds, bpm: settings.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
             )
-            let fromTheTop = countIn && trackPosition == 0
+            let fromTheTop = trackPosition == 0
             let playback = TrackPlayback(
                 fileURL: url,
                 offset: track.offsetSeconds,
@@ -252,10 +251,10 @@ final class MetronomeModel {
     /// is remembered on this device and changes only when tapped.
     private(set) var backingTracksOn: Bool
 
-    /// Turns backing tracks on or off, with a tick; only while stopped. The track's position is
-    /// kept, so off and on again finds the track where it was.
+    /// Turns backing tracks on or off, with a tick; only while stopped and never in Sync mode.
+    /// The track's position is kept, so off and on again finds the track where it was.
     func toggleBackingTracks() {
-        guard !isPlaying else { return }
+        guard !isPlaying, !isSyncModeShown else { return }
         backingTracksOn.toggle()
         store.saveBackingTracksOn(backingTracksOn)
         refreshTrackFile()
@@ -350,24 +349,15 @@ final class MetronomeModel {
         }
     }
 
-    /// Play / Stop in the Sync sheet: always from the position, with no count-in.
-    func toggleTrackPlaybackWithoutCountIn() {
-        haptics?.transport()
-        if isPlaying {
-            stop()
-        } else {
-            start(countIn: false)
-        }
-    }
-
     /// Reads whether the loaded song's file is here, and its length. Called whenever either can
     /// change: at launch, when another song becomes the loaded one, when the loaded song's track
     /// changes, when its file is stored and when the switch is turned. With the switch off the file
-    /// is not opened.
+    /// is not opened. Sync mode ends, as with Done, once there is no playable file to sync.
     private func refreshTrackFile() {
         let url = backingTracksOn ? loadedTrack.flatMap { trackFiles.url(for: $0.fileID) } : nil
         isTrackPlayable = url != nil
         trackLength = url.flatMap(lengthOfTrack)
+        if !isTrackPlayable { leaveSyncMode() }
     }
 
     /// Another song is loaded, or the loaded song's track is another file: back to 0:00. When the
@@ -375,7 +365,7 @@ final class MetronomeModel {
     /// takes it, for example on Unload from a song whose file is missing.
     private func loadedTrackReplaced(replacing old: BackingTrack?) {
         trackPosition = 0
-        tapRun = TapRun()
+        endTapRun()
         refreshTrackFile()
         if isPlaying, tempoInEffect != tempoInEffect(with: old) {
             engine.update(settingsInEffect, startNewBar: false)
@@ -420,11 +410,48 @@ final class MetronomeModel {
         )
     }
 
-    // MARK: - The Sync sheet
-    // The track's tempo, offset, count-in and mix go into the song at once and never make it
-    // edited. The engine and the library in memory take them at once; saving the library and
-    // sending it to iCloud wait for a pause (`persistSoon`), as a held button or a dragged knob
-    // changes them many times a second.
+    // MARK: - Sync mode
+    // The track's tempo, offset, count-in and mix, and in Sync mode the time signature and the
+    // accents, go into the song at once and never make it edited. The engine and the library in
+    // memory take them at once; saving the library and sending it to iCloud wait for a pause
+    // (`persistSoon`), as a held button or a dragged knob changes them many times a second.
+
+    /// Whether the track screen shows Sync mode (6.13). Not saved, so off at launch.
+    private(set) var isSyncModeShown = false
+
+    /// Sync on the track screen; only with the file here. Playback carries on as it is.
+    func enterSyncMode() {
+        guard isTrackPlayable else { return }
+        isSyncModeShown = true
+        endTapRun()
+    }
+
+    /// Done, or the file going away while shown. Playback carries on as it is; a change still
+    /// waiting to be saved is saved and sent at once.
+    func leaveSyncMode() {
+        guard isSyncModeShown else { return }
+        isSyncModeShown = false
+        endTapRun()
+        savePendingChanges()
+    }
+
+    /// To the beginning: stopped, the position goes to 0:00, so the next Start counts in; playing
+    /// the file, it carries on from 0:00 without a count-in; during the count-in, nothing.
+    func goToTrackStart() {
+        guard isTrackPlayable, !isCountingIn else { return }
+        moveTrack(to: 0)
+    }
+
+    /// To the end: what the end of the file does. Playing, it stops; either way the position goes
+    /// to 0:00, so the next Start counts in. The loaded song stays.
+    func goToTrackEnd() {
+        guard isTrackPlayable else { return }
+        if isPlaying {
+            engine.stop()
+            becomeStopped()
+        }
+        trackPosition = 0
+    }
 
     /// The Sync tempo stepper: the track's tempo by `delta` BPM, within 30...300. The metronome's
     /// tempo is not touched, so this never makes the song edited. Only while a track is in use.
@@ -433,7 +460,7 @@ final class MetronomeModel {
         let bpm = Tempo.clamp(track.bpm + delta)
         guard bpm != track.bpm else { return }
         track.bpm = bpm
-        tapRun = TapRun()
+        endTapRun()
         saveLoadedTrack(track)
         if isPlaying { engine.update(settingsInEffect, startNewBar: false) }
         haptics?.selection()
@@ -445,7 +472,7 @@ final class MetronomeModel {
         let last = trackLength.map { Int(($0 * 100).rounded(.down)) } ?? .max
         let offset = min(max(track.offset + steps, 0), last)
         guard offset != track.offset else { return }
-        tapRun = TapRun()
+        endTapRun()
         setOffset(offset)
         haptics?.selection()
     }
@@ -488,7 +515,13 @@ final class MetronomeModel {
 
     /// Start over: the next tap begins a new run. The tempo and the offset stay.
     func startTapRunOver() {
-        tapRun = TapRun()
+        endTapRun()
+    }
+
+    /// Wherever a run ends. An empty run is left as it is, so views reading it are not told of a
+    /// change.
+    private func endTapRun() {
+        if !tapRun.isEmpty { tapRun = TapRun() }
     }
 
     func setCountIn(_ countIn: CountIn) {
@@ -555,16 +588,29 @@ final class MetronomeModel {
         guard settings.accents != before else { return }
         haptics?.selection()
         settingsChanged(startNewBar: false)
-        userChangedSettings()
+        meterChanged()
     }
 
     /// A different signature resets the accents and, while playing, starts a new bar.
     /// The same one does nothing.
     func selectTimeSignature(_ signature: TimeSignature) {
         guard settings.setTimeSignature(signature) else { return }
-        tapRun = TapRun()
+        endTapRun()
         settingsChanged(startNewBar: true)
-        userChangedSettings()
+        meterChanged()
+    }
+
+    /// In Sync mode the time signature and the accents go into the song at once, as they are, an
+    /// earlier unsaved accent change included; the metronome's tempo is never written. When then
+    /// nothing differs from the song, the Save button goes away at once, as after Save.
+    private func meterChanged() {
+        guard isSyncModeShown, let id = loadedSongID else {
+            userChangedSettings()
+            return
+        }
+        library.updateSongMeter(id, settings: settings, now: now())
+        persistSoon()
+        if isEdited { userChangedSettings() } else { syncSaveOffer() }
     }
 
     /// With a track the bar is worked out again from the offset, so no change starts a new bar.
@@ -577,7 +623,7 @@ final class MetronomeModel {
     /// Replaces all the settings at once, as loading a song does.
     private func apply(_ newSettings: MetronomeSettings, startNewBar: Bool = true) {
         guard newSettings != settings else { return }
-        if newSettings.timeSignature != settings.timeSignature { tapRun = TapRun() }
+        if newSettings.timeSignature != settings.timeSignature { endTapRun() }
         settings = newSettings
         settingsChanged(startNewBar: startNewBar)
     }
@@ -1042,7 +1088,7 @@ final class MetronomeModel {
     }
 
     /// Saves at once a change still waiting in `persistSoon`; nothing when none waits.
-    /// For the Sync sheet closing and the app leaving the foreground.
+    /// For leaving Sync mode and the app leaving the foreground.
     func savePendingChanges() {
         guard pendingSave != nil else { return }
         persistLibrary()
@@ -1116,7 +1162,7 @@ final class MetronomeModel {
             loadedTrackReplaced(replacing: old)
             return
         }
-        if track.bpm != old.bpm || track.offset != old.offset { tapRun = TapRun() }
+        if track.bpm != old.bpm || track.offset != old.offset { endTapRun() }
         if track.bpm != old.bpm, isPlaying, isTrackInUse { engine.update(settingsInEffect, startNewBar: false) }
         if track.offset != old.offset, isPlayingTrack { engine.setOffset(track.offsetSeconds) }
         if track.mix != old.mix { sendMix(track.mix) }

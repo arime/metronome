@@ -738,6 +738,48 @@ struct TrackSongModelTests {
         #expect(b.tapRun.taps.count == 1)
     }
 
+    @Test func syncModeEndsWhenTheTrackIsRemovedElsewhere() throws {
+        let (a, b, _, _, song, _) = try twoDevicesPlayingATrack()
+        b.enterSyncMode()
+        clock.advance()
+        a.editSong(song.id, name: "Song", settings: settings100, track: .remove)
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedTrack == nil)
+        #expect(b.isSyncModeShown == false)
+    }
+
+    @Test func syncModeEndsWhenTheTrackIsReplacedElsewhere() throws {
+        let (a, b, _, _, song, _) = try twoDevicesPlayingATrack()
+        b.enterSyncMode()
+        clock.advance()
+        a.editSong(song.id, name: "Song", settings: settings100, track: .attach(try picked("New.wav")))
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.isTrackMissing)
+        #expect(b.isSyncModeShown == false)
+    }
+
+    @Test func syncModeEndsWhenTheSongIsDeletedElsewhere() throws {
+        let (a, b, _, _, song, _) = try twoDevicesPlayingATrack()
+        b.enterSyncMode()
+        clock.advance()
+        a.deleteSong(song.id)
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedSong == nil)
+        #expect(b.isSyncModeShown == false)
+    }
+
+    @Test func aTrackTempoArrivingKeepsSyncModeShown() throws {
+        let (a, b, _, _, song, _) = try twoDevicesPlayingATrack()
+        b.enterSyncMode()
+        clock.advance()
+        a.loadSong(song.id, from: nil)
+        a.nudgeTrackTempo(by: 2)
+        a.savePendingChanges()
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedTrack?.bpm == 102)
+        #expect(b.isSyncModeShown)
+    }
+
     @Test func aTrackAttachedOnAnotherDeviceArrivesMissingAndKeepsPlaying() throws {
         let a = makeDevice(), b = makeDevice()
         clock.advance()

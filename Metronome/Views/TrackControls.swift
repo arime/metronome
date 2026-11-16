@@ -65,11 +65,9 @@ struct TrackTempoRow: View {
 struct PlayerCard: View {
     @Environment(MetronomeModel.self) private var model
     private let showsNextLine: Bool
-    private let onSync: () -> Void
 
-    init(showsNextLine: Bool, onSync: @escaping () -> Void) {
+    init(showsNextLine: Bool) {
         self.showsNextLine = showsNextLine
-        self.onSync = onSync
     }
 
     private static let transportHeight: CGFloat = 68
@@ -127,7 +125,7 @@ struct PlayerCard: View {
     }
 
     private var syncPill: some View {
-        Button(action: onSync) {
+        Button { model.enterSyncMode() } label: {
             Text("Sync")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.dialWhite)

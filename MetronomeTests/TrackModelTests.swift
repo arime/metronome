@@ -267,16 +267,7 @@ struct TrackModelTests {
         #expect(engine.startedTracks.isEmpty)
     }
 
-    // MARK: - The Sync sheet and the mix
-
-    @Test func theSheetsPlayNeverCountsIn() throws {
-        let model = try makeModel()
-        model.toggleTrackPlaybackWithoutCountIn()
-        let started = try #require(engine.startedTracks.last)
-        #expect(started.startTime == 0)
-        #expect(started.firstClickIndex == 0)
-        #expect(model.isPlayingTrack)
-    }
+    // MARK: - The mix
 
     @Test func theMixSetsTheGainsAtStart() throws {
         let model = try makeModel(mix: -0.5)

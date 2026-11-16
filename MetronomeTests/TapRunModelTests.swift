@@ -52,6 +52,23 @@ struct TapRunModelTests {
         #expect(model.settings.bpm == 120)
     }
 
+    @Test func aTapThatChangesNeitherValueMovesNothing() throws {
+        let model = try playingModel()
+        tap(model, at: 10.11)
+        tap(model, at: 12.01)
+        tap(model, at: 13.95)
+        engine.lastUpdate = nil
+        let offsets = engine.offsets.count
+        let ticks = haptics.selectionCount
+        tap(model, at: 19.69)
+        #expect(haptics.selectionCount == ticks + 1)
+        #expect(model.tapRun.taps.count == 4)
+        #expect(model.loadedTrack?.bpm == 125)
+        #expect(model.loadedTrack?.offset == 50)
+        #expect(engine.lastUpdate == nil)
+        #expect(engine.offsets.count == offsets)
+    }
+
     @Test func thePadDoesNothingWhileStoppedOrCountingIn() throws {
         let model = try bench.makeModel()
         let ticks = haptics.selectionCount

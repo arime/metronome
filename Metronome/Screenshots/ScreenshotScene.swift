@@ -23,7 +23,7 @@ enum ScreenshotScene: String, CaseIterable {
     /// stopped. Not an App Store screenshot; for checking the screen in the simulator. The
     /// click and the track play for real, so their sync can be heard.
     case trackScreen
-    /// The track screen with the Sync sheet open over it.
+    /// The track screen in Sync mode.
     case trackSync
     /// The track screen for the same song loaded on its own, outside the setlist.
     case trackSolo
@@ -96,7 +96,7 @@ enum ScreenshotScene: String, CaseIterable {
         settingsStore.saveClickSound(.woodblock)
 
         if hasTrack {
-            return MetronomeModel(
+            let model = MetronomeModel(
                 engine: AudioClickEngine(),
                 store: settingsStore,
                 haptics: Haptics(),
@@ -104,6 +104,8 @@ enum ScreenshotScene: String, CaseIterable {
                 now: { Self.date },
                 trackFiles: trackFiles
             )
+            if self == .trackSync { model.enterSyncMode() }
+            return model
         }
         let model = MetronomeModel(
             engine: ScreenshotEngine(soundingBeat: Self.soundingBeat),

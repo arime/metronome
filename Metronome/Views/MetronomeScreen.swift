@@ -5,8 +5,6 @@ struct MetronomeScreen: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isLibraryShown = false
     @State private var isSettingsShown = false
-    /// Set by Sync on the player card.
-    @State private var isSyncShown = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -32,7 +30,7 @@ struct MetronomeScreen: View {
                     AccentTiles(singleRowTileHeight: layout.tileHeight)
                         .padding(.top, layout.sectionGap)
                     Spacer(minLength: ScreenLayout.playerCardTopGap)
-                    PlayerCard(showsNextLine: layout.showsNextLine) { isSyncShown = true }
+                    PlayerCard(showsNextLine: layout.showsNextLine)
                         .padding(.bottom, layout.bottomPadding)
                 } else {
                     TempoControls()
@@ -51,9 +49,8 @@ struct MetronomeScreen: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.ink.ignoresSafeArea())
-        // Presented from the screen rather than the card, so the card going away cannot
-        // leave the flag set and reopen the sheet with the next song's track.
-        .sheet(isPresented: $isSyncShown) {
+        // Sync mode is the model's; closing the sheet any way is Done.
+        .sheet(isPresented: Binding(get: { model.isSyncModeShown }, set: { if !$0 { model.leaveSyncMode() } })) {
             SyncSheet()
                 .environment(model)
         }
@@ -64,7 +61,6 @@ struct MetronomeScreen: View {
             switch ScreenshotScene.current {
             case .library?, .setlist?: isLibraryShown = true
             case .settings?: isSettingsShown = true
-            case .trackSync?: isSyncShown = true
             default: break
             }
         }

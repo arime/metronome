@@ -163,6 +163,12 @@ struct Library: Codable, Equatable, Sendable {
         songRecords[id]?.setSettings(settings.sanitized(), now: now)
     }
 
+    /// Writes only the time signature and the accents of `settings`; the song's tempo stays.
+    mutating func updateSongMeter(_ id: UUID, settings: MetronomeSettings, now: Date) {
+        guard song(id: id) != nil else { return }
+        songRecords[id]?.setMeter(settings.sanitized(), now: now)
+    }
+
     /// nil removes the track.
     mutating func setTrack(_ id: UUID, to track: BackingTrack?, now: Date) {
         guard song(id: id) != nil else { return }
