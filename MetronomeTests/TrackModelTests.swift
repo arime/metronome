@@ -286,6 +286,82 @@ struct TrackModelTests {
         #expect(started.clickGain == 1)
     }
 
+    // MARK: - The Sync sheet's tempo
+
+    @Test func aSyncSheetTempoIsSavedIntoTheSong() throws {
+        let model = try makeModel()
+        model.nudgeSyncTempo(by: 1)
+        #expect(model.loadedSong?.settings.bpm == 121)
+        #expect(model.settings.bpm == 121)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func aSyncSheetTempoLeavesOtherChangesUnsaved() throws {
+        let model = try makeModel()
+        model.selectTimeSignature(.threeFour)
+        model.nudgeSyncTempo(by: 1)
+        #expect(model.loadedSong?.settings.bpm == 121)
+        #expect(model.loadedSong?.settings.timeSignature == .fourFour)
+        #expect(model.isEdited == true)
+        #expect(model.isSaveOffered == true)
+    }
+
+    @Test func aTempoChangedBeforeTheSheetStaysUnsavedUntilTouched() throws {
+        let model = try makeModel()
+        model.nudgeBPM(by: 5)
+        #expect(model.loadedSong?.settings.bpm == 120)
+        #expect(model.isEdited == true)
+        model.nudgeSyncTempo(by: 1)
+        #expect(model.loadedSong?.settings.bpm == 126)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func aTappedSyncTempoIsSaved() throws {
+        let model = try makeModel()
+        model.tapSyncTempo(at: 0)
+        model.tapSyncTempo(at: 0.6)
+        model.tapSyncTempo(at: 1.2)
+        #expect(model.settings.bpm == 100)
+        #expect(model.loadedSong?.settings.bpm == 100)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func severalSyncTempoStepsSaveOnce() async throws {
+        let song = try #require(try makeModel().loadedSong)
+        let model = bench.relaunch(saveDelay: .milliseconds(20))
+        let writes = bench.libraryDefaults.writes
+        for _ in 0..<5 { model.nudgeSyncTempo(by: 1) }
+        #expect(bench.libraryDefaults.writes == writes)
+        // Waits for the save however busy the main actor is. Only one save can be waiting at a
+        // time, so once it has run no other can follow, and the count is final.
+        let deadline = ContinuousClock.now + .seconds(10)
+        while bench.libraryDefaults.writes == writes, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(bench.libraryDefaults.writes == writes + 1)
+        #expect(bench.libraryStore.load().library.song(id: song.id)?.settings.bpm == 125)
+    }
+
+    @Test func aSyncTempoSurvivesARelaunchAfterAFlush() throws {
+        let model = try makeModel()
+        model.nudgeSyncTempo(by: 3)
+        model.savePendingChanges()
+        let relaunched = relaunch()
+        #expect(relaunched.loadedSong?.settings.bpm == 123)
+        #expect(relaunched.isEdited == false)
+    }
+
+    @Test func aSyncTempoReachesAPlayingEngine() throws {
+        let model = try makeModel()
+        model.togglePlayback()
+        #expect(model.isPlayingTrack)
+        model.nudgeSyncTempo(by: 1)
+        #expect(engine.lastUpdate?.bpm == 121)
+        #expect(engine.lastUpdateStartedNewBar == false)
+    }
+
     // MARK: - Launch and songs without a track
 
     @Test func thePositionIsZeroAtLaunch() throws {

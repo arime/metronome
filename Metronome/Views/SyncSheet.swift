@@ -26,7 +26,7 @@ struct SyncSheet: View {
                 }
                 group("TEMPO") {
                     tempoRow
-                    TapTempoPill(height: 52)
+                    TapTempoPill(savesIntoSong: true, height: 52)
                         .padding(.top, 10)
                 }
                 group("FIRST BEAT") {
@@ -136,8 +136,8 @@ struct SyncSheet: View {
         let bpm = model.settings.bpm
         return valueRow(
             "Tempo", value: "\(bpm)", unit: "BPM", spokenValue: "\(bpm) beats per minute",
-            less: ("Slower", { model.nudgeBPM(by: -1) }),
-            more: ("Faster", { model.nudgeBPM(by: 1) })
+            less: ("Slower", { model.nudgeSyncTempo(by: -1) }),
+            more: ("Faster", { model.nudgeSyncTempo(by: 1) })
         )
     }
 

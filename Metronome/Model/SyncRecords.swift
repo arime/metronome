@@ -154,8 +154,13 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
 
     /// Stamps tempo and meter separately, each only when its value differs.
     mutating func setSettings(_ settings: MetronomeSettings, now: Date) {
-        set(Self.tempoKey, to: Self.tempoValue(settings), now: now)
+        setTempo(settings, now: now)
         set(Self.meterKey, to: Self.meterValue(settings), now: now)
+    }
+
+    /// Stamps only the tempo part, only when it differs; the meter part keeps its time.
+    mutating func setTempo(_ settings: MetronomeSettings, now: Date) {
+        set(Self.tempoKey, to: Self.tempoValue(settings), now: now)
     }
 
     /// Stamps the part only when the value differs. nil writes JSON null, so the removal syncs;

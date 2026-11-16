@@ -85,6 +85,25 @@ struct LibraryTests {
         #expect(library.song(id: song.id)?.settings.bpm == 140)
     }
 
+    @Test func settingTheTempoLeavesTheMeterPartsTimeAlone() {
+        var library = Library()
+        let song = library.addSong(name: "One", settings: settings(100), now: now)!
+        library.updateSongTempo(song.id, bpm: 130, now: now + 10)
+        let record = library.songRecords[song.id]
+        #expect(library.song(id: song.id)?.settings.bpm == 130)
+        #expect(library.song(id: song.id)?.settings.timeSignature == .fourFour)
+        #expect(record?.parts[SongRecord.tempoKey].map { $0.time > now } == true)
+        #expect(record?.parts[SongRecord.meterKey]?.time == now)
+    }
+
+    @Test func settingTheSameTempoStampsNothing() {
+        var library = Library()
+        let song = library.addSong(name: "One", settings: settings(100), now: now)!
+        let before = library.songRecords[song.id]
+        library.updateSongTempo(song.id, bpm: 100, now: now + 10)
+        #expect(library.songRecords[song.id] == before)
+    }
+
     @Test func aSongIsInASetlistOnlyOnceAndRemovingKeepsIt() {
         var library = Library()
         let song = library.addSong(name: "One", settings: settings(100), now: now)!

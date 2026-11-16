@@ -470,14 +470,33 @@ final class MetronomeModel {
         applyBPM(bpm)
     }
 
-    /// Returns true when the tempo changed.
+    /// The Sync sheet's − / +: as `nudgeBPM`, and the tempo is saved into the loaded song (7.11).
+    func nudgeSyncTempo(by delta: Int) {
+        guard applyBPM(settings.bpm + delta, savingIntoSong: true) else { return }
+        haptics?.selection()
+    }
+
+    /// The Sync sheet's Tap tempo: as `tapTempo`, and the tempo is saved into the loaded song.
+    func tapSyncTempo(at time: TimeInterval) {
+        haptics?.selection()
+        guard let bpm = taps.tap(at: time) else { return }
+        applyBPM(bpm, savingIntoSong: true)
+    }
+
+    /// Returns true when the tempo changed. `savingIntoSong` writes the tempo alone into the
+    /// loaded song, as the Sync sheet's other settings are, before the Save offer is worked out:
+    /// when nothing then differs from the song, Save goes away at once, as after `saveChanges`.
     @discardableResult
-    private func applyBPM(_ bpm: Int) -> Bool {
+    private func applyBPM(_ bpm: Int, savingIntoSong: Bool = false) -> Bool {
         let before = settings.bpm
         settings.setBPM(bpm)
         guard settings.bpm != before else { return false }
         settingsChanged(startNewBar: false)
-        userChangedSettings()
+        if savingIntoSong, let id = loadedSongID {
+            library.updateSongTempo(id, bpm: settings.bpm, now: now())
+            persistSoon()
+        }
+        if savingIntoSong, !isEdited { syncSaveOffer() } else { userChangedSettings() }
         return true
     }
 
