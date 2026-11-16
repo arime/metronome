@@ -146,8 +146,8 @@ private struct SongStepButton: View {
     }
 }
 
-/// The line with its knob, and the times below it. Used on the player card and in the Sync
-/// sheet. 40 pt tall: a 22 pt band for the line and knob, then the times 2 pt below it.
+/// The line with its knob, and the times below it. Used on the player card and on
+/// Sync mode's playback card. 40 pt tall: a 22 pt band for the line and knob, then the times 2 pt below it.
 struct TrackProgressBar: View {
     @Environment(MetronomeModel.self) private var model
     /// Where the knob has been dragged from and to. Gesture state goes back to nil when the

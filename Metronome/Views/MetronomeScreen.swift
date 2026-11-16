@@ -7,6 +7,30 @@ struct MetronomeScreen: View {
     @State private var isSettingsShown = false
 
     var body: some View {
+        Group {
+            // Sync mode takes the place of the header and the track screen's content.
+            if model.isSyncModeShown {
+                SyncModeView()
+            } else {
+                screen
+            }
+        }
+        .background(Theme.ink.ignoresSafeArea())
+        // Labels follow Dynamic Type up to the largest size that still fits the layout.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        #if DEBUG
+        .onAppear {
+            switch ScreenshotScene.current {
+            case .library?, .setlist?: isLibraryShown = true
+            case .settings?: isSettingsShown = true
+            default: break
+            }
+        }
+        #endif
+    }
+
+    /// The plain layout, or the track screen while a track is in use, under the header.
+    private var screen: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
             let height = proxy.size.height
@@ -47,23 +71,6 @@ struct MetronomeScreen: View {
             .padding(.horizontal, trackLayout?.sideMargin ?? layout.sideMargin)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Theme.ink.ignoresSafeArea())
-        // Sync mode is the model's; closing the sheet any way is Done.
-        .sheet(isPresented: Binding(get: { model.isSyncModeShown }, set: { if !$0 { model.leaveSyncMode() } })) {
-            SyncSheet()
-                .environment(model)
-        }
-        // Labels follow Dynamic Type up to the largest size that still fits the layout.
-        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        #if DEBUG
-        .onAppear {
-            switch ScreenshotScene.current {
-            case .library?, .setlist?: isLibraryShown = true
-            case .settings?: isSettingsShown = true
-            default: break
-            }
-        }
-        #endif
     }
 
     /// Title, the Save button while the song has unsaved changes, the Backing tracks switch for

@@ -29,6 +29,15 @@ enum ScreenshotScene: String, CaseIterable {
     case trackPlaying
     /// The track screen in Sync mode.
     case trackSync
+    /// Sync mode of `trackSync` with the widest values the steppers show: 288 BPM and an offset
+    /// of 25.40 s.
+    case trackSyncWide
+    /// Sync mode of `trackSync` with 9/8 chosen, as from the row, for the two-row tiles.
+    case trackSyncNine
+    /// Sync mode of `trackSync`, stopped, with an engine that plays nothing: its beats come from a
+    /// timer and its file time from the clock, count-in included, so Start, the tap pad and the
+    /// transport can be tried where the simulator's audio does not run.
+    case trackSyncTimer
     /// The track screen for the same song loaded on its own, outside the setlist.
     case trackSolo
     /// The track screen for a song whose backing track's file is not on this device.
@@ -42,7 +51,8 @@ enum ScreenshotScene: String, CaseIterable {
     /// the scene whose file is missing.
     var hasTrack: Bool {
         switch self {
-        case .trackScreen, .trackPlaying, .trackSync, .trackSolo, .trackMissing, .trackFirst, .trackLast: true
+        case .trackScreen, .trackPlaying, .trackSync, .trackSyncWide, .trackSyncNine, .trackSyncTimer, .trackSolo,
+             .trackMissing, .trackFirst, .trackLast: true
         default: false
         }
     }
@@ -86,7 +96,12 @@ enum ScreenshotScene: String, CaseIterable {
                 BackingTrack(fileID: UUID(), fileName: DemoTrack.fileName, offset: 50, bpm: 120), now: Self.date
             )
         } else if hasTrack {
-            sample.attachTrack(DemoTrack.make(in: trackFiles), now: Self.date)
+            var track = DemoTrack.make(in: trackFiles)
+            if self == .trackSyncWide {
+                track.offset = 2540
+                track.bpm = 288
+            }
+            sample.attachTrack(track, now: Self.date)
         }
         libraryStore.save(LibraryState(
             library: sample.library,
@@ -111,6 +126,18 @@ enum ScreenshotScene: String, CaseIterable {
             model.togglePlayback()
             return model
         }
+        if self == .trackSyncTimer {
+            let model = MetronomeModel(
+                engine: ScreenshotEngine(soundingBeat: 1, repeats: true, clocksTrack: true),
+                store: settingsStore,
+                haptics: NoHaptics(),
+                libraryStore: libraryStore,
+                now: { Self.date },
+                trackFiles: trackFiles
+            )
+            model.enterSyncMode()
+            return model
+        }
         if hasTrack {
             let model = MetronomeModel(
                 engine: AudioClickEngine(),
@@ -120,7 +147,8 @@ enum ScreenshotScene: String, CaseIterable {
                 now: { Self.date },
                 trackFiles: trackFiles
             )
-            if self == .trackSync { model.enterSyncMode() }
+            if self == .trackSync || self == .trackSyncWide || self == .trackSyncNine { model.enterSyncMode() }
+            if self == .trackSyncNine { model.selectTimeSignature(.nineEight) }
             return model
         }
         let model = MetronomeModel(
@@ -253,21 +281,30 @@ private struct SampleLibrary {
 }
 
 /// Plays nothing. Starting reports one beat, so the screen shows it sounding and stays still;
-/// one that repeats goes on reporting a beat at the tempo until stopped.
+/// one that repeats goes on reporting a beat at the tempo until stopped. One that clocks the track
+/// reports a file time that runs with the clock from where the run starts, negative during the
+/// count-in, and follows seeks and tempo changes.
 @MainActor
 private final class ScreenshotEngine: ClickEngine {
     var onBeat: ((ScheduledBeat) -> Void)?
     var onStopped: (() -> Void)?
     private let soundingBeat: Int
     private let repeats: Bool
+    private let clocksTrack: Bool
     private var ticker: Task<Void, Never>?
+    private var settings = MetronomeSettings()
+    /// The file time at `clockStart`; nil unless playing with a track.
+    private var trackStart: TimeInterval?
+    private var clockStart = ContinuousClock.now
 
-    init(soundingBeat: Int, repeats: Bool = false) {
+    init(soundingBeat: Int, repeats: Bool = false, clocksTrack: Bool = false) {
         self.soundingBeat = soundingBeat
         self.repeats = repeats
+        self.clocksTrack = clocksTrack
     }
 
     func start(with settings: MetronomeSettings) throws {
+        self.settings = settings
         let first = ScheduledBeat(
             beat: soundingBeat, isAccented: settings.accents.contains(soundingBeat), sampleTime: 0
         )
@@ -276,31 +313,45 @@ private final class ScreenshotEngine: ClickEngine {
             Task { @MainActor [weak self] in self?.onBeat?(first) }
             return
         }
-        let interval = 60 / Double(max(settings.bpm, 1))
-        let beats = settings.timeSignature.beatsPerBar
         let firstBeat = soundingBeat
         ticker = Task { @MainActor [weak self] in
             var beat = firstBeat
-            while !Task.isCancelled {
+            while !Task.isCancelled, let self {
+                let current = self.settings
                 let scheduled = ScheduledBeat(
-                    beat: beat, isAccented: settings.accents.contains(beat), sampleTime: 0
+                    beat: beat, isAccented: current.accents.contains(beat), sampleTime: 0
                 )
-                self?.onBeat?(scheduled)
-                beat = beat % beats + 1
-                try? await Task.sleep(for: .seconds(interval))
+                self.onBeat?(scheduled)
+                beat = beat % current.timeSignature.beatsPerBar + 1
+                try? await Task.sleep(for: .seconds(60 / Double(max(current.bpm, 1))))
             }
         }
     }
 
     var onTrackEnded: (() -> Void)?
-    var trackTime: TimeInterval? { nil }
+    var trackTime: TimeInterval? {
+        guard let trackStart else { return nil }
+        let elapsed = ContinuousClock.now - clockStart
+        return trackStart + Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+    }
 
     func start(with settings: MetronomeSettings, track: TrackPlayback) throws {
+        if clocksTrack {
+            trackStart = track.startTime
+            clockStart = .now
+        }
         try start(with: settings)
     }
 
-    func update(_ settings: MetronomeSettings, startNewBar: Bool) {}
-    func seekTrack(to time: TimeInterval) {}
+    func update(_ settings: MetronomeSettings, startNewBar: Bool) {
+        self.settings = settings
+    }
+
+    func seekTrack(to time: TimeInterval) {
+        guard trackStart != nil else { return }
+        trackStart = time
+        clockStart = .now
+    }
     func setOffset(_ offset: TimeInterval) {}
     func setMix(clickGain: Float, trackGain: Float) {}
     func setMuted(_ muted: Bool) {}
@@ -310,6 +361,7 @@ private final class ScreenshotEngine: ClickEngine {
     func stop() {
         ticker?.cancel()
         ticker = nil
+        trackStart = nil
     }
 }
 

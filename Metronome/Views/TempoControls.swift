@@ -77,6 +77,8 @@ struct StepButton: View {
     let label: String
     var size: CGFloat = 56
     var fill: Color = Theme.surface
+    /// The symbol's size; 36 % of the button's when not given.
+    var symbolSize: CGFloat?
     let step: () -> Void
 
     /// True while a finger is down. Gesture state goes back to false when the
@@ -85,7 +87,7 @@ struct StepButton: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: size * 0.36, weight: .semibold))
+            .font(.system(size: symbolSize ?? size * 0.36, weight: .semibold))
             .foregroundStyle(Theme.dialWhite)
             .frame(width: size, height: size)
             .background(fill, in: Circle())

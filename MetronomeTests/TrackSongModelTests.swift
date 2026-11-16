@@ -16,7 +16,7 @@ private final class Clock {
     }
 }
 
-/// Changing songs, attaching files and the Sync sheet's actions, with backing tracks.
+/// Changing songs, attaching files and Sync mode's actions, with backing tracks.
 @MainActor
 @Suite
 struct TrackSongModelTests {
@@ -423,7 +423,7 @@ struct TrackSongModelTests {
         #expect(engine.stopCount == 0)
     }
 
-    // MARK: - The Sync sheet
+    // MARK: - Sync mode
 
     @Test func nudgingTheOffsetSavesWithoutEdited() throws {
         let setup = try makeModel()
@@ -499,7 +499,7 @@ struct TrackSongModelTests {
         #expect(engine.mixes.count == mixes)
     }
 
-    // MARK: - Saving the Sync sheet's changes
+    // MARK: - Saving Sync mode's changes
 
     private func savedTrack(of song: Song) -> BackingTrack? {
         bench.libraryStore.load().library.song(id: song.id)?.track
