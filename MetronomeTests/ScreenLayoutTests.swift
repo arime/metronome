@@ -184,6 +184,37 @@ struct ScreenLayoutTests {
         #expect(layout.dialDiameter >= ScreenLayout.minimumDial)
     }
 
+    /// The figures 6.12 gives for real phones.
+    @Test func theTrackLayoutsDialOnAnIPhone17Pro() {
+        #expect(trackLayout(width: 402, height: 778, hasBottomInset: true).dialDiameter == 340)
+        let withLine = trackLayout(width: 402, height: 778, hasBottomInset: true, hasSetlist: true)
+        #expect(withLine.showsNextLine)
+        #expect(withLine.dialDiameter == 326)
+    }
+
+    @Test func theTrackLayoutsDialOnAnIPhoneSE() {
+        #expect(trackLayout(height: 647).dialDiameter == 235)
+        let withLine = trackLayout(height: 647, hasSetlist: true)
+        #expect(withLine.showsNextLine)
+        #expect(withLine.dialDiameter == 203)
+        for beats in [9, 12] {
+            #expect(trackLayout(height: 647, beats: beats).dialDiameter == 193)
+            let lineLeftOut = trackLayout(height: 647, beats: beats, hasSetlist: true)
+            #expect(lineLeftOut.showsNextLine == false)
+            #expect(lineLeftOut.dialDiameter == 193)
+        }
+    }
+
+    @Test func theTrackLayoutsDialWithDisplayZoom() {
+        #expect(trackLayout(width: 320, height: 548).dialDiameter == 136)
+        #expect(trackLayout(width: 320, height: 548, hasSetlist: true).showsNextLine == false)
+        #expect(trackLayout(width: 320, height: 548, hasSetlist: true).dialDiameter == 136)
+        for beats in [9, 12] {
+            #expect(trackLayout(width: 320, height: 548, beats: beats).dialDiameter == 94)
+            #expect(trackLayout(width: 320, height: 548, beats: beats, hasSetlist: true).showsNextLine == false)
+        }
+    }
+
     @Test func withoutATrackTheLayoutIsUnchanged() {
         let sizes: [(width: CGFloat, height: CGFloat, inset: Bool, beats: Int, setlist: Bool)] = [
             (402, 778, true, 4, false), (375, 647, false, 12, true), (320, 548, false, 7, false),
