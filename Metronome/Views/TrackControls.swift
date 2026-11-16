@@ -218,7 +218,7 @@ private struct SongStepButton: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(Theme.dialWhite)
                 .frame(width: Self.size, height: Self.size)
-                .opacity(isEnabled ? 1 : 0.35)
+                .opacity(isEnabled ? 1 : 0.4)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
