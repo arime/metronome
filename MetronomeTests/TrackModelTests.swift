@@ -318,6 +318,25 @@ struct TrackModelTests {
         #expect(model.isSaveOffered == false)
     }
 
+    @Test func aSyncSheetTempoBackOnTheSavedOneTakesSaveAwayAtOnce() throws {
+        let model = try makeModel()
+        model.nudgeBPM(by: 1)
+        #expect(model.isSaveOffered)
+        model.nudgeSyncTempo(by: -1)
+        #expect(model.loadedSong?.settings.bpm == 120)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func leavingTheForegroundSavesAWaitingSyncTempoAtOnce() throws {
+        let model = try makeModel()
+        let song = try #require(model.loadedSong)
+        model.nudgeSyncTempo(by: 2)
+        #expect(bench.libraryStore.load().library.song(id: song.id)?.settings.bpm == 120)
+        model.appDidLeaveForeground()
+        #expect(bench.libraryStore.load().library.song(id: song.id)?.settings.bpm == 122)
+    }
+
     @Test func aTappedSyncTempoIsSaved() throws {
         let model = try makeModel()
         model.tapSyncTempo(at: 0)

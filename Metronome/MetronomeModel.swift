@@ -727,8 +727,9 @@ final class MetronomeModel {
     /// exception: when nothing is loaded and the song holds exactly what the metronome is
     /// set to, the user has just named the current settings, so it becomes the loaded song,
     /// loaded from the setlist it was added to. The metronome itself is not touched, except
-    /// that a loaded song with a playable track stops it. nil when the name is empty or a picked
-    /// file cannot be stored; then nothing changes (10.3).
+    /// that a song loaded this way stops it when its own track is playable, which needs
+    /// Backing tracks on. nil when the name is empty or a picked file cannot be stored; then
+    /// nothing changes (10.3).
     @discardableResult
     func createSong(
         name: String, settings newSettings: MetronomeSettings, addingTo setlistID: UUID?, track picked: PickedTrack? = nil

@@ -155,6 +155,41 @@ struct TrackSwitchModelTests {
         #expect(model.trackPosition == 0)
     }
 
+    @Test func switchedOffUnloadDoesNotStopPlayback() throws {
+        let model = try bench.makeModel()
+        model.toggleBackingTracks()
+        model.togglePlayback()
+        model.unloadSong()
+        #expect(model.loadedSong == nil)
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+        #expect(model.backingTracksOn == false)
+    }
+
+    @Test func switchedOffSaveAsNewSongDoesNotStopPlayback() throws {
+        let model = try bench.makeModel()
+        model.toggleBackingTracks()
+        model.togglePlayback()
+        model.setBPM(130)
+        let copy = try #require(model.saveAsNewSong(name: "Copy", settings: model.settings))
+        #expect(model.loadedSongID == copy.id)
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+    }
+
+    @Test func switchedOffNamingTheSettingsWithATrackDoesNotStopPlayback() throws {
+        let model = try bench.makeModel()
+        model.unloadSong()
+        model.toggleBackingTracks()
+        model.togglePlayback()
+        let picked = PickedTrack(url: try bench.sourceFile(named: "Take.wav"), fileName: "Take.wav", firstBeat: 48)
+        let named = try #require(model.createSong(name: "Named", settings: model.settings, addingTo: nil, track: picked))
+        #expect(model.loadedSongID == named.id)
+        #expect(model.loadedTrack?.fileName == "Take.wav")
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+    }
+
     @Test func theSongSheetStillSeesTheFileWhileOff() throws {
         let model = try bench.makeModel()
         model.toggleBackingTracks()
@@ -208,6 +243,30 @@ struct TrackSwitchModelTests {
         a.model.editSong(song.id, name: "Song", settings: settings100, track: .attach(replacement))
         cloud.send(.changed, toDevice: 1)
         #expect(b.model.loadedTrack?.fileName == "New.wav")
+        #expect(b.model.isPlaying)
+        #expect(b.engine.stopCount == 0)
+        #expect(b.model.backingTracksOn == false)
+        #expect(hapticCount(b.haptics) == haptics)
+    }
+
+    @Test func switchedOffATrackAttachedOnAnotherDeviceDoesNotStopPlayback() throws {
+        let settings100 = MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1])
+        let a = makeDevice(), b = makeDevice()
+        clock.advance()
+        let song = try #require(a.model.createSong(name: "Song", settings: settings100, addingTo: nil))
+        cloud.send(.changed, toDevice: 1)
+        b.model.loadSong(song.id, from: nil)
+        b.model.toggleBackingTracks()
+        b.model.togglePlayback()
+        let haptics = hapticCount(b.haptics)
+
+        clock.advance()
+        let picked = PickedTrack(url: try bench.sourceFile(named: "Take.wav"), fileName: "Take.wav", firstBeat: 48)
+        a.model.editSong(song.id, name: "Song", settings: settings100, track: .attach(picked))
+        cloud.send(.changed, toDevice: 1)
+        // The header shows the switch for a loaded song with a track.
+        #expect(b.model.loadedTrack?.fileName == "Take.wav")
+        #expect(b.model.isTrackInUse == false)
         #expect(b.model.isPlaying)
         #expect(b.engine.stopCount == 0)
         #expect(b.model.backingTracksOn == false)

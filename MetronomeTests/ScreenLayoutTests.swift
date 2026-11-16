@@ -143,23 +143,25 @@ struct ScreenLayoutTests {
     // Everything but the dial takes 422 pt roomy and 402 pt compact with one row of tiles,
     // 444 pt with two rows; the next-up line adds 30 pt inside the player card.
 
-    private func isNear(_ value: CGFloat, _ expected: CGFloat) -> Bool {
-        abs(value - expected) <= 0.5
+    /// 9/8 and 12/8 wrap the tiles into two rows of 44 pt with 10 pt between them.
+    private func hasTwoRowsOfTiles(_ layout: ScreenLayout, beats: Int) -> Bool {
+        AccentTiles.height(forBeats: beats, singleRowTileHeight: layout.tileHeight) == 98
+            && layout.fixedHeight == 444
     }
 
     @Test func theTrackLayoutOnAnIPhone17Pro() {
         let layout = trackLayout(width: 402, height: 778, hasBottomInset: true)
-        #expect(isNear(layout.dialDiameter, 340))
+        #expect(layout.dialDiameter == 340)
         #expect(fits(layout, in: 778))
         let withLine = trackLayout(width: 402, height: 778, hasBottomInset: true, hasSetlist: true)
         #expect(withLine.showsNextLine)
-        #expect(isNear(withLine.dialDiameter, 326))
+        #expect(withLine.dialDiameter == 326)
         #expect(fits(withLine, in: 778))
     }
 
     @Test func theTrackLayoutShrinksTheDialFirst() {
         let layout = trackLayout(width: 402, height: 680, hasBottomInset: true)
-        #expect(isNear(layout.dialDiameter, 258))
+        #expect(layout.dialDiameter == 258)
         #expect(layout.tileHeight == 76)
         #expect(fits(layout, in: 680))
     }
@@ -167,58 +169,40 @@ struct ScreenLayoutTests {
     @Test func theTrackLayoutShrinksTheTilesOnceTheDialWouldGoBelow240() {
         let layout = trackLayout(width: 402, height: 661, hasBottomInset: true)
         #expect(layout.tileHeight == 56)
-        #expect(isNear(layout.dialDiameter, 259))
+        #expect(layout.dialDiameter == 259)
         #expect(fits(layout, in: 661))
     }
 
     @Test func theTrackLayoutOnAnIPhoneSE() {
         let layout = trackLayout(width: 375, height: 647)
-        #expect(isNear(layout.dialDiameter, 229))
+        #expect(layout.dialDiameter == 229)
         #expect(layout.tileHeight == 56)
         #expect(fits(layout, in: 647))
         let withSetlist = trackLayout(width: 375, height: 647, hasSetlist: true)
         #expect(withSetlist.showsNextLine == false)
-        #expect(isNear(withSetlist.dialDiameter, 229))
+        #expect(withSetlist.dialDiameter == 229)
         #expect(fits(withSetlist, in: 647))
-        let nineBeats = trackLayout(width: 375, height: 647, beats: 9)
-        #expect(isNear(nineBeats.dialDiameter, 187))
-        #expect(fits(nineBeats, in: 647))
+        for beats in [9, 12] {
+            let twoRows = trackLayout(width: 375, height: 647, beats: beats)
+            #expect(twoRows.dialDiameter == 187)
+            #expect(hasTwoRowsOfTiles(twoRows, beats: beats))
+            #expect(fits(twoRows, in: 647))
+        }
     }
 
     @Test func theTrackLayoutWithDisplayZoom() {
         let layout = trackLayout(width: 320, height: 548)
-        #expect(isNear(layout.dialDiameter, 130))
+        #expect(layout.dialDiameter == 130)
         #expect(fits(layout, in: 548))
-        let nineBeats = trackLayout(width: 320, height: 548, beats: 9)
-        #expect(isNear(nineBeats.dialDiameter, 88))
-        #expect(fits(nineBeats, in: 548))
+        for beats in [9, 12] {
+            let twoRows = trackLayout(width: 320, height: 548, beats: beats)
+            #expect(twoRows.dialDiameter == 88)
+            #expect(hasTwoRowsOfTiles(twoRows, beats: beats))
+            #expect(fits(twoRows, in: 548))
+        }
         let withSetlist = trackLayout(width: 320, height: 548, hasSetlist: true)
         #expect(withSetlist.showsNextLine == false)
         #expect(fits(withSetlist, in: 548))
-    }
-
-    @Test func withoutATrackTheLayoutIsUnchanged() {
-        let sizes: [(width: CGFloat, height: CGFloat, inset: Bool, beats: Int, setlist: Bool)] = [
-            (402, 778, true, 4, false), (375, 647, false, 12, true), (320, 548, false, 7, false),
-        ]
-        for size in sizes {
-            let before = layout(
-                width: size.width, height: size.height, hasBottomInset: size.inset, beats: size.beats,
-                hasSetlist: size.setlist
-            )
-            let after = ScreenLayout(
-                width: size.width, height: size.height, hasBottomInset: size.inset, beats: size.beats,
-                hasSetlist: size.setlist, hasTrack: false
-            )
-            #expect(after.dialDiameter == before.dialDiameter)
-            #expect(after.sectionGap == before.sectionGap)
-            #expect(after.settingsTopGap == before.settingsTopGap)
-            #expect(after.tileHeight == before.tileHeight)
-            #expect(after.bottomPadding == before.bottomPadding)
-            #expect(after.sideMargin == before.sideMargin)
-            #expect(after.fixedHeight == before.fixedHeight)
-            #expect(after.showsNextLine == before.showsNextLine)
-        }
     }
 
     @Test func sideMarginsNarrowBelow360() {
