@@ -98,6 +98,7 @@ struct TrackBeatClockTests {
         let startTime = 120.0
         var clock = clock(startTime: startTime)
         var beats: [(sampleTime: Int64, interval: Double)] = []
+        var skipped = 0
         let step = Int64(0.025 * rate)
         for call in 0..<200 {
             // 120 up to 180 and back, 5 BPM per call.
@@ -105,13 +106,27 @@ struct TrackBeatClockTests {
             let bpm = 120 + 5 * (phase <= 12 ? phase : 24 - phase)
             let grid = TrackGrid(firstBeat: 0.48, bpm: bpm, beatsPerBar: 4)
             let now = start + Int64(call) * step
-            let returned = clock.beats(
-                before: now + Int64(0.150 * rate), notBefore: now + Int64(0.005 * rate),
-                endTime: 1_000, grid: grid, accents: [1]
-            )
+            let horizon = now + Int64(0.150 * rate), earliest = now + Int64(0.005 * rate)
+            // The grid's next beat after the last one returned, which the half-interval rule may skip.
+            var candidate: Int64?
+            if let last = beats.last?.sampleTime {
+                var index = grid.firstIndex(atOrAfter: clock.fileTime(atSampleTime: max(last, earliest)))
+                while clock.sampleTime(forFileTime: grid.time(ofBeat: index)) <= last
+                    || clock.sampleTime(forFileTime: grid.time(ofBeat: index)) < earliest {
+                    index += 1
+                }
+                candidate = clock.sampleTime(forFileTime: grid.time(ofBeat: index))
+            }
+            let returned = clock.beats(before: horizon, notBefore: earliest, endTime: 1_000, grid: grid, accents: [1])
+            if let candidate, let last = beats.last?.sampleTime, candidate < horizon,
+               Double(candidate - last) < 0.5 * grid.beatInterval * rate {
+                #expect(returned.first?.sampleTime != candidate)
+                skipped += 1
+            }
             beats += returned.map { ($0.sampleTime, grid.beatInterval * rate) }
         }
         #expect(beats.count >= 10)
+        #expect(skipped >= 1)
         for (earlier, later) in zip(beats, beats.dropFirst()) {
             let gap = Double(later.sampleTime - earlier.sampleTime)
             let larger = max(earlier.interval, later.interval)
@@ -119,6 +134,35 @@ struct TrackBeatClockTests {
             #expect(gap >= 0.5 * later.interval)
             #expect(gap <= 2.0 * larger)
         }
+    }
+
+    @Test func aBeatBeforeTheEarliestIsDropped() {
+        let grid = TrackGrid(firstBeat: 0, bpm: 120, beatsPerBar: 4)
+        var clock = clock()
+        let beats = clock.beats(
+            before: clock.sampleTime(forFileTime: 2.2), notBefore: clock.sampleTime(forFileTime: 0.7),
+            endTime: 100, grid: grid, accents: [1]
+        )
+        #expect(beats.map(\.sampleTime) == [1.0, 1.5, 2.0].map { clock.sampleTime(forFileTime: $0) })
+        #expect(beats.map(\.beat) == [3, 4, 1])
+    }
+
+    @Test func aTempoChangeDuringTheCountInKeepsItOnTheGridFromTheFirstBeat() {
+        let fast = TrackGrid(firstBeat: 0.48, bpm: 120, beatsPerBar: 4)
+        let slow = TrackGrid(firstBeat: 0.48, bpm: 100, beatsPerBar: 4)
+        var clock = clock(startTime: fast.startTime(countIn: .twoBars), firstClickIndex: fast.firstClickIndex(countIn: .twoBars))
+        let before = clock.beats(
+            before: clock.sampleTime(forFileTime: -2.9), notBefore: start, endTime: 100, grid: fast, accents: [1]
+        )
+        // -3.52 and -3.02.
+        #expect(before.map(\.sampleTime) == (-8...(-7)).map { clock.sampleTime(forFileTime: fast.time(ofBeat: $0)) })
+        let after = clock.beats(
+            before: clock.sampleTime(forFileTime: 0.48) + 1, notBefore: start, endTime: 100, grid: slow, accents: [1]
+        )
+        // Counted back from the first beat at 0.6 s a beat; -3.12 is too close to -3.02 and is skipped.
+        #expect(after.map(\.sampleTime) == (-5...0).map { clock.sampleTime(forFileTime: slow.time(ofBeat: $0)) })
+        #expect(after.map(\.beat) == [4, 1, 2, 3, 4, 1])
+        #expect(after.last?.sampleTime == clock.sampleTime(forFileTime: 0.48))
     }
 
     @Test(arguments: [44_100.0, 48_000.0])

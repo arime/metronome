@@ -525,14 +525,15 @@ struct TrackSongModelTests {
     // MARK: - Changes arriving from another device
 
     /// One phone with sync on the shared fake iCloud, with its own track files.
-    private func makeDevice() -> (model: MetronomeModel, engine: FakeClickEngine, files: TrackFileStore) {
+    private func makeDevice() -> (model: MetronomeModel, engine: FakeClickEngine, files: TrackFileStore, haptics: FakeHaptics) {
         let engine = FakeClickEngine()
+        let haptics = FakeHaptics()
         let files = TrackFileStore(directory: bench.root.appending(path: UUID().uuidString))
         let clock = clock
         let model = MetronomeModel(
             engine: engine,
             store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
-            haptics: FakeHaptics(),
+            haptics: haptics,
             libraryStore: LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
             sync: LibrarySync(cloud: cloud, defaults: UserDefaults(suiteName: UUID().uuidString)!, syncingDelay: .seconds(3600)),
             now: { clock.now() },
@@ -540,14 +541,20 @@ struct TrackSongModelTests {
             lengthOfTrack: { _ in 222 }
         )
         model.setSyncEnabled(true)
-        return (model, engine, files)
+        return (model, engine, files, haptics)
+    }
+
+    /// Every haptic the device has played.
+    private func hapticCount(_ haptics: FakeHaptics) -> Int {
+        haptics.beats.count + haptics.selectionCount + haptics.transportCount + haptics.successCount
     }
 
     private let settings100 = MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1])
 
     /// A makes a song with a track; B gets it and picks the file too, then plays it.
     private func twoDevicesPlayingATrack() throws -> (
-        a: MetronomeModel, b: MetronomeModel, bEngine: FakeClickEngine, bFiles: TrackFileStore, song: Song
+        a: MetronomeModel, b: MetronomeModel, bEngine: FakeClickEngine, bFiles: TrackFileStore, song: Song,
+        bHaptics: FakeHaptics
     ) {
         let a = makeDevice(), b = makeDevice()
         clock.advance()
@@ -558,11 +565,11 @@ struct TrackSongModelTests {
         b.model.editSong(song.id, name: "Song", settings: settings100, track: .attach(try picked()))
         b.model.togglePlayback()
         #expect(b.model.isPlayingTrack)
-        return (a.model, b.model, b.engine, b.files, song)
+        return (a.model, b.model, b.engine, b.files, song, b.haptics)
     }
 
     @Test func aFirstBeatArrivingFromAnotherDeviceMovesTheGrid() throws {
-        let (a, b, bEngine, _, song) = try twoDevicesPlayingATrack()
+        let (a, b, bEngine, _, song, _) = try twoDevicesPlayingATrack()
         clock.advance()
         a.loadSong(song.id, from: nil)
         a.nudgeFirstBeat(by: 2)
@@ -575,7 +582,7 @@ struct TrackSongModelTests {
     }
 
     @Test func aTrackRemovedOnAnotherDeviceStopsItsPlayingTrack() throws {
-        let (a, b, bEngine, bFiles, song) = try twoDevicesPlayingATrack()
+        let (a, b, bEngine, bFiles, song, _) = try twoDevicesPlayingATrack()
         let fileID = try #require(song.track?.fileID)
         bEngine.trackTime = 30
         clock.advance()
@@ -587,6 +594,53 @@ struct TrackSongModelTests {
         #expect(b.trackPosition == 0)
         #expect(b.isTrackPlayable == false)
         #expect(bFiles.hasFile(fileID) == false)
+    }
+
+    @Test func aTrackReplacedOnAnotherDeviceStopsPlaybackAndIsMissingHere() throws {
+        let (a, b, bEngine, bFiles, song, bHaptics) = try twoDevicesPlayingATrack()
+        let oldID = try #require(song.track?.fileID)
+        bEngine.trackTime = 30
+        let haptics = hapticCount(bHaptics)
+        clock.advance()
+        a.editSong(song.id, name: "Song", settings: settings100, track: .attach(try picked("New.wav")))
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedTrack?.fileName == "New.wav")
+        #expect(b.isTrackMissing)
+        #expect(b.isPlaying == false)
+        #expect(bEngine.stopCount == 1)
+        #expect(b.trackPosition == 0)
+        #expect(bFiles.hasFile(oldID) == false)
+        #expect(hapticCount(bHaptics) == haptics)
+    }
+
+    @Test func theLoadedSongDeletedOnAnotherDeviceStopsItsPlayingTrack() throws {
+        let (a, b, bEngine, _, song, bHaptics) = try twoDevicesPlayingATrack()
+        bEngine.trackTime = 30
+        let haptics = hapticCount(bHaptics)
+        clock.advance()
+        a.deleteSong(song.id)
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedSong == nil)
+        #expect(b.isPlaying == false)
+        #expect(bEngine.stopCount == 1)
+        #expect(b.trackPosition == 0)
+        #expect(hapticCount(bHaptics) == haptics)
+    }
+
+    @Test func aMixArrivingFromAnotherDeviceReachesTheEngine() throws {
+        let (a, b, bEngine, _, song, bHaptics) = try twoDevicesPlayingATrack()
+        let haptics = hapticCount(bHaptics)
+        clock.advance()
+        a.loadSong(song.id, from: nil)
+        a.setMix(0.5)
+        a.savePendingChanges()
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedTrack?.mix == 0.5)
+        let mix = try #require(bEngine.mixes.last)
+        #expect(mix.click == TrackMix.clickGain(at: 0.5))
+        #expect(mix.track == TrackMix.trackGain(at: 0.5))
+        #expect(b.isPlaying)
+        #expect(hapticCount(bHaptics) == haptics)
     }
 
     @Test func aTrackAttachedOnAnotherDeviceArrivesMissingAndKeepsPlaying() throws {
