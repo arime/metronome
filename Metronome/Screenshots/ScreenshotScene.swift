@@ -29,13 +29,26 @@ enum ScreenshotScene: String, CaseIterable {
     case trackSolo
     /// The track screen for a song whose backing track's file is not on this device.
     case trackMissing
+    /// The track screen with the track on the setlist's first song, loaded from the setlist.
+    case trackFirst
+    /// The track screen with the track on the setlist's last song, loaded from the setlist.
+    case trackLast
 
     /// The scenes with a backing track. They write their own audio file at launch, except
     /// the scene whose file is missing.
     var hasTrack: Bool {
         switch self {
-        case .trackScreen, .trackSync, .trackSolo, .trackMissing: true
+        case .trackScreen, .trackSync, .trackSolo, .trackMissing, .trackFirst, .trackLast: true
         default: false
+        }
+    }
+
+    /// Where in the setlist the song with the track is.
+    private var trackIndex: Int {
+        switch self {
+        case .trackFirst: 0
+        case .trackLast: 7
+        default: 1
         }
     }
 
@@ -59,7 +72,7 @@ enum ScreenshotScene: String, CaseIterable {
         let settingsStore = SettingsStore(defaults: defaults)
         let libraryStore = LibraryStore(defaults: defaults)
 
-        var sample = SampleLibrary(now: Self.date)
+        var sample = SampleLibrary(now: Self.date, trackIndex: trackIndex)
         let trackFiles = TrackFileStore(
             directory: FileManager.default.temporaryDirectory.appending(path: "ScreenshotTracks", directoryHint: .isDirectory)
         )
@@ -172,10 +185,11 @@ private struct SampleLibrary {
     private(set) var setlistID = UUID()
     private(set) var loadedSongID: UUID?
     private(set) var loadedSettings = MetronomeSettings()
-    /// Copper Sky, at 120 BPM in 4/4 like the demo track.
+    /// The song that gets the track: Copper Sky, at 120 BPM in 4/4 like the demo track, unless
+    /// a scene needs the track at an end of the setlist.
     private var trackSongID: UUID?
 
-    /// Gives Copper Sky a backing track and loads it in place of the third song.
+    /// Gives the track song a backing track and loads it in place of the third song.
     mutating func attachTrack(_ track: BackingTrack, now: Date) {
         guard let trackSongID, let song = library.song(id: trackSongID) else { return }
         library.setTrack(trackSongID, to: track, now: now)
@@ -183,7 +197,8 @@ private struct SampleLibrary {
         loadedSettings = song.settings
     }
 
-    init(now: Date) {
+    /// `trackIndex` is the place in the setlist of the song that a track can be attached to.
+    init(now: Date, trackIndex: Int = 1) {
         let setlist: [(String, Int, TimeSignature, Set<Int>)] = [
             ("Harbour Lights", 96, .fourFour, [1]),
             ("Copper Sky", 120, .fourFour, [1, 3]),
@@ -203,7 +218,7 @@ private struct SampleLibrary {
         for (index, entry) in setlist.enumerated() {
             guard let song = add(entry, now: now) else { continue }
             library.add(song.id, toSetlist: setlistID, now: now)
-            if index == 1 { trackSongID = song.id }
+            if index == trackIndex { trackSongID = song.id }
             if index == 2 {
                 loadedSongID = song.id
                 loadedSettings = song.settings
