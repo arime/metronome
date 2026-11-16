@@ -42,4 +42,13 @@ struct SettingsStoreTests {
         defaults.set(Data(#"{"bpm":100,"timeSignature":"11/16","accents":[1]}"#.utf8), forKey: key)
         #expect(store.load() == MetronomeSettings())
     }
+
+    @Test func backingTracksAreOnWhenNothingIsStored() {
+        #expect(store.loadBackingTracksOn() == true)
+    }
+
+    @Test func backingTracksOffIsRemembered() {
+        store.saveBackingTracksOn(false)
+        #expect(SettingsStore(defaults: defaults).loadBackingTracksOn() == false)
+    }
 }

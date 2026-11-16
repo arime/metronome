@@ -58,4 +58,16 @@ struct SettingsStore: @unchecked Sendable {
     func saveKeepScreenAwake(_ enabled: Bool) {
         defaults.set(enabled, forKey: Self.keepScreenAwakeKey)
     }
+
+    /// Kept apart from the settings for the same reason as the sound.
+    private static let backingTracksOnKey = "metronome.backingTracksOn.v1"
+
+    /// On when nothing is stored.
+    func loadBackingTracksOn() -> Bool {
+        defaults.object(forKey: Self.backingTracksOnKey) as? Bool ?? true
+    }
+
+    func saveBackingTracksOn(_ on: Bool) {
+        defaults.set(on, forKey: Self.backingTracksOnKey)
+    }
 }

@@ -88,6 +88,7 @@ final class MetronomeModel {
         settings = store.load()
         hapticsEnabled = store.loadHapticsEnabled()
         keepScreenAwake = store.loadKeepScreenAwake()
+        backingTracksOn = store.loadBackingTracksOn()
         let sound = store.loadClickSound()
         clickSound = sound
         engine.setSound(sound)
@@ -138,7 +139,7 @@ final class MetronomeModel {
     /// `countIn` is true and the position is 0:00, otherwise from the position at once.
     /// A file that cannot be opened plays the click alone for this run.
     private func start(countIn: Bool = true) {
-        if let track = loadedTrack, let url = trackFiles.url(for: track.fileID) {
+        if isTrackPlayable, let track = loadedTrack, let url = trackFiles.url(for: track.fileID) {
             let grid = TrackGrid(
                 firstBeat: track.firstBeatSeconds, bpm: settings.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
             )
@@ -245,19 +246,36 @@ final class MetronomeModel {
 
     // MARK: - Backing track
 
-    /// The loaded song's track, whether its file is here or not.
-    var loadedTrack: BackingTrack? { loadedSong?.track }
+    /// The Backing tracks switch. Off, every song is a plain metronome. Applies to the whole app,
+    /// is remembered on this device and changes only when tapped.
+    private(set) var backingTracksOn: Bool
 
-    /// The loaded song has a track and its file is on this device. Kept rather than read from
-    /// the file store, as views read it many times a second; `refreshTrackFile()` updates it.
-    private(set) var isTrackPlayable = false
-
-    /// The loaded song has a track but its file is not on this device.
-    var isTrackMissing: Bool {
-        loadedTrack != nil && !isTrackPlayable
+    /// Turns backing tracks on or off, with a tick; only while stopped. The track's position is
+    /// kept, so off and on again finds the track where it was.
+    func toggleBackingTracks() {
+        guard !isPlaying else { return }
+        backingTracksOn.toggle()
+        store.saveBackingTracksOn(backingTracksOn)
+        refreshTrackFile()
+        haptics?.selection()
     }
 
-    /// The file's length in seconds; read with `isTrackPlayable`.
+    /// The loaded song's track, whether its file is here or not, and whatever the switch says.
+    var loadedTrack: BackingTrack? { loadedSong?.track }
+
+    /// Backing tracks is on and the loaded song has a track, whether its file is here or not.
+    var isTrackInUse: Bool { backingTracksOn && loadedTrack != nil }
+
+    /// The track is in use and its file is on this device. Kept rather than read from the file
+    /// store, as views read it many times a second; `refreshTrackFile()` updates it.
+    private(set) var isTrackPlayable = false
+
+    /// The track is in use but its file is not on this device.
+    var isTrackMissing: Bool {
+        isTrackInUse && !isTrackPlayable
+    }
+
+    /// The file's length in seconds; read with `isTrackPlayable`, so nil while the switch is off.
     private(set) var trackLength: TimeInterval?
     /// Where the track is while stopped. Not saved: 0:00 at launch and whenever a song is loaded.
     private(set) var trackPosition: TimeInterval = 0
@@ -323,9 +341,10 @@ final class MetronomeModel {
 
     /// Reads whether the loaded song's file is here, and its length. Called whenever either can
     /// change: at launch, when another song becomes the loaded one, when the loaded song's track
-    /// changes and when its file is stored.
+    /// changes, when its file is stored and when the switch is turned. With the switch off the file
+    /// is not opened.
     private func refreshTrackFile() {
-        let url = loadedTrack.flatMap { trackFiles.url(for: $0.fileID) }
+        let url = backingTracksOn ? loadedTrack.flatMap { trackFiles.url(for: $0.fileID) } : nil
         isTrackPlayable = url != nil
         trackLength = url.flatMap(lengthOfTrack)
     }
@@ -336,14 +355,20 @@ final class MetronomeModel {
         refreshTrackFile()
     }
 
+    /// Whether the track would play if it were the loaded one: false while the switch is off.
     private func isPlayable(_ track: BackingTrack?) -> Bool {
+        backingTracksOn && hasFile(track)
+    }
+
+    private func hasFile(_ track: BackingTrack?) -> Bool {
         track.map { trackFiles.hasFile($0.fileID) } ?? false
     }
 
-    /// Whether a song's backing-track file is on this device; false for a song without a track.
-    /// The song sheet asks it for the song being edited, which need not be the loaded one.
+    /// Whether a song's backing-track file is on this device, whatever the switch says; false for a
+    /// song without a track. The song sheet asks it for the song being edited, which need not be
+    /// the loaded one.
     func hasTrackFile(for song: Song) -> Bool {
-        isPlayable(song.track)
+        hasFile(song.track)
     }
 
     /// Copies a picked file into the store; false when it cannot be copied. The picked file stays.
@@ -667,7 +692,7 @@ final class MetronomeModel {
             guard let stored = newTrack(picked) else { return nil }
             track = stored
         }
-        if isTrackPlayable || track != nil { stop() }
+        if isTrackPlayable || isPlayable(track) { stop() }
         guard let song = library.addSong(name: name, settings: newSettings, track: track, now: now()) else { return nil }
         loadedSongID = song.id
         loadedFromSetlistID = nil
@@ -700,7 +725,7 @@ final class MetronomeModel {
         guard let song = library.addSong(name: name, settings: newSettings, track: track, now: moment) else { return nil }
         if let setlistID { library.add(song.id, toSetlist: setlistID, now: moment) }
         if namesCurrentSettings {
-            if track != nil { stop() }
+            if isPlayable(track) { stop() }
             loadedSongID = song.id
             let members = setlistID.flatMap(library.setlist(id:))?.songIDs ?? []
             loadedFromSetlistID = members.contains(song.id) ? setlistID : nil
@@ -730,7 +755,8 @@ final class MetronomeModel {
     ///
     /// The track: a file picked for a missing one is stored under its identifier and the part is
     /// left alone; any other file gets a new identifier and a new part. On the loaded song, a file
-    /// picked or a playable track removed stops playback and goes to 0:00.
+    /// picked or a playable track removed stops playback and goes to 0:00; with the switch off
+    /// nothing stops, and a file picked still goes to 0:00.
     ///
     /// Returns false only when a picked file cannot be stored; then nothing is saved at all, so the
     /// song sheet can stay open with what the user entered (10.3). True otherwise, also when there
@@ -758,7 +784,7 @@ final class MetronomeModel {
             filePicked = true
         }
         let removesPlayable = newPart != nil && !filePicked && isTrackPlayable
-        if isLoaded, filePicked || removesPlayable { stop() }
+        if isLoaded, (filePicked && backingTracksOn) || removesPlayable { stop() }
         if Library.cleanName(name) != song.name {
             library.renameSong(id, to: name, now: moment)
         }
