@@ -7,7 +7,7 @@ import Foundation
 /// `scripts/screenshots.sh` launches the app with `-screenshotScene <name>`. The scene's
 /// library and settings live in their own defaults domain, so the simulator's real data is
 /// never touched, and there is no iCloud. The App Store scenes have no sound or haptics; the
-/// two track scenes play and vibrate for real, so the click and the track can be heard together.
+/// track scenes play and vibrate for real, so the click and the track can be heard together.
 enum ScreenshotScene: String, CaseIterable {
     /// The metronome playing a song loaded from a setlist, with an accented beat sounding.
     case playing
@@ -25,10 +25,18 @@ enum ScreenshotScene: String, CaseIterable {
     case trackScreen
     /// The track screen with the Sync sheet open over it.
     case trackSync
+    /// The track screen for the same song loaded on its own, outside the setlist.
+    case trackSolo
+    /// The track screen for a song whose backing track's file is not on this device.
+    case trackMissing
 
-    /// The scenes with a backing track. They write their own audio file at launch.
+    /// The scenes with a backing track. They write their own audio file at launch, except
+    /// the scene whose file is missing.
     var hasTrack: Bool {
-        self == .trackScreen || self == .trackSync
+        switch self {
+        case .trackScreen, .trackSync, .trackSolo, .trackMissing: true
+        default: false
+        }
     }
 
     /// The scene the app was launched with, if any.
@@ -55,7 +63,12 @@ enum ScreenshotScene: String, CaseIterable {
         let trackFiles = TrackFileStore(
             directory: FileManager.default.temporaryDirectory.appending(path: "ScreenshotTracks", directoryHint: .isDirectory)
         )
-        if hasTrack {
+        if self == .trackMissing {
+            trackFiles.removeAll(except: [])
+            sample.attachTrack(
+                BackingTrack(fileID: UUID(), fileName: DemoTrack.fileName, firstBeat: 50), now: Self.date
+            )
+        } else if hasTrack {
             sample.attachTrack(DemoTrack.make(in: trackFiles), now: Self.date)
         }
         libraryStore.save(LibraryState(
@@ -63,7 +76,7 @@ enum ScreenshotScene: String, CaseIterable {
             loadedSongID: sample.loadedSongID,
             // The library opens on the setlist its loaded song came from, so the scene
             // that shows all songs has the song loaded on its own.
-            loadedFromSetlistID: self == .library ? nil : sample.setlistID,
+            loadedFromSetlistID: self == .library || self == .trackSolo ? nil : sample.setlistID,
             selectedSetlistID: self == .setlist ? sample.setlistID : nil
         ))
         settingsStore.save(sample.loadedSettings)

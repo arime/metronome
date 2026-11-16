@@ -5,13 +5,14 @@ struct MetronomeScreen: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isLibraryShown = false
     @State private var isSettingsShown = false
-    /// Set by Sync on the track strip.
+    /// Set by Sync on the player card.
     @State private var isSyncShown = false
 
     var body: some View {
         GeometryReader { proxy in
-            // The arrangement follows the song, not the file: a missing file still shows the strip.
-            let hasTrack = model.loadedTrack != nil
+            // The arrangement follows the song, not the file: a missing file still shows the card.
+            // With Backing tracks off, the song is plain and so is the screen.
+            let hasTrack = model.isTrackInUse
             let layout = ScreenLayout(
                 width: proxy.size.width,
                 height: proxy.size.height,
@@ -30,8 +31,9 @@ struct MetronomeScreen: View {
                         .padding(.top, layout.settingsTopGap)
                     AccentTiles(singleRowTileHeight: layout.tileHeight)
                         .padding(.top, layout.sectionGap)
-                    TrackStrip { isSyncShown = true }
-                        .padding(.top, ScreenLayout.playerCardTopGap)
+                    Spacer(minLength: ScreenLayout.playerCardTopGap)
+                    PlayerCard(showsNextLine: layout.showsNextLine) { isSyncShown = true }
+                        .padding(.bottom, layout.bottomPadding)
                 } else {
                     TempoControls()
                         .padding(.top, 4)
@@ -40,16 +42,16 @@ struct MetronomeScreen: View {
                         AccentTiles(singleRowTileHeight: layout.tileHeight)
                     }
                     .padding(.top, layout.settingsTopGap)
+                    Spacer(minLength: ScreenLayout.buttonTopGap)
+                    footer(showsNextLine: layout.showsNextLine)
+                        .padding(.bottom, layout.bottomPadding)
                 }
-                Spacer(minLength: ScreenLayout.buttonTopGap)
-                footer(showsNextLine: layout.showsNextLine)
-                    .padding(.bottom, layout.bottomPadding)
             }
             .padding(.horizontal, layout.sideMargin)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.ink.ignoresSafeArea())
-        // Presented from the screen rather than the strip, so the strip going away cannot
+        // Presented from the screen rather than the card, so the card going away cannot
         // leave the flag set and reopen the sheet with the next song's track.
         .sheet(isPresented: $isSyncShown) {
             SyncSheet()
@@ -69,7 +71,8 @@ struct MetronomeScreen: View {
         #endif
     }
 
-    /// Title, the Save button while the song has unsaved changes, mute and gear.
+    /// Title, the Save button while the song has unsaved changes, the Backing tracks switch for
+    /// a song with a backing track, mute and gear.
     private var header: some View {
         HStack(spacing: 8) {
             SongTitle { isLibraryShown = true }
@@ -78,6 +81,9 @@ struct MetronomeScreen: View {
                     // Fades in, but leaves at once, so that after Save only the menu's own
                     // closing animation is left on screen.
                     .transition(.asymmetric(insertion: .opacity, removal: .identity))
+            }
+            if model.loadedTrack != nil {
+                TrackSwitchButton()
             }
             MuteButton()
             SettingsButton { isSettingsShown = true }
@@ -119,8 +125,8 @@ struct MetronomeScreen: View {
     }
 }
 
-/// Says what Next leads to, above the transport row. At the last song it says so, and
-/// keeps its height, so the footer does not move from song to song.
+/// Says what Next leads to, above the Start row or at the foot of the player card. At the last
+/// song it says so, and keeps its height, so nothing moves from song to song.
 struct NextUpLine: View {
     let next: Song?
 

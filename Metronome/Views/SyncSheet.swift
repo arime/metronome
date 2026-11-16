@@ -22,7 +22,11 @@ struct SyncSheet: View {
                 .overlay(alignment: .trailing) { doneButton }
                 HStack(spacing: 10) {
                     PlayStopButton()
-                    TrackProgressBar(spacing: 10)
+                    TrackSkipButton(isForward: false)
+                    TrackProgressBar()
+                        // The line, not the times below it, lines up with the buttons' centres.
+                        .alignmentGuide(VerticalAlignment.center) { _ in TrackProgressBar.bandHeight / 2 }
+                    TrackSkipButton(isForward: true)
                 }
                 group("TEMPO") {
                     tempoRow
