@@ -72,9 +72,11 @@ final class MetronomeModel {
     init(engine: ClickEngine, store: SettingsStore, haptics: HapticsPlaying, libraryStore: LibraryStore,
          sync: LibrarySync? = nil, now: @escaping () -> Date = Date.init,
          saveOfferDelay: Duration = .milliseconds(500),
+         syncSettingSaveDelay: Duration = .milliseconds(300),
          trackFiles: TrackFileStore = TrackFileStore(),
          lengthOfTrack: @escaping (URL) -> TimeInterval? = { try? TrackAudio.length(of: $0) }) {
         self.saveOfferDelay = saveOfferDelay
+        self.syncSettingSaveDelay = syncSettingSaveDelay
         self.trackFiles = trackFiles
         self.lengthOfTrack = lengthOfTrack
         self.sync = sync
@@ -126,8 +128,10 @@ final class MetronomeModel {
         becomeStopped()
     }
 
+    /// Also saves a Sync sheet change still waiting to be saved.
     func appDidLeaveForeground() {
         stop()
+        savePendingChanges()
     }
 
     /// With a playable track, starts track and click together: with the count-in when
@@ -364,7 +368,10 @@ final class MetronomeModel {
     }
 
     // MARK: - The Sync sheet
-    // First beat, count-in and mix are saved into the song at once and never make it edited.
+    // First beat, count-in and mix go into the song at once and never make it edited. The
+    // engine and the library in memory take them at once; saving the library and sending it
+    // to iCloud wait for a pause (`persistSoon`), as a held button or a dragged knob changes
+    // them many times a second.
 
     /// Each step is 0.01 s; the first beat stays between 0:00 and the file's end.
     func nudgeFirstBeat(by steps: Int) {
@@ -418,7 +425,7 @@ final class MetronomeModel {
     private func saveLoadedTrack(_ track: BackingTrack) {
         guard let id = loadedSongID else { return }
         library.setTrack(id, to: track, now: now())
-        persistLibrary()
+        persistSoon()
     }
 
     // MARK: - Tempo
@@ -901,11 +908,37 @@ final class MetronomeModel {
 
     /// Saves the library, and sends it to iCloud when sync is on. Track files no song refers to
     /// any more are deleted, so a picked file must be stored before a song refers to it.
+    /// It saves the whole library in memory, so a save waiting in `persistSoon` is included and
+    /// is no longer needed.
     private func persistLibrary() {
+        pendingSave?.cancel()
+        pendingSave = nil
         syncSaveOffer()
         libraryStore.save(currentLibraryState)
         trackFiles.removeAll(except: library.referencedFileIDs)
         if sync?.isOn == true { exchangeWithCloud() }
+    }
+
+    /// A save waiting for the changes to pause; nil when nothing waits.
+    @ObservationIgnored private var pendingSave: Task<Void, Never>?
+    @ObservationIgnored private let syncSettingSaveDelay: Duration
+
+    /// `persistLibrary()` once `syncSettingSaveDelay` has passed without another call.
+    /// The library in memory already holds the change.
+    private func persistSoon() {
+        pendingSave?.cancel()
+        pendingSave = Task { [weak self, syncSettingSaveDelay] in
+            try? await Task.sleep(for: syncSettingSaveDelay)
+            guard !Task.isCancelled, let self else { return }
+            self.persistLibrary()
+        }
+    }
+
+    /// Saves at once a change still waiting in `persistSoon`; nothing when none waits.
+    /// For the Sync sheet closing and the app leaving the foreground.
+    func savePendingChanges() {
+        guard pendingSave != nil else { return }
+        persistLibrary()
     }
 
     private var currentLibraryState: LibraryState {

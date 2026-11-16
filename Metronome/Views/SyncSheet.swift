@@ -72,6 +72,8 @@ struct SyncSheet: View {
         .onChange(of: model.isTrackPlayable) { _, isPlayable in
             if !isPlayable { dismiss() }
         }
+        // However the sheet closes, what was set in it is saved and sent now.
+        .onDisappear { model.savePendingChanges() }
     }
 
     /// The text is drawn as before, at the row's right edge; the touch area is at least 44 × 44.

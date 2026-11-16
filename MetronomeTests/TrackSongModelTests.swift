@@ -380,13 +380,14 @@ struct TrackSongModelTests {
 
     // MARK: - The Sync sheet
 
-    @Test func nudgingTheFirstBeatSavesAtOnceWithoutEdited() throws {
+    @Test func nudgingTheFirstBeatSavesWithoutEdited() throws {
         let setup = try makeModel()
         let model = setup.model
         model.togglePlayback()
         let ticks = haptics.selectionCount
         model.nudgeFirstBeat(by: 1)
         #expect(model.loadedTrack?.firstBeat == 49)
+        model.savePendingChanges()
         #expect(bench.libraryStore.load().library.song(id: setup.song.id)?.track?.firstBeat == 49)
         #expect(model.isEdited == false)
         #expect(model.isSaveOffered == false)
@@ -430,11 +431,12 @@ struct TrackSongModelTests {
         #expect(haptics.selectionCount == ticks)
     }
 
-    @Test func countInAndMixSaveAtOnce() throws {
+    @Test func countInAndMixAreSaved() throws {
         let setup = try makeModel()
         let model = setup.model
         model.setCountIn(.off)
         model.setMix(-0.5)
+        model.savePendingChanges()
         let saved = try #require(bench.libraryStore.load().library.song(id: setup.song.id)?.track)
         #expect(saved.countIn == .off)
         #expect(saved.mix == -0.5)
@@ -465,6 +467,59 @@ struct TrackSongModelTests {
         let mixes = engine.mixes.count
         model.setMix(0.25)
         #expect(engine.mixes.count == mixes)
+    }
+
+    // MARK: - Saving the Sync sheet's changes
+
+    private func savedTrack(of song: Song) -> BackingTrack? {
+        bench.libraryStore.load().library.song(id: song.id)?.track
+    }
+
+    @Test func severalNudgesInARowSaveOnceWithTheLastValue() async throws {
+        let setup = try makeModel()
+        let model = bench.relaunch(saveDelay: .milliseconds(20))
+        let writes = bench.libraryDefaults.writes
+        model.nudgeFirstBeat(by: 1)
+        model.nudgeFirstBeat(by: 1)
+        model.setMix(0.4)
+        model.nudgeFirstBeat(by: 1)
+        #expect(engine.mixes.count == 1)
+        #expect(bench.libraryDefaults.writes == writes)
+        #expect(savedTrack(of: setup.song)?.firstBeat == 48)
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(bench.libraryDefaults.writes == writes + 1)
+        #expect(savedTrack(of: setup.song)?.firstBeat == 51)
+        #expect(savedTrack(of: setup.song)?.mix == 0.4)
+    }
+
+    @Test func leavingTheForegroundSavesAtOnce() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.setCountIn(.oneBar)
+        model.appDidLeaveForeground()
+        #expect(savedTrack(of: setup.song)?.countIn == .oneBar)
+    }
+
+    @Test func anyOtherSaveIncludesTheWaitingChange() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.setMix(-0.3)
+        model.renameSong(setup.plain.id, to: "Plainer")
+        #expect(savedTrack(of: setup.song)?.mix == -0.3)
+        let writes = bench.libraryDefaults.writes
+        model.savePendingChanges()
+        #expect(bench.libraryDefaults.writes == writes)
+    }
+
+    @Test func aRelaunchAfterSavingSeesTheChange() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.setMix(-0.3)
+        model.nudgeFirstBeat(by: 5)
+        model.savePendingChanges()
+        let relaunched = bench.relaunch()
+        #expect(relaunched.loadedTrack?.mix == -0.3)
+        #expect(relaunched.loadedTrack?.firstBeat == 53)
     }
 
     // MARK: - Changes arriving from another device
@@ -511,6 +566,7 @@ struct TrackSongModelTests {
         clock.advance()
         a.loadSong(song.id, from: nil)
         a.nudgeFirstBeat(by: 2)
+        a.savePendingChanges()
         cloud.send(.changed, toDevice: 1)
         #expect(b.loadedTrack?.firstBeat == 50)
         #expect(bEngine.firstBeats.last == 0.5)

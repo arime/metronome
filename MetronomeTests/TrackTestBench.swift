@@ -19,9 +19,12 @@ final class TrackTestBench {
     let engine = FakeClickEngine()
     let haptics = FakeHaptics()
     let settingsStore = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
-    let libraryStore = LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    /// Where the library store keeps the library; counts the saves.
+    let libraryDefaults = CountingDefaults(suiteName: UUID().uuidString)!
+    let libraryStore: LibraryStore
 
     init() throws {
+        libraryStore = LibraryStore(defaults: libraryDefaults)
         root = FileManager.default.temporaryDirectory.appending(path: "TrackTests-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         trackFiles = TrackFileStore(directory: root.appending(path: "Tracks"))
@@ -63,10 +66,20 @@ final class TrackTestBench {
     }
 
     /// A new model on the same stores, as after the app is opened again.
-    func relaunch(length: TimeInterval = 222) -> MetronomeModel {
+    func relaunch(length: TimeInterval = 222, saveDelay: Duration = .milliseconds(300)) -> MetronomeModel {
         MetronomeModel(
             engine: engine, store: settingsStore, haptics: haptics, libraryStore: libraryStore,
-            trackFiles: trackFiles, lengthOfTrack: { _ in length }
+            syncSettingSaveDelay: saveDelay, trackFiles: trackFiles, lengthOfTrack: { _ in length }
         )
+    }
+}
+
+/// Counts every value written, so a test can tell how often the library was saved.
+final class CountingDefaults: UserDefaults {
+    private(set) var writes = 0
+
+    override func set(_ value: Any?, forKey defaultName: String) {
+        writes += 1
+        super.set(value, forKey: defaultName)
     }
 }
