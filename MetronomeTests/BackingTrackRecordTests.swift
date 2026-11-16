@@ -203,6 +203,41 @@ import Testing
         #expect(fields["bpm"] == .number(96))
     }
 
+    @Test func aSongTempoSetHereLeavesTheTrackTempo() throws {
+        let record = recordWithoutTrackTempo()
+        var library = Library()
+        library.merge(songs: [record], setlists: [])
+        library.updateSong(record.id, settings: settings(100), now: t(5))
+        #expect(library.song(id: record.id)?.settings.bpm == 100)
+        #expect(library.song(id: record.id)?.track?.bpm == 96)
+        #expect(library.songRecords[record.id]?.parts[SongRecord.trackKey]?.time == t(1))
+    }
+
+    @Test func aSongTempoFromAnotherDeviceLeavesTheTrackTempo() throws {
+        let record = recordWithoutTrackTempo()
+        // The other device's copy, as an earlier build changes the tempo: the track part untouched.
+        var other = record
+        other.parts[SongRecord.tempoKey] = Part(time: t(5), value: .number(100))
+        var library = Library()
+        library.merge(songs: [record], setlists: [])
+        library.merge(songs: [other], setlists: [])
+        let merged = try #require(library.songRecords[record.id])
+        #expect(merged.song?.settings.bpm == 100)
+        #expect(merged.song?.track?.bpm == 96)
+        #expect(merged.parts[SongRecord.trackKey]?.time == t(1))
+        #expect(merged == other.merged(with: record))
+    }
+
+    @Test func aSongTempoSetHereThenSyncedKeepsTheTrackTempoOnBothDevices() throws {
+        let record = recordWithoutTrackTempo()
+        var here = record
+        here.setSettings(settings(100), now: t(5))
+        let there = record.merged(with: here)
+        #expect(there.song?.track?.bpm == 96)
+        #expect(here.merged(with: record).song?.track?.bpm == 96)
+        #expect(there == here.merged(with: record))
+    }
+
     @Test func theTrackTempoIsKeptInRange() throws {
         #expect(BackingTrack(fileID: UUID(), fileName: "a", offset: 0, bpm: 10).bpm == 30)
         #expect(BackingTrack(fileID: UUID(), fileName: "a", offset: 0, bpm: 400).bpm == 300)

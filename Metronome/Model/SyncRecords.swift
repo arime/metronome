@@ -168,7 +168,20 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
 
     /// Stamps only the tempo part, only when it differs; the meter part keeps its time.
     private mutating func setTempo(_ settings: MetronomeSettings, now: Date) {
-        set(Self.tempoKey, to: Self.tempoValue(settings), now: now)
+        let value = Self.tempoValue(settings)
+        if parts[Self.tempoKey]?.value != value { keepTrackTempo() }
+        set(Self.tempoKey, to: value, now: now)
+    }
+
+    /// Writes the song's tempo into a track part that has none, keeping the part's time, so the
+    /// track keeps the tempo it reads as when the song's tempo is about to change. Nothing is sent
+    /// for the part.
+    private mutating func keepTrackTempo() {
+        guard let part = parts[Self.trackKey], case .object(var fields) = part.value, fields["bpm"] == nil,
+              let bpm = parts[Self.tempoKey]?.value.decoded(Int.self)
+        else { return }
+        fields["bpm"] = .number(Double(bpm))
+        parts[Self.trackKey] = Part(time: part.time, value: .object(fields))
     }
 
     /// Stamps the part only when the track differs from the one read. nil writes JSON null, so
@@ -199,10 +212,18 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
         if let marker = deleted, marker <= lastChange { deleted = nil }
     }
 
+    /// When the copies' tempos differ, each copy's track part without a tempo first takes that
+    /// copy's own tempo, so whichever tempo wins, the track keeps the tempo it read as. Both copies
+    /// are treated alike, so the result is the same in either order.
     func merged(with other: SongRecord) -> SongRecord {
-        var result = self
+        var mine = self, theirs = other
+        if parts[Self.tempoKey]?.value != other.parts[Self.tempoKey]?.value {
+            mine.keepTrackTempo()
+            theirs.keepTrackTempo()
+        }
+        var result = mine
         result.created = min(created, other.created)
-        result.parts = Part.merge(parts, other.parts)
+        result.parts = Part.merge(mine.parts, theirs.parts)
         result.deleted = [deleted, other.deleted].compactMap { $0 }.max()
         result.dropMarkerIfEdited()
         return result

@@ -191,8 +191,9 @@ struct TrackTempoModelTests {
 
     // MARK: - Data from an earlier build
 
-    // Review Focus 1
-    @Test func aTrackFromAnEarlierBuildIsReadWithoutBeingWritten() throws {
+    /// A model whose loaded song is at 96 BPM with a playable track whose part has no tempo, as an
+    /// earlier build wrote it.
+    private func modelWithTrackFromAnEarlierBuild() throws -> MetronomeModel {
         let settings = MetronomeSettings(bpm: 96, timeSignature: .fourFour, accents: [1])
         let fileID = UUID()
         try bench.trackFiles.store(try bench.sourceFile(), as: fileID)
@@ -206,8 +207,12 @@ struct TrackTempoModelTests {
         library.merge(songs: [record], setlists: [])
         bench.settingsStore.save(settings)
         bench.libraryStore.save(LibraryState(library: library, loadedSongID: record.id))
+        return bench.relaunch()
+    }
 
-        let model = bench.relaunch()
+    /// Loaded at launch, it plays at the song's tempo, offers no Save and writes nothing.
+    @Test func aTrackFromAnEarlierBuildIsReadWithoutBeingWritten() throws {
+        let model = try modelWithTrackFromAnEarlierBuild()
         let writes = bench.libraryDefaults.writes
         #expect(model.isTrackPlayable)
         #expect(model.tempoInEffect == 96)
@@ -216,5 +221,23 @@ struct TrackTempoModelTests {
         #expect(engine.startedSettings.last?.bpm == 96)
         model.togglePlayback()
         #expect(bench.libraryDefaults.writes == writes)
+    }
+
+    @Test func editingTheSongsTempoLeavesAnEarlierBuildsTrackTempo() throws {
+        let model = try modelWithTrackFromAnEarlierBuild()
+        let id = try #require(model.loadedSongID)
+        model.editSong(id, name: "Song", settings: MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1]))
+        #expect(model.loadedSong?.settings.bpm == 100)
+        #expect(model.tempoInEffect == 96)
+        #expect(model.loadedTrack?.bpm == 96)
+    }
+
+    @Test func aTrackTempoStepNeedsATrackInUse() throws {
+        let model = try makeModel()
+        model.toggleBackingTracks()
+        let ticks = haptics.selectionCount
+        model.nudgeTrackTempo(by: 1)
+        #expect(model.loadedTrack?.bpm == 90)
+        #expect(haptics.selectionCount == ticks)
     }
 }

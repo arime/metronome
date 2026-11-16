@@ -370,9 +370,9 @@ final class MetronomeModel {
         trackLength = url.flatMap(lengthOfTrack)
     }
 
-    /// Another song is loaded, or the loaded song's track is another file: back to 0:00. A click
-    /// that plays on without the file goes to the tempo now in effect when the track that came
-    /// or went changed it, for example on Unload from a song whose file is missing.
+    /// Another song is loaded, or the loaded song's track is another file: back to 0:00. When the
+    /// track that came or went changes the tempo in effect, a click that plays on without the file
+    /// takes it, for example on Unload from a song whose file is missing.
     private func loadedTrackReplaced(replacing old: BackingTrack?) {
         trackPosition = 0
         refreshTrackFile()
@@ -426,9 +426,9 @@ final class MetronomeModel {
     // changes them many times a second.
 
     /// The Sync tempo stepper: the track's tempo by `delta` BPM, within 30...300. The metronome's
-    /// tempo is not touched, so this never makes the song edited.
+    /// tempo is not touched, so this never makes the song edited. Only while a track is in use.
     func nudgeTrackTempo(by delta: Int) {
-        guard var track = loadedTrack else { return }
+        guard isTrackInUse, var track = loadedTrack else { return }
         let bpm = Tempo.clamp(track.bpm + delta)
         guard bpm != track.bpm else { return }
         track.bpm = bpm
@@ -560,8 +560,8 @@ final class MetronomeModel {
     }
 
     /// True when a song is loaded and the current settings differ from it. While a track is in use
-    /// only the time signature and the accents count: the tempo on screen is the track's, and an
-    /// unsaved metronome tempo counts again once the track is no longer in use.
+    /// only the time signature and the accents count, as the tempo on screen is the track's; an
+    /// unsaved metronome tempo is kept and counts whenever no track is in use.
     var isEdited: Bool {
         guard let saved = loadedSong?.settings else { return false }
         if isTrackInUse {
@@ -1087,7 +1087,7 @@ final class MetronomeModel {
             loadedTrackReplaced(replacing: old)
             return
         }
-        if track.bpm != old.bpm, isPlaying { engine.update(settingsInEffect, startNewBar: false) }
+        if track.bpm != old.bpm, isPlaying, isTrackInUse { engine.update(settingsInEffect, startNewBar: false) }
         if track.offset != old.offset, isPlayingTrack { engine.setOffset(track.offsetSeconds) }
         if track.mix != old.mix { sendMix(track.mix) }
     }
