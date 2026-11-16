@@ -49,20 +49,9 @@ struct TrackGridTests {
         #expect(grid.firstClickIndex(countIn: .off) == 0)
     }
 
-    @Test func tapOnBeatOneGoesBackWholeBars() {
-        #expect(TrackGrid.offset(forDownbeatAt: 9.30, bpm: 120, beatsPerBar: 4) == 130)
-        #expect(TrackGrid.offset(forDownbeatAt: 1.30, bpm: 120, beatsPerBar: 4) == 130)
-        #expect(TrackGrid.offset(forDownbeatAt: 0.004, bpm: 120, beatsPerBar: 4) == 0)
-    }
-
-    @Test func tapOnBeatOneWithABarLongerThanTheTap() {
-        #expect(TrackGrid.offset(forDownbeatAt: 1.0, bpm: 30, beatsPerBar: 12) == 100)
-    }
-
     @Test func tempoIsClampedInTheGrid() {
         let grid = TrackGrid(offset: 0, bpm: 0, beatsPerBar: 4)
         #expect(near(grid.beatInterval, 2))
         #expect(near(grid.time(ofBeat: 1), 2))
-        #expect(TrackGrid.offset(forDownbeatAt: 9, bpm: 0, beatsPerBar: 4) == 100)
     }
 }

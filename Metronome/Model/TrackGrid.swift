@@ -31,13 +31,4 @@ struct TrackGrid: Equatable, Sendable {
     func firstClickIndex(countIn: CountIn) -> Int {
         -countIn.rawValue * beatsPerBar
     }
-
-    /// Tap on beat 1: the tapped place moved back by whole bars to the earliest place not before 0, in hundredths.
-    static func offset(forDownbeatAt tapped: TimeInterval, bpm: Int, beatsPerBar: Int) -> Int {
-        let bar = TrackGrid(offset: 0, bpm: bpm, beatsPerBar: beatsPerBar).beatInterval * TimeInterval(beatsPerBar)
-        var offset = tapped - (tapped / bar).rounded(.down) * bar
-        // Rounding up to a whole bar lands on the next downbeat; the one before it is earlier.
-        if (offset * 100).rounded() >= bar * 100 { offset -= bar }
-        return max(Int((offset * 100).rounded()), 0)
-    }
 }

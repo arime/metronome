@@ -375,6 +375,7 @@ final class MetronomeModel {
     /// takes it, for example on Unload from a song whose file is missing.
     private func loadedTrackReplaced(replacing old: BackingTrack?) {
         trackPosition = 0
+        tapRun = TapRun()
         refreshTrackFile()
         if isPlaying, tempoInEffect != tempoInEffect(with: old) {
             engine.update(settingsInEffect, startNewBar: false)
@@ -432,6 +433,7 @@ final class MetronomeModel {
         let bpm = Tempo.clamp(track.bpm + delta)
         guard bpm != track.bpm else { return }
         track.bpm = bpm
+        tapRun = TapRun()
         saveLoadedTrack(track)
         if isPlaying { engine.update(settingsInEffect, startNewBar: false) }
         haptics?.selection()
@@ -443,18 +445,9 @@ final class MetronomeModel {
         let last = trackLength.map { Int(($0 * 100).rounded(.down)) } ?? .max
         let offset = min(max(track.offset + steps, 0), last)
         guard offset != track.offset else { return }
+        tapRun = TapRun()
         setOffset(offset)
         haptics?.selection()
-    }
-
-    /// Marks the place being heard as a downbeat: the offset moves back from it by whole bars.
-    /// Only while the file itself is playing, not during the count-in's click alone.
-    func tapBeatOne() {
-        guard isPlayingTrack, loadedTrack != nil, let heard = engine.trackTime, heard >= 0 else { return }
-        haptics?.selection()
-        setOffset(TrackGrid.offset(
-            forDownbeatAt: heard, bpm: tempoInEffect, beatsPerBar: settings.timeSignature.beatsPerBar
-        ))
     }
 
     private func setOffset(_ offset: Int) {
@@ -462,6 +455,40 @@ final class MetronomeModel {
         track.offset = offset
         saveLoadedTrack(track)
         if isPlayingTrack { engine.setOffset(track.offsetSeconds) }
+    }
+
+    // MARK: - Tap on beat 1
+
+    /// The downbeats tapped so far (7.11). It belongs to one file at one tempo, offset and time
+    /// signature: changing any of them other than by a tap ends it.
+    private(set) var tapRun = TapRun()
+
+    /// Only while the file itself is playing, not during the count-in's click alone. Read from
+    /// the engine and not observed, so views read it again while playing.
+    var canTapDownbeat: Bool {
+        isPlayingTrack && !isCountingIn
+    }
+
+    /// Marks the place being heard as a downbeat and sets the track's tempo and offset from the
+    /// run, as one change. A bounced finger is ignored.
+    func tapDownbeat() {
+        guard canTapDownbeat, var track = loadedTrack, let heard = engine.trackTime, heard >= 0 else { return }
+        let beatsPerBar = settings.timeSignature.beatsPerBar
+        guard tapRun.add(at: heard, bpm: track.bpm, beatsPerBar: beatsPerBar) else { return }
+        haptics?.selection()
+        guard let fit = tapRun.fitted(bpm: track.bpm, beatsPerBar: beatsPerBar) else { return }
+        let old = track
+        track.bpm = fit.bpm
+        track.offset = fit.offset
+        guard track != old else { return }
+        saveLoadedTrack(track)
+        if track.bpm != old.bpm { engine.update(settingsInEffect, startNewBar: false) }
+        if track.offset != old.offset { engine.setOffset(track.offsetSeconds) }
+    }
+
+    /// Start over: the next tap begins a new run. The tempo and the offset stay.
+    func startTapRunOver() {
+        tapRun = TapRun()
     }
 
     func setCountIn(_ countIn: CountIn) {
@@ -535,6 +562,7 @@ final class MetronomeModel {
     /// The same one does nothing.
     func selectTimeSignature(_ signature: TimeSignature) {
         guard settings.setTimeSignature(signature) else { return }
+        tapRun = TapRun()
         settingsChanged(startNewBar: true)
         userChangedSettings()
     }
@@ -549,6 +577,7 @@ final class MetronomeModel {
     /// Replaces all the settings at once, as loading a song does.
     private func apply(_ newSettings: MetronomeSettings, startNewBar: Bool = true) {
         guard newSettings != settings else { return }
+        if newSettings.timeSignature != settings.timeSignature { tapRun = TapRun() }
         settings = newSettings
         settingsChanged(startNewBar: startNewBar)
     }
@@ -1087,6 +1116,7 @@ final class MetronomeModel {
             loadedTrackReplaced(replacing: old)
             return
         }
+        if track.bpm != old.bpm || track.offset != old.offset { tapRun = TapRun() }
         if track.bpm != old.bpm, isPlaying, isTrackInUse { engine.update(settingsInEffect, startNewBar: false) }
         if track.offset != old.offset, isPlayingTrack { engine.setOffset(track.offsetSeconds) }
         if track.mix != old.mix { sendMix(track.mix) }

@@ -209,8 +209,8 @@ private struct PlayStopButton: View {
     }
 }
 
-/// Marks the place being heard as a downbeat. Dimmed and without touches unless the file
-/// itself is playing, so not during the count-in's click alone.
+/// Marks the place being heard as a downbeat of the tap run. Dimmed and without touches unless
+/// the file itself is playing, so not during the count-in's click alone.
 private struct TapBeatOnePill: View {
     @Environment(MetronomeModel.self) private var model
 
@@ -225,9 +225,9 @@ private struct TapBeatOnePill: View {
     }
 
     private var pill: some View {
-        let isEnabled = model.isPlayingTrack && !model.isCountingIn
+        let isEnabled = model.canTapDownbeat
         return Button {
-            model.tapBeatOne()
+            model.tapDownbeat()
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "hand.tap")
