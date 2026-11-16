@@ -16,11 +16,9 @@ struct TempoControls: View {
 
 /// The outlined Tap tempo pill, with the hand icon. It fills the width it is given. While a
 /// series is open, from a tap until it would start over two seconds later, the outline is
-/// amber and the label changes. Used on both tempo rows and in the Sync sheet, where
-/// `savesIntoSong` makes a tapped tempo go into the song (7.11).
+/// amber and the label changes. Used on both tempo rows.
 struct TapTempoPill: View {
     @Environment(MetronomeModel.self) private var model
-    var savesIntoSong = false
     var idleLabel = "Tap tempo"
     var seriesLabel = "Tap again"
     let height: CGFloat
@@ -36,7 +34,7 @@ struct TapTempoPill: View {
     var body: some View {
         Button {
             let time = ProcessInfo.processInfo.systemUptime
-            if savesIntoSong { model.tapSyncTempo(at: time) } else { model.tapTempo(at: time) }
+            model.tapTempo(at: time)
             tapCount += 1
             isTapping = true
         } label: {

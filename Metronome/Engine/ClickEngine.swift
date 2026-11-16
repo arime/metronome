@@ -4,7 +4,7 @@ import Foundation
 struct TrackPlayback: Equatable, Sendable {
     let fileURL: URL
     /// Seconds into the file where beat 1 of bar 1 falls.
-    var firstBeat: TimeInterval
+    var offset: TimeInterval
     /// Where playback starts in file time; negative while only the count-in sounds.
     let startTime: TimeInterval
     /// The lowest beat index that clicks: negative with a count-in, 0 without.
@@ -33,10 +33,10 @@ protocol ClickEngine: AnyObject {
     /// Applies from the next beat that is not scheduled yet. With `startNewBar`,
     /// that beat is beat 1; otherwise the bar position is kept.
     func update(_ settings: MetronomeSettings, startNewBar: Bool)
-    /// While playing with a track: carries on from this file time, with no click before the first beat.
+    /// While playing with a track: carries on from this file time, with no click before the offset.
     func seekTrack(to time: TimeInterval)
     /// While playing with a track: moves the grid from the next beat not yet scheduled.
-    func setFirstBeat(_ firstBeat: TimeInterval)
+    func setOffset(_ offset: TimeInterval)
     /// Applies at once, also to audio already scheduled.
     func setMix(clickGain: Float, trackGain: Float)
     /// The file time being heard now, allowing for output delay; negative during a count-in. nil unless playing with a track.

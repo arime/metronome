@@ -79,7 +79,7 @@ enum ScreenshotScene: String, CaseIterable {
         if self == .trackMissing {
             trackFiles.removeAll(except: [])
             sample.attachTrack(
-                BackingTrack(fileID: UUID(), fileName: DemoTrack.fileName, firstBeat: 50), now: Self.date
+                BackingTrack(fileID: UUID(), fileName: DemoTrack.fileName, offset: 50, bpm: 120), now: Self.date
             )
         } else if hasTrack {
             sample.attachTrack(DemoTrack.make(in: trackFiles), now: Self.date)
@@ -123,10 +123,10 @@ private enum DemoTrack {
     static let fileName = "Click test 120.wav"
     private static let sampleRate = 44_100.0
     private static let seconds = 30.0
-    private static let firstBeat = 0.5
+    private static let offset = 0.5
     private static let beatInterval = 0.5
 
-    /// Stores the file under a new identifier and returns its track, with the first beat at 0.50 s.
+    /// Stores the file under a new identifier and returns its track, at 120 BPM with the offset at 0.50 s.
     static func make(in store: TrackFileStore) -> BackingTrack {
         let fileID = UUID()
         let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
@@ -140,7 +140,7 @@ private enum DemoTrack {
         } catch {
             fatalError("The demo track could not be written: \(error)")
         }
-        return BackingTrack(fileID: fileID, fileName: fileName, firstBeat: Int(firstBeat * 100))
+        return BackingTrack(fileID: fileID, fileName: fileName, offset: Int(offset * 100), bpm: 120)
     }
 
     private static func write(to url: URL) throws {
@@ -152,7 +152,7 @@ private enum DemoTrack {
               let samples = buffer.floatChannelData?[0]
         else { throw TrackAudioError.unreadable }
         buffer.frameLength = frames
-        let start = Int(firstBeat * sampleRate)
+        let start = Int(offset * sampleRate)
         for frame in 0..<Int(frames) {
             guard frame >= start else {
                 samples[frame] = 0
@@ -262,7 +262,7 @@ private final class ScreenshotEngine: ClickEngine {
 
     func update(_ settings: MetronomeSettings, startNewBar: Bool) {}
     func seekTrack(to time: TimeInterval) {}
-    func setFirstBeat(_ firstBeat: TimeInterval) {}
+    func setOffset(_ offset: TimeInterval) {}
     func setMix(clickGain: Float, trackGain: Float) {}
     func setMuted(_ muted: Bool) {}
     func setSound(_ sound: ClickSound) {}

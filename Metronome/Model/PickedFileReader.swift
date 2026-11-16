@@ -26,8 +26,8 @@ enum PickedFileReader {
         }
         do {
             _ = try TrackAudio.length(of: copy)
-            let firstBeat = try TrackAudio.firstSound(in: copy)
-            return PickedTrack(url: copy, fileName: picked.lastPathComponent, firstBeat: firstBeat)
+            let offset = try TrackAudio.firstSound(in: copy)
+            return PickedTrack(url: copy, fileName: picked.lastPathComponent, offset: offset)
         } catch {
             try? manager.removeItem(at: folder)
             throw error

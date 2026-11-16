@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Lines the click up with the backing track (specification 6.13, 7.11): playback, the tempo,
-/// the first beat, the count-in and the mix. Changes apply at once; closing leaves playback as it is.
+/// the offset, the count-in and the mix. Changes apply at once; closing leaves playback as it is.
 struct SyncSheet: View {
     @Environment(MetronomeModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -30,11 +30,9 @@ struct SyncSheet: View {
                 }
                 group("TEMPO") {
                     tempoRow
-                    TapTempoPill(savesIntoSong: true, height: 52)
-                        .padding(.top, 10)
                 }
-                group("FIRST BEAT") {
-                    firstBeatRow
+                group("OFFSET") {
+                    offsetRow
                     TapBeatOnePill()
                         .padding(.top, 10)
                 }
@@ -137,20 +135,20 @@ struct SyncSheet: View {
     }
 
     private var tempoRow: some View {
-        let bpm = model.settings.bpm
+        let bpm = model.loadedTrack?.bpm ?? model.tempoInEffect
         return valueRow(
             "Tempo", value: "\(bpm)", unit: "BPM", spokenValue: "\(bpm) beats per minute",
-            less: ("Slower", { model.nudgeSyncTempo(by: -1) }),
-            more: ("Faster", { model.nudgeSyncTempo(by: 1) })
+            less: ("Slower", { model.nudgeTrackTempo(by: -1) }),
+            more: ("Faster", { model.nudgeTrackTempo(by: 1) })
         )
     }
 
-    private var firstBeatRow: some View {
-        let seconds = Self.seconds(model.loadedTrack?.firstBeat ?? 0)
+    private var offsetRow: some View {
+        let seconds = Self.seconds(model.loadedTrack?.offset ?? 0)
         return valueRow(
-            "First beat", value: seconds, unit: "s", spokenValue: "\(seconds) seconds",
-            less: ("Earlier", { model.nudgeFirstBeat(by: -1) }),
-            more: ("Later", { model.nudgeFirstBeat(by: 1) })
+            "Offset", value: seconds, unit: "s", spokenValue: "\(seconds) seconds",
+            less: ("Earlier", { model.nudgeOffset(by: -1) }),
+            more: ("Later", { model.nudgeOffset(by: 1) })
         )
     }
 

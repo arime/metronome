@@ -154,7 +154,7 @@ final class TrackFilesTests {
         #expect(picked.fileName == source.lastPathComponent)
         #expect(picked.url.lastPathComponent == source.lastPathComponent)
         #expect(picked.url.path().hasPrefix(picks.path()))
-        #expect(picked.firstBeat == 25)
+        #expect(picked.offset == 25)
         #expect(FileManager.default.fileExists(atPath: picked.url.path()))
         #expect(FileManager.default.fileExists(atPath: source.path()))
     }

@@ -44,20 +44,23 @@ final class TrackTestBench {
     }
 
     /// A track at 0.48 s whose file is stored, unless `missing`.
-    func makeTrack(countIn: CountIn = .twoBars, mix: Double = 0, missing: Bool = false) throws -> BackingTrack {
-        let track = BackingTrack(fileID: UUID(), fileName: "Song.m4a", firstBeat: 48, countIn: countIn, mix: mix)
+    func makeTrack(
+        bpm: Int = 120, countIn: CountIn = .twoBars, mix: Double = 0, missing: Bool = false
+    ) throws -> BackingTrack {
+        let track = BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: 48, bpm: bpm, countIn: countIn, mix: mix)
         if !missing {
             try trackFiles.store(try sourceFile(), as: track.fileID)
         }
         return track
     }
 
-    /// A model whose loaded song is at 120 BPM in 4/4 with a track whose first beat is 0.48 s.
-    /// With `missing` the track's file is not stored.
+    /// A model whose loaded song is at 120 BPM in 4/4 with a track at `trackBPM` whose offset is
+    /// 0.48 s. With `missing` the track's file is not stored.
     func makeModel(
-        length: TimeInterval = 222, countIn: CountIn = .twoBars, mix: Double = 0, missing: Bool = false
+        trackBPM: Int = 120, length: TimeInterval = 222, countIn: CountIn = .twoBars, mix: Double = 0,
+        missing: Bool = false
     ) throws -> MetronomeModel {
-        let track = try makeTrack(countIn: countIn, mix: mix, missing: missing)
+        let track = try makeTrack(bpm: trackBPM, countIn: countIn, mix: mix, missing: missing)
         var library = Library()
         let added = library.addSong(name: "Song", settings: MetronomeSettings(), track: track, now: Date())
         let song = try #require(added)

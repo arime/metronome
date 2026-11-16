@@ -10,20 +10,20 @@ struct TrackBeatClockTests {
         TrackBeatClock(sampleRate: rate, startSampleTime: start, startTime: startTime, firstClickIndex: firstClickIndex)
     }
 
-    @Test func theCountInEndsOnTheFirstBeat() {
-        let grid = TrackGrid(firstBeat: 0.48, bpm: 120, beatsPerBar: 4)
+    @Test func theCountInEndsOnTheOffset() {
+        let grid = TrackGrid(offset: 0.48, bpm: 120, beatsPerBar: 4)
         var clock = clock(startTime: grid.startTime(countIn: .twoBars), firstClickIndex: grid.firstClickIndex(countIn: .twoBars))
-        let firstBeat = clock.sampleTime(forFileTime: 0.48)
-        let beats = clock.beats(before: firstBeat + 1, notBefore: start, endTime: 100, grid: grid, accents: [1])
+        let offset = clock.sampleTime(forFileTime: 0.48)
+        let beats = clock.beats(before: offset + 1, notBefore: start, endTime: 100, grid: grid, accents: [1])
         #expect(beats.count == 9)
-        #expect(beats.prefix(8).allSatisfy { $0.sampleTime < firstBeat })
+        #expect(beats.prefix(8).allSatisfy { $0.sampleTime < offset })
         #expect(beats.map(\.beat) == [1, 2, 3, 4, 1, 2, 3, 4, 1])
         #expect(beats.first?.sampleTime == start)
-        #expect(beats.last?.sampleTime == firstBeat)
+        #expect(beats.last?.sampleTime == offset)
     }
 
-    @Test func noClickBeforeTheFirstBeatWithoutACountIn() {
-        let grid = TrackGrid(firstBeat: 2.0, bpm: 120, beatsPerBar: 4)
+    @Test func noClickBeforeTheOffsetWithoutACountIn() {
+        let grid = TrackGrid(offset: 2.0, bpm: 120, beatsPerBar: 4)
         var clock = clock()
         let beats = clock.beats(before: clock.sampleTime(forFileTime: 3), notBefore: start, endTime: 100, grid: grid, accents: [1])
         #expect(clock.sampleTime(forFileTime: 0) == start)
@@ -32,7 +32,7 @@ struct TrackBeatClockTests {
     }
 
     @Test func startingMidFileJoinsOnTheNextGridBeat() {
-        let grid = TrackGrid(firstBeat: 0.48, bpm: 120, beatsPerBar: 7)
+        let grid = TrackGrid(offset: 0.48, bpm: 120, beatsPerBar: 7)
         var clock = clock(startTime: 30.1)
         let beats = clock.beats(before: clock.sampleTime(forFileTime: 31), notBefore: start, endTime: 100, grid: grid, accents: [1])
         #expect(beats.first?.sampleTime == clock.sampleTime(forFileTime: 30.48))
@@ -40,7 +40,7 @@ struct TrackBeatClockTests {
     }
 
     @Test func accentsFollowTheBarBeat() {
-        let grid = TrackGrid(firstBeat: 0, bpm: 120, beatsPerBar: 4)
+        let grid = TrackGrid(offset: 0, bpm: 120, beatsPerBar: 4)
         var clock = clock()
         let beats = clock.beats(before: clock.sampleTime(forFileTime: 2.9), notBefore: start, endTime: 100, grid: grid, accents: [1, 3])
         #expect(beats.map(\.beat) == [1, 2, 3, 4, 1, 2])
@@ -48,7 +48,7 @@ struct TrackBeatClockTests {
     }
 
     @Test func beatsAlreadyReturnedAreNotReturnedAgain() {
-        let grid = TrackGrid(firstBeat: 0, bpm: 120, beatsPerBar: 4)
+        let grid = TrackGrid(offset: 0, bpm: 120, beatsPerBar: 4)
         var clock = clock()
         let horizon = clock.sampleTime(forFileTime: 1.2)
         let first = clock.beats(before: horizon, notBefore: start, endTime: 100, grid: grid, accents: [1])
@@ -61,8 +61,8 @@ struct TrackBeatClockTests {
     }
 
     @Test func aSlowerTempoMovesLaterBeatsOntoTheNewGrid() {
-        let fast = TrackGrid(firstBeat: 0.48, bpm: 120, beatsPerBar: 4)
-        let slow = TrackGrid(firstBeat: 0.48, bpm: 60, beatsPerBar: 4)
+        let fast = TrackGrid(offset: 0.48, bpm: 120, beatsPerBar: 4)
+        let slow = TrackGrid(offset: 0.48, bpm: 60, beatsPerBar: 4)
         var clock = clock()
         let before = clock.beats(before: clock.sampleTime(forFileTime: 2.2), notBefore: start, endTime: 100, grid: fast, accents: [1])
         let after = clock.beats(before: clock.sampleTime(forFileTime: 6), notBefore: start, endTime: 100, grid: slow, accents: [1])
@@ -71,9 +71,9 @@ struct TrackBeatClockTests {
         #expect(after.map(\.beat) == [3, 4, 1, 2])
     }
 
-    @Test func aNudgedFirstBeatMovesLaterBeats() {
-        let grid = TrackGrid(firstBeat: 0.48, bpm: 120, beatsPerBar: 4)
-        let nudged = TrackGrid(firstBeat: 0.49, bpm: 120, beatsPerBar: 4)
+    @Test func aNudgedOffsetMovesLaterBeats() {
+        let grid = TrackGrid(offset: 0.48, bpm: 120, beatsPerBar: 4)
+        let nudged = TrackGrid(offset: 0.49, bpm: 120, beatsPerBar: 4)
         var clock = clock()
         let before = clock.beats(before: clock.sampleTime(forFileTime: 2.2), notBefore: start, endTime: 100, grid: grid, accents: [1])
         let after = clock.beats(before: clock.sampleTime(forFileTime: 3.7), notBefore: start, endTime: 100, grid: nudged, accents: [1])
@@ -83,9 +83,9 @@ struct TrackBeatClockTests {
     }
 
     @Test func aNewGridBeatRightAfterTheLastOneIsSkipped() {
-        let grid = TrackGrid(firstBeat: 0, bpm: 120, beatsPerBar: 4)
+        let grid = TrackGrid(offset: 0, bpm: 120, beatsPerBar: 4)
         // 0.1 of a 0.5 s interval later than the old grid.
-        let moved = TrackGrid(firstBeat: 0.05, bpm: 120, beatsPerBar: 4)
+        let moved = TrackGrid(offset: 0.05, bpm: 120, beatsPerBar: 4)
         var clock = clock()
         let before = clock.beats(before: clock.sampleTime(forFileTime: 1.7), notBefore: start, endTime: 100, grid: grid, accents: [1])
         let after = clock.beats(before: clock.sampleTime(forFileTime: 2.3), notBefore: start, endTime: 100, grid: moved, accents: [1])
@@ -104,7 +104,7 @@ struct TrackBeatClockTests {
             // 120 up to 180 and back, 5 BPM per call.
             let phase = call % 24
             let bpm = 120 + 5 * (phase <= 12 ? phase : 24 - phase)
-            let grid = TrackGrid(firstBeat: 0.48, bpm: bpm, beatsPerBar: 4)
+            let grid = TrackGrid(offset: 0.48, bpm: bpm, beatsPerBar: 4)
             let now = start + Int64(call) * step
             let horizon = now + Int64(0.150 * rate), earliest = now + Int64(0.005 * rate)
             // The grid's next beat after the last one returned, which the half-interval rule may skip.
@@ -137,7 +137,7 @@ struct TrackBeatClockTests {
     }
 
     @Test func aBeatBeforeTheEarliestIsDropped() {
-        let grid = TrackGrid(firstBeat: 0, bpm: 120, beatsPerBar: 4)
+        let grid = TrackGrid(offset: 0, bpm: 120, beatsPerBar: 4)
         var clock = clock()
         let beats = clock.beats(
             before: clock.sampleTime(forFileTime: 2.2), notBefore: clock.sampleTime(forFileTime: 0.7),
@@ -147,9 +147,9 @@ struct TrackBeatClockTests {
         #expect(beats.map(\.beat) == [3, 4, 1])
     }
 
-    @Test func aTempoChangeDuringTheCountInKeepsItOnTheGridFromTheFirstBeat() {
-        let fast = TrackGrid(firstBeat: 0.48, bpm: 120, beatsPerBar: 4)
-        let slow = TrackGrid(firstBeat: 0.48, bpm: 100, beatsPerBar: 4)
+    @Test func aTempoChangeDuringTheCountInKeepsItOnTheGridFromTheOffset() {
+        let fast = TrackGrid(offset: 0.48, bpm: 120, beatsPerBar: 4)
+        let slow = TrackGrid(offset: 0.48, bpm: 100, beatsPerBar: 4)
         var clock = clock(startTime: fast.startTime(countIn: .twoBars), firstClickIndex: fast.firstClickIndex(countIn: .twoBars))
         let before = clock.beats(
             before: clock.sampleTime(forFileTime: -2.9), notBefore: start, endTime: 100, grid: fast, accents: [1]
@@ -159,7 +159,7 @@ struct TrackBeatClockTests {
         let after = clock.beats(
             before: clock.sampleTime(forFileTime: 0.48) + 1, notBefore: start, endTime: 100, grid: slow, accents: [1]
         )
-        // Counted back from the first beat at 0.6 s a beat; -3.12 is too close to -3.02 and is skipped.
+        // Counted back from the offset at 0.6 s a beat; -3.12 is too close to -3.02 and is skipped.
         #expect(after.map(\.sampleTime) == (-5...0).map { clock.sampleTime(forFileTime: slow.time(ofBeat: $0)) })
         #expect(after.map(\.beat) == [4, 1, 2, 3, 4, 1])
         #expect(after.last?.sampleTime == clock.sampleTime(forFileTime: 0.48))
@@ -167,7 +167,7 @@ struct TrackBeatClockTests {
 
     @Test(arguments: [44_100.0, 48_000.0])
     func beatTimesDoNotDriftOverTenMinutes(sampleRate: Double) {
-        let grid = TrackGrid(firstBeat: 0.48, bpm: 137, beatsPerBar: 4)
+        let grid = TrackGrid(offset: 0.48, bpm: 137, beatsPerBar: 4)
         var clock = TrackBeatClock(sampleRate: sampleRate, startSampleTime: start, startTime: 0, firstClickIndex: 0)
         var beats: [ScheduledBeat] = []
         let step = Int64(0.025 * sampleRate)
@@ -184,7 +184,7 @@ struct TrackBeatClockTests {
     }
 
     @Test func noBeatAtOrAfterTheEndOfTheFile() {
-        let grid = TrackGrid(firstBeat: 0, bpm: 120, beatsPerBar: 4)
+        let grid = TrackGrid(offset: 0, bpm: 120, beatsPerBar: 4)
         var clock = clock()
         let beats = clock.beats(before: clock.sampleTime(forFileTime: 5), notBefore: start, endTime: 2.0, grid: grid, accents: [1])
         let more = clock.beats(before: clock.sampleTime(forFileTime: 10), notBefore: start, endTime: 2.0, grid: grid, accents: [1])
@@ -192,9 +192,9 @@ struct TrackBeatClockTests {
         #expect(more.isEmpty)
     }
 
-    @Test func aTimeSignatureChangeTakesTheBarFromTheFirstBeat() {
-        let fourFour = TrackGrid(firstBeat: 0.48, bpm: 120, beatsPerBar: 4)
-        let threeFour = TrackGrid(firstBeat: 0.48, bpm: 120, beatsPerBar: 3)
+    @Test func aTimeSignatureChangeTakesTheBarFromTheOffset() {
+        let fourFour = TrackGrid(offset: 0.48, bpm: 120, beatsPerBar: 4)
+        let threeFour = TrackGrid(offset: 0.48, bpm: 120, beatsPerBar: 3)
         var clock = clock()
         let before = clock.beats(before: clock.sampleTime(forFileTime: 3.2), notBefore: start, endTime: 100, grid: fourFour, accents: [1])
         let after = clock.beats(before: clock.sampleTime(forFileTime: 3.6), notBefore: start, endTime: 100, grid: threeFour, accents: [1])

@@ -128,8 +128,16 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
             id: id,
             name: name,
             settings: MetronomeSettings(bpm: bpm, timeSignature: signature, accents: Set(accents)),
-            track: parts[Self.trackKey]?.value.decoded(BackingTrack.self)
+            track: track(songBPM: bpm)
         )
+    }
+
+    /// A track part written by an earlier build has no tempo; it is read with the song's tempo,
+    /// which is written into the part only the next time the track changes.
+    private func track(songBPM: Int) -> BackingTrack? {
+        guard case .object(var fields)? = parts[Self.trackKey]?.value else { return nil }
+        if fields["bpm"] == nil { fields["bpm"] = .number(Double(songBPM)) }
+        return JSONValue.object(fields).decoded(BackingTrack.self)
     }
 
     /// The file identifier in the track part, read on its own, so a part this version cannot read
@@ -159,18 +167,19 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
     }
 
     /// Stamps only the tempo part, only when it differs; the meter part keeps its time.
-    mutating func setTempo(_ settings: MetronomeSettings, now: Date) {
+    private mutating func setTempo(_ settings: MetronomeSettings, now: Date) {
         set(Self.tempoKey, to: Self.tempoValue(settings), now: now)
     }
 
-    /// Stamps the part only when the value differs. nil writes JSON null, so the removal syncs;
-    /// a song that never had a track keeps no part.
+    /// Stamps the part only when the track differs from the one read. nil writes JSON null, so
+    /// the removal syncs; a song that never had a track keeps no part. Setting the track as read
+    /// leaves a part without a tempo as it is, so filling the tempo in sends nothing.
     mutating func setTrack(_ track: BackingTrack?, now: Date) {
         guard let track else {
             if parts[Self.trackKey] != nil { set(Self.trackKey, to: .null, now: now) }
             return
         }
-        guard let value = try? JSONValue(encoding: track) else { return }
+        guard song?.track != track, let value = try? JSONValue(encoding: track) else { return }
         set(Self.trackKey, to: value, now: now)
     }
 

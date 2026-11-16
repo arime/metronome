@@ -95,7 +95,7 @@ final class AudioClickEngine: ClickEngine {
         let track = LoadedTrack(
             file: file,
             length: Double(file.length) / file.processingFormat.sampleRate,
-            firstBeat: playback.firstBeat,
+            offset: playback.offset,
             startTime: playback.startTime,
             firstClickIndex: playback.firstClickIndex
         )
@@ -199,7 +199,7 @@ final class AudioClickEngine: ClickEngine {
         buildBuffers()
     }
 
-    /// During a track run the bar always follows from the first beat, so `startNewBar` is ignored.
+    /// During a track run the bar always follows from the offset, so `startNewBar` is ignored.
     func update(_ settings: MetronomeSettings, startNewBar: Bool) {
         self.settings = settings
         if startNewBar, track == nil { newBarPending = true }
@@ -248,8 +248,8 @@ final class AudioClickEngine: ClickEngine {
     }
 
     /// Beats already handed to the player stay; the next one is on the moved grid.
-    func setFirstBeat(_ firstBeat: TimeInterval) {
-        track?.firstBeat = firstBeat
+    func setOffset(_ offset: TimeInterval) {
+        track?.offset = offset
     }
 
     /// The last render cycle in file time, moved on by the time since on the host clock,
@@ -439,7 +439,7 @@ final class AudioClickEngine: ClickEngine {
     private func dueBeats(before horizon: Int64, notBefore earliest: Int64) -> [ScheduledBeat] {
         if var trackClock, let track {
             let grid = TrackGrid(
-                firstBeat: track.firstBeat, bpm: settings.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
+                offset: track.offset, bpm: settings.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
             )
             // Nothing before the players' shared start: it would not sound at its time.
             let beats = trackClock.beats(
@@ -585,7 +585,7 @@ private struct LoadedTrack {
     let file: AVAudioFile
     /// The file's length in seconds; no click is placed at or after it.
     let length: TimeInterval
-    var firstBeat: TimeInterval
+    var offset: TimeInterval
     /// Where the run starts in file time, and the lowest beat index that clicks from there.
     var startTime: TimeInterval
     var firstClickIndex: Int

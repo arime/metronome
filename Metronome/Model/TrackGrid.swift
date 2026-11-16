@@ -1,28 +1,28 @@
 import Foundation
 
-/// The click's beats against file time. Beat index 0 is the first beat; negative indices are the count-in.
+/// The click's beats against file time. Beat index 0 falls at the offset; negative indices are the count-in.
 struct TrackGrid: Equatable, Sendable {
-    let firstBeat: TimeInterval
+    let offset: TimeInterval
     let bpm: Int
     let beatsPerBar: Int
 
     var beatInterval: TimeInterval { 60 / TimeInterval(Tempo.clamp(bpm)) }
 
     func time(ofBeat index: Int) -> TimeInterval {
-        firstBeat + TimeInterval(index) * beatInterval
+        offset + TimeInterval(index) * beatInterval
     }
 
     /// The first beat at or after the time; a beat within 1e-9 beats of it counts as on it.
     func firstIndex(atOrAfter time: TimeInterval) -> Int {
-        Int(((time - firstBeat) / beatInterval - 1e-9).rounded(.up))
+        Int(((time - offset) / beatInterval - 1e-9).rounded(.up))
     }
 
-    /// 1...beatsPerBar, so count-in beats read as the bars before the first beat.
+    /// 1...beatsPerBar, so count-in beats read as the bars before the offset.
     func barBeat(ofBeat index: Int) -> Int {
         (index % beatsPerBar + beatsPerBar) % beatsPerBar + 1
     }
 
-    /// Where playback starts in file time for Start at 0:00: min(0, firstBeat - count-in length).
+    /// Where playback starts in file time for Start at 0:00: min(0, offset - count-in length).
     func startTime(countIn: CountIn) -> TimeInterval {
         min(0, time(ofBeat: firstClickIndex(countIn: countIn)))
     }
@@ -33,8 +33,8 @@ struct TrackGrid: Equatable, Sendable {
     }
 
     /// Tap on beat 1: the tapped place moved back by whole bars to the earliest place not before 0, in hundredths.
-    static func firstBeat(forDownbeatAt tapped: TimeInterval, bpm: Int, beatsPerBar: Int) -> Int {
-        let bar = TrackGrid(firstBeat: 0, bpm: bpm, beatsPerBar: beatsPerBar).beatInterval * TimeInterval(beatsPerBar)
+    static func offset(forDownbeatAt tapped: TimeInterval, bpm: Int, beatsPerBar: Int) -> Int {
+        let bar = TrackGrid(offset: 0, bpm: bpm, beatsPerBar: beatsPerBar).beatInterval * TimeInterval(beatsPerBar)
         var offset = tapped - (tapped / bar).rounded(.down) * bar
         // Rounding up to a whole bar lands on the next downbeat; the one before it is earlier.
         if (offset * 100).rounded() >= bar * 100 { offset -= bar }

@@ -88,7 +88,7 @@ import Testing
     // MARK: - Backing track
 
     private var pickedTrack: PickedTrack {
-        PickedTrack(url: URL(filePath: "/tmp/Take.wav"), fileName: "Take.wav", firstBeat: 0)
+        PickedTrack(url: URL(filePath: "/tmp/Take.wav"), fileName: "Take.wav", offset: 0)
     }
 
     @Test func attachingOrRemovingATrackMakesSaveReady() {
@@ -104,7 +104,7 @@ import Testing
 
     // MARK: - The Backing track row
 
-    private let savedTrack = BackingTrack(fileID: UUID(), fileName: "Song.m4a", firstBeat: 48)
+    private let savedTrack = BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: 48, bpm: 120)
 
     @Test func theRowShowsNoTrack() {
         #expect(TrackRowState(saved: nil, isSavedMissing: false, edit: .keep) == .none)

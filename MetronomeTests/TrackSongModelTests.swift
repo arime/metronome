@@ -34,11 +34,11 @@ struct TrackSongModelTests {
     /// The model and the three songs of its setlist "Gig", in this order.
     private struct Setup {
         let model: MetronomeModel
-        /// Loaded from the setlist: 120 BPM, 4/4, a track at 0.48 s, with its file unless `missing`.
+        /// Loaded from the setlist: 120 BPM, 4/4, a track at 120 BPM and 0.48 s, with its file unless `missing`.
         let song: Song
         /// 90 BPM, no track.
         let plain: Song
-        /// 140 BPM, a playable track with a one-bar count-in and the mix at -0.5.
+        /// 140 BPM, a playable track at 150 BPM with a one-bar count-in and the mix at -0.5.
         let other: Song
         let setlist: UUID
     }
@@ -47,7 +47,7 @@ struct TrackSongModelTests {
         let moment = Date()
         var library = Library()
         let songTrack = try bench.makeTrack(missing: missing)
-        let otherTrack = try bench.makeTrack(countIn: .oneBar, mix: -0.5)
+        let otherTrack = try bench.makeTrack(bpm: 150, countIn: .oneBar, mix: -0.5)
         let added = [
             library.addSong(name: "Song", settings: MetronomeSettings(), track: songTrack, now: moment),
             library.addSong(
@@ -69,8 +69,8 @@ struct TrackSongModelTests {
         return Setup(model: bench.relaunch(length: length), song: song, plain: plain, other: other, setlist: setlist.id)
     }
 
-    private func picked(_ name: String = "Take.wav", firstBeat: Int = 48) throws -> PickedTrack {
-        PickedTrack(url: try bench.sourceFile(named: name), fileName: name, firstBeat: firstBeat)
+    private func picked(_ name: String = "Take.wav", offset: Int = 48) throws -> PickedTrack {
+        PickedTrack(url: try bench.sourceFile(named: name), fileName: name, offset: offset)
     }
 
     // MARK: - Changing songs
@@ -121,6 +121,16 @@ struct TrackSongModelTests {
         #expect(model.loadedSongID == setup.plain.id)
         #expect(model.isPlaying)
         #expect(engine.stopCount == 0)
+    }
+
+    @Test func loadingASongWithATrackPlaysAtTheTracksTempo() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.loadSong(setup.other.id, from: setup.setlist)
+        #expect(model.tempoInEffect == 150)
+        #expect(model.settings.bpm == 140)
+        model.loadSong(setup.plain.id, from: setup.setlist)
+        #expect(model.tempoInEffect == 90)
     }
 
     @Test func loadingAlwaysGoesToZero() throws {
@@ -202,10 +212,10 @@ struct TrackSongModelTests {
     @Test func attachingAFileInEditStoresItAndGuessesNothingItself() throws {
         let setup = try makeModel()
         let model = setup.model
-        let pick = try picked(firstBeat: 48)
+        let pick = try picked(offset: 48)
         model.editSong(setup.plain.id, name: "Plain", settings: setup.plain.settings, track: .attach(pick))
         let track = try #require(model.library.song(id: setup.plain.id)?.track)
-        #expect(track.firstBeat == 48)
+        #expect(track.offset == 48)
         #expect(track.countIn == .twoBars)
         #expect(track.mix == 0)
         #expect(track.fileName == "Take.wav")
@@ -217,10 +227,10 @@ struct TrackSongModelTests {
         let setup = try makeModel()
         let model = setup.model
         let old = try #require(setup.other.track)
-        model.editSong(setup.other.id, name: "Other", settings: setup.other.settings, track: .attach(try picked(firstBeat: 12)))
+        model.editSong(setup.other.id, name: "Other", settings: setup.other.settings, track: .attach(try picked(offset: 12)))
         let track = try #require(model.library.song(id: setup.other.id)?.track)
         #expect(track.fileID != old.fileID)
-        #expect(track.firstBeat == 12)
+        #expect(track.offset == 12)
         #expect(track.fileName == "Take.wav")
         #expect(track.countIn == .oneBar)
         #expect(track.mix == -0.5)
@@ -242,12 +252,46 @@ struct TrackSongModelTests {
         let model = setup.model
         let library = model.library
         #expect(model.isTrackMissing)
-        model.editSong(setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked(firstBeat: 99)))
+        model.editSong(setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked(offset: 99)))
         #expect(model.library == library)
         #expect(model.isTrackPlayable)
         #expect(model.isTrackMissing == false)
         #expect(model.trackLength == 222)
         #expect(trackFiles.hasFile(try #require(setup.song.track?.fileID)))
+    }
+
+    @Test func attachingATrackGivesItTheSongsTempoAsSaved() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        let settings = MetronomeSettings(bpm: 95, timeSignature: .fourFour, accents: [1])
+        model.editSong(setup.plain.id, name: "Plain", settings: settings, track: .attach(try picked()))
+        #expect(model.library.song(id: setup.plain.id)?.track?.bpm == 95)
+    }
+
+    @Test func aNewSongsTrackTakesTheNewSongsTempo() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        let settings = MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1])
+        let created = try #require(model.createSong(name: "New", settings: settings, addingTo: nil, track: try picked()))
+        #expect(created.track?.bpm == 100)
+        let copy = try #require(model.saveAsNewSong(name: "Copy", settings: settings, track: try picked()))
+        #expect(copy.track?.bpm == 100)
+    }
+
+    @Test func replacingTheFileKeepsTheTracksTempo() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.editSong(setup.other.id, name: "Other", settings: setup.other.settings, track: .attach(try picked()))
+        #expect(model.library.song(id: setup.other.id)?.track?.bpm == 150)
+    }
+
+    @Test func pickingAFileForAMissingTrackKeepsItsTempo() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        model.nudgeTrackTempo(by: 13)
+        #expect(model.loadedTrack?.bpm == 133)
+        model.editSong(setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked()))
+        #expect(model.library.song(id: setup.song.id)?.track?.bpm == 133)
     }
 
     @Test func editingTheLoadedSongsTrackStopsAndGoesToZero() throws {
@@ -290,16 +334,17 @@ struct TrackSongModelTests {
         #expect(model.isPlaying)
         #expect(model.isPlayingTrack)
         #expect(engine.stopCount == 0)
-        #expect(engine.lastUpdate?.bpm == 130)
+        // The song's tempo is not the tempo in effect while its track is in use.
+        #expect(engine.lastUpdate?.bpm == 120)
     }
 
     @Test func aNewSongCanBeCreatedWithATrack() throws {
         let setup = try makeModel()
         let model = setup.model
         let settings = MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1])
-        let song = try #require(model.createSong(name: "New", settings: settings, addingTo: nil, track: try picked(firstBeat: 20)))
+        let song = try #require(model.createSong(name: "New", settings: settings, addingTo: nil, track: try picked(offset: 20)))
         let track = try #require(song.track)
-        #expect(track.firstBeat == 20)
+        #expect(track.offset == 20)
         #expect(track.countIn == .twoBars)
         #expect(track.mix == 0)
         #expect(trackFiles.hasFile(track.fileID))
@@ -319,7 +364,7 @@ struct TrackSongModelTests {
 
     /// A pick whose file is gone, so copying it into the store fails, as on a full phone.
     private func unstorable() -> PickedTrack {
-        PickedTrack(url: bench.root.appending(path: "Gone/Take.wav"), fileName: "Take.wav", firstBeat: 48)
+        PickedTrack(url: bench.root.appending(path: "Gone/Take.wav"), fileName: "Take.wav", offset: 48)
     }
 
     @Test func editSongSavesNothingWhenTheFileCannotBeStored() throws {
@@ -380,39 +425,39 @@ struct TrackSongModelTests {
 
     // MARK: - The Sync sheet
 
-    @Test func nudgingTheFirstBeatSavesWithoutEdited() throws {
+    @Test func nudgingTheOffsetSavesWithoutEdited() throws {
         let setup = try makeModel()
         let model = setup.model
         model.togglePlayback()
         let ticks = haptics.selectionCount
-        model.nudgeFirstBeat(by: 1)
-        #expect(model.loadedTrack?.firstBeat == 49)
+        model.nudgeOffset(by: 1)
+        #expect(model.loadedTrack?.offset == 49)
         model.savePendingChanges()
-        #expect(bench.libraryStore.load().library.song(id: setup.song.id)?.track?.firstBeat == 49)
+        #expect(bench.libraryStore.load().library.song(id: setup.song.id)?.track?.offset == 49)
         #expect(model.isEdited == false)
         #expect(model.isSaveOffered == false)
-        #expect(engine.firstBeats.last == 0.49)
+        #expect(engine.offsets.last == 0.49)
         #expect(haptics.selectionCount == ticks + 1)
     }
 
-    @Test func theFirstBeatStaysInsideTheFile() throws {
+    @Test func theOffsetStaysInsideTheFile() throws {
         let model = try makeModel().model
-        model.nudgeFirstBeat(by: -100)
-        #expect(model.loadedTrack?.firstBeat == 0)
+        model.nudgeOffset(by: -100)
+        #expect(model.loadedTrack?.offset == 0)
 
         let short = try makeModel(length: 2.0).model
-        short.nudgeFirstBeat(by: 1000)
-        #expect(short.loadedTrack?.firstBeat == 200)
+        short.nudgeOffset(by: 1000)
+        #expect(short.loadedTrack?.offset == 200)
     }
 
-    @Test func tapOnBeatOneSetsTheFirstBeatFromTheHeardPosition() throws {
+    @Test func tapOnBeatOneSetsTheOffsetFromTheHeardPosition() throws {
         let model = try makeModel().model
         model.togglePlayback()
         engine.trackTime = 9.30
         let ticks = haptics.selectionCount
         model.tapBeatOne()
-        #expect(model.loadedTrack?.firstBeat == 130)
-        #expect(engine.firstBeats.last == 1.30)
+        #expect(model.loadedTrack?.offset == 130)
+        #expect(engine.offsets.last == 1.30)
         #expect(haptics.selectionCount == ticks + 1)
     }
 
@@ -420,14 +465,14 @@ struct TrackSongModelTests {
         let model = try makeModel().model
         engine.trackTime = 9.30
         model.tapBeatOne()
-        #expect(model.loadedTrack?.firstBeat == 48)
+        #expect(model.loadedTrack?.offset == 48)
 
         model.togglePlayback()
         engine.trackTime = -1.5
         let ticks = haptics.selectionCount
         model.tapBeatOne()
-        #expect(model.loadedTrack?.firstBeat == 48)
-        #expect(engine.firstBeats.isEmpty)
+        #expect(model.loadedTrack?.offset == 48)
+        #expect(engine.offsets.isEmpty)
         #expect(haptics.selectionCount == ticks)
     }
 
@@ -479,13 +524,13 @@ struct TrackSongModelTests {
         let setup = try makeModel()
         let model = bench.relaunch(saveDelay: .milliseconds(20))
         let writes = bench.libraryDefaults.writes
-        model.nudgeFirstBeat(by: 1)
-        model.nudgeFirstBeat(by: 1)
+        model.nudgeOffset(by: 1)
+        model.nudgeOffset(by: 1)
         model.setMix(0.4)
-        model.nudgeFirstBeat(by: 1)
+        model.nudgeOffset(by: 1)
         #expect(engine.mixes.count == 1)
         #expect(bench.libraryDefaults.writes == writes)
-        #expect(savedTrack(of: setup.song)?.firstBeat == 48)
+        #expect(savedTrack(of: setup.song)?.offset == 48)
         // Waits for the save however busy the main actor is. Only one save can be waiting at a
         // time, so once it has run no other can follow, and the count is final.
         let deadline = ContinuousClock.now + .seconds(10)
@@ -493,7 +538,7 @@ struct TrackSongModelTests {
             try await Task.sleep(for: .milliseconds(10))
         }
         #expect(bench.libraryDefaults.writes == writes + 1)
-        #expect(savedTrack(of: setup.song)?.firstBeat == 51)
+        #expect(savedTrack(of: setup.song)?.offset == 51)
         #expect(savedTrack(of: setup.song)?.mix == 0.4)
     }
 
@@ -520,11 +565,11 @@ struct TrackSongModelTests {
         let setup = try makeModel()
         let model = setup.model
         model.setMix(-0.3)
-        model.nudgeFirstBeat(by: 5)
+        model.nudgeOffset(by: 5)
         model.savePendingChanges()
         let relaunched = bench.relaunch()
         #expect(relaunched.loadedTrack?.mix == -0.3)
-        #expect(relaunched.loadedTrack?.firstBeat == 53)
+        #expect(relaunched.loadedTrack?.offset == 53)
     }
 
     // MARK: - Changes arriving from another device
@@ -573,15 +618,28 @@ struct TrackSongModelTests {
         return (a.model, b.model, b.engine, b.files, song, b.haptics)
     }
 
-    @Test func aFirstBeatArrivingFromAnotherDeviceMovesTheGrid() throws {
+    @Test func anOffsetArrivingFromAnotherDeviceMovesTheGrid() throws {
         let (a, b, bEngine, _, song, _) = try twoDevicesPlayingATrack()
         clock.advance()
         a.loadSong(song.id, from: nil)
-        a.nudgeFirstBeat(by: 2)
+        a.nudgeOffset(by: 2)
         a.savePendingChanges()
         cloud.send(.changed, toDevice: 1)
-        #expect(b.loadedTrack?.firstBeat == 50)
-        #expect(bEngine.firstBeats.last == 0.5)
+        #expect(b.loadedTrack?.offset == 50)
+        #expect(bEngine.offsets.last == 0.5)
+        #expect(b.isPlaying)
+        #expect(bEngine.stopCount == 0)
+    }
+
+    @Test func aTrackTempoArrivingFromAnotherDeviceReachesThePlayingEngine() throws {
+        let (a, b, bEngine, _, song, _) = try twoDevicesPlayingATrack()
+        clock.advance()
+        a.loadSong(song.id, from: nil)
+        a.nudgeTrackTempo(by: 2)
+        a.savePendingChanges()
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedTrack?.bpm == 102)
+        #expect(bEngine.lastUpdate?.bpm == 102)
         #expect(b.isPlaying)
         #expect(bEngine.stopCount == 0)
     }
