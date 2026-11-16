@@ -1,67 +1,8 @@
 import SwiftUI
 
-/// The track arrangement's one row (6.12): −, the Tap pill, + and the time signature chip,
-/// in place of the tempo controls and the time signature row.
-struct TrackTempoRow: View {
-    @Environment(MetronomeModel.self) private var model
-    /// The screen's side margin, which the picker shares.
-    var sideMargin: CGFloat = Theme.sideMargin
-    @State private var isPickerShown = false
-
-    private let height = ScreenLayout.trackRowHeight
-
-    var body: some View {
-        HStack(spacing: 8) {
-            StepButton(symbol: "minus", label: "Slower", size: height) { model.nudgeBPM(by: -1) }
-            // The shorter labels fit the narrower pill.
-            TapTempoPill(
-                idleLabel: "Tap", seriesLabel: "Again", height: height,
-                iconSpacing: 6, horizontalPadding: 10, minimumScaleFactor: 0.6
-            )
-            StepButton(symbol: "plus", label: "Faster", size: height) { model.nudgeBPM(by: 1) }
-            signatureChip
-        }
-        .frame(height: height)
-    }
-
-    /// The value and a chevron, with no label; opens the picker like the time signature row.
-    private var signatureChip: some View {
-        Button {
-            isPickerShown = true
-        } label: {
-            HStack(spacing: 6) {
-                Text(model.settings.timeSignature.rawValue)
-                    .font(.system(size: 24, weight: .heavy))
-                    .tracking(-0.48)
-                    .foregroundStyle(Theme.amber)
-                    .fixedSize()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Theme.muted)
-                    .frame(width: 16, height: 16)
-            }
-            .padding(.leading, 14)
-            .padding(.trailing, 10)
-            .frame(height: height)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Time signature")
-        .accessibilityValue(model.settings.timeSignature.rawValue)
-        .accessibilityAddTraits(.isButton)
-        .sheet(isPresented: $isPickerShown) {
-            TimeSignaturePicker(selected: model.settings.timeSignature, sideMargin: sideMargin) { signature in
-                model.selectTimeSignature(signature)
-                isPickerShown = false
-            }
-        }
-    }
-}
-
-/// The track arrangement's card at the bottom (6.12), in place of the Start row and the next-up
-/// line: the file's name and Sync, the progress bar, the transport row and, for a setlist song,
-/// the next-up line. Its height is fixed; it never shrinks.
+/// The track screen's card at the bottom (6.12), in place of the Start row and the next-up
+/// line: the file's name, the progress bar, the transport row and, for a setlist song, the
+/// next-up line. Its height is fixed; it never shrinks.
 struct PlayerCard: View {
     @Environment(MetronomeModel.self) private var model
     private let showsNextLine: Bool
@@ -85,58 +26,38 @@ struct PlayerCard: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 18)
         .frame(
-            height: ScreenLayout.playerCardHeight + (showsNextLine ? ScreenLayout.playerNextLineHeight : 0),
+            height: TrackScreenLayout.playerCardHeight + (showsNextLine ? TrackScreenLayout.playerNextLineHeight : 0),
             alignment: .top
         )
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .accessibilityElement(children: .contain)
     }
 
-    /// The music note, the file's name or `Track missing`, and Sync at the right.
+    /// The music note and, 8 pt after it, the file's name or `Track missing`, which takes the
+    /// rest of the row.
     private var fileNameRow: some View {
         let isMissing = model.isTrackMissing
-        return HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "music.note")
-                    .font(.system(size: 16))
-                    .foregroundStyle(Theme.muted)
-                if isMissing {
-                    Text("Track missing")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Theme.amber)
-                        .lineLimit(1)
-                } else {
-                    Text(model.loadedTrack?.fileName ?? "")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Theme.dialWhite)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
+        return HStack(spacing: 8) {
+            Image(systemName: "music.note")
+                .font(.system(size: 16))
+                .foregroundStyle(Theme.muted)
+            if isMissing {
+                Text("Track missing")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.amber)
+                    .lineLimit(1)
+            } else {
+                Text(model.loadedTrack?.fileName ?? "")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.dialWhite)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(isMissing ? "Track missing" : "Backing track, \(model.loadedTrack?.fileName ?? "")")
-            Spacer(minLength: 0)
-            syncPill
-                .opacity(isMissing ? 0.4 : 1)
-                .allowsHitTesting(!isMissing)
-                .disabled(isMissing)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 30)
-    }
-
-    private var syncPill: some View {
-        Button { model.enterSyncMode() } label: {
-            Text("Sync")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.dialWhite)
-                .padding(.horizontal, 14)
-                .frame(height: 30)
-                .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 1))
-                // The pill is 30 pt tall; its touch area reaches 7 pt above and below.
-                .contentShape(Capsule().inset(by: -7))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Sync")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isMissing ? "Track missing" : "Backing track, \(model.loadedTrack?.fileName ?? "")")
     }
 
     /// Five places spread evenly, the outer two at the edges. Outside a setlist the outer two

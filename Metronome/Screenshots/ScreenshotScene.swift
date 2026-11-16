@@ -23,6 +23,10 @@ enum ScreenshotScene: String, CaseIterable {
     /// stopped. Not an App Store screenshot; for checking the screen in the simulator. The
     /// click and the track play for real, so their sync can be heard.
     case trackScreen
+    /// The track screen of `trackScreen`, playing from launch, so the tempo reading's pulse
+    /// can be caught in a screenshot. It plays nothing: its beats come from a timer, so the
+    /// screen pulses even where the simulator's audio does not run.
+    case trackPlaying
     /// The track screen in Sync mode.
     case trackSync
     /// The track screen for the same song loaded on its own, outside the setlist.
@@ -38,7 +42,7 @@ enum ScreenshotScene: String, CaseIterable {
     /// the scene whose file is missing.
     var hasTrack: Bool {
         switch self {
-        case .trackScreen, .trackSync, .trackSolo, .trackMissing, .trackFirst, .trackLast: true
+        case .trackScreen, .trackPlaying, .trackSync, .trackSolo, .trackMissing, .trackFirst, .trackLast: true
         default: false
         }
     }
@@ -95,6 +99,18 @@ enum ScreenshotScene: String, CaseIterable {
         settingsStore.save(sample.loadedSettings)
         settingsStore.saveClickSound(.woodblock)
 
+        if self == .trackPlaying {
+            let model = MetronomeModel(
+                engine: ScreenshotEngine(soundingBeat: 1, repeats: true),
+                store: settingsStore,
+                haptics: NoHaptics(),
+                libraryStore: libraryStore,
+                now: { Self.date },
+                trackFiles: trackFiles
+            )
+            model.togglePlayback()
+            return model
+        }
         if hasTrack {
             let model = MetronomeModel(
                 engine: AudioClickEngine(),
@@ -236,23 +252,44 @@ private struct SampleLibrary {
     }
 }
 
-/// Plays nothing. Starting reports one beat, so the screen shows it sounding and stays still.
+/// Plays nothing. Starting reports one beat, so the screen shows it sounding and stays still;
+/// one that repeats goes on reporting a beat at the tempo until stopped.
 @MainActor
 private final class ScreenshotEngine: ClickEngine {
     var onBeat: ((ScheduledBeat) -> Void)?
     var onStopped: (() -> Void)?
     private let soundingBeat: Int
+    private let repeats: Bool
+    private var ticker: Task<Void, Never>?
 
-    init(soundingBeat: Int) {
+    init(soundingBeat: Int, repeats: Bool = false) {
         self.soundingBeat = soundingBeat
+        self.repeats = repeats
     }
 
     func start(with settings: MetronomeSettings) throws {
-        let beat = ScheduledBeat(
+        let first = ScheduledBeat(
             beat: soundingBeat, isAccented: settings.accents.contains(soundingBeat), sampleTime: 0
         )
-        // After start returns, as from the audio engine: the model counts as playing by then.
-        Task { @MainActor [weak self] in self?.onBeat?(beat) }
+        guard repeats else {
+            // After start returns, as from the audio engine: the model counts as playing by then.
+            Task { @MainActor [weak self] in self?.onBeat?(first) }
+            return
+        }
+        let interval = 60 / Double(max(settings.bpm, 1))
+        let beats = settings.timeSignature.beatsPerBar
+        let firstBeat = soundingBeat
+        ticker = Task { @MainActor [weak self] in
+            var beat = firstBeat
+            while !Task.isCancelled {
+                let scheduled = ScheduledBeat(
+                    beat: beat, isAccented: settings.accents.contains(beat), sampleTime: 0
+                )
+                self?.onBeat?(scheduled)
+                beat = beat % beats + 1
+                try? await Task.sleep(for: .seconds(interval))
+            }
+        }
     }
 
     var onTrackEnded: (() -> Void)?
@@ -269,7 +306,11 @@ private final class ScreenshotEngine: ClickEngine {
     func setMuted(_ muted: Bool) {}
     func setSound(_ sound: ClickSound) {}
     func preview(_ sound: ClickSound) {}
-    func stop() {}
+
+    func stop() {
+        ticker?.cancel()
+        ticker = nil
+    }
 }
 
 @MainActor

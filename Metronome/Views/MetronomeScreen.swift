@@ -8,31 +8,30 @@ struct MetronomeScreen: View {
 
     var body: some View {
         GeometryReader { proxy in
-            // The arrangement follows the song, not the file: a missing file still shows the card.
-            // With Backing tracks off, the song is plain and so is the screen.
-            let hasTrack = model.isTrackInUse
+            let width = proxy.size.width
+            let height = proxy.size.height
+            let hasBottomInset = proxy.safeAreaInsets.bottom > 0
+            let beats = model.settings.timeSignature.beatsPerBar
+            let hasSetlist = model.position != nil
             let layout = ScreenLayout(
-                width: proxy.size.width,
-                height: proxy.size.height,
-                hasBottomInset: proxy.safeAreaInsets.bottom > 0,
-                beats: model.settings.timeSignature.beatsPerBar,
-                hasSetlist: model.position != nil,
-                hasTrack: hasTrack
+                width: width, height: height, hasBottomInset: hasBottomInset, beats: beats, hasSetlist: hasSetlist
             )
+            // The arrangement follows the song, not the file: a missing file still shows the
+            // track screen. With Backing tracks off, the song is plain and so is the screen.
+            let trackLayout = model.isTrackInUse
+                ? TrackScreenLayout(
+                    width: width, height: height, hasBottomInset: hasBottomInset, beats: beats, hasSetlist: hasSetlist
+                )
+                : nil
             VStack(spacing: 0) {
                 header
                     .padding(.top, 8)
-                TempoDial(diameter: layout.dialDiameter)
-                    .padding(.top, 12)
-                if hasTrack {
-                    TrackTempoRow(sideMargin: layout.sideMargin)
-                        .padding(.top, layout.settingsTopGap)
-                    AccentTiles(singleRowTileHeight: layout.tileHeight)
-                        .padding(.top, layout.sectionGap)
-                    Spacer(minLength: ScreenLayout.playerCardTopGap)
-                    PlayerCard(showsNextLine: layout.showsNextLine)
-                        .padding(.bottom, layout.bottomPadding)
+                if let trackLayout {
+                    TrackScreenContent(layout: trackLayout)
+                        .padding(.bottom, trackLayout.bottomPadding)
                 } else {
+                    TempoDial(diameter: layout.dialDiameter)
+                        .padding(.top, 12)
                     TempoControls()
                         .padding(.top, 4)
                     VStack(alignment: .leading, spacing: layout.sectionGap) {
@@ -45,7 +44,7 @@ struct MetronomeScreen: View {
                         .padding(.bottom, layout.bottomPadding)
                 }
             }
-            .padding(.horizontal, layout.sideMargin)
+            .padding(.horizontal, trackLayout?.sideMargin ?? layout.sideMargin)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.ink.ignoresSafeArea())
@@ -163,24 +162,20 @@ struct NextUpLine: View {
 /// Fits the fixed parts of the screen into the available space (specification 6.8).
 /// On a tall screen the dial grows past its 300 pt design size, up to 340 pt. On a short
 /// one the dial shrinks first, down to 240 pt; then the gaps and tiles shrink; then the
-/// dial shrinks as far as it must. The screen never scrolls.
-///
-/// While a track is in use the screen has its own arrangement (6.12): one tempo and time
-/// signature row in place of two, and the player card, pinned to the bottom, in place of the
-/// Start row and the next-up line. The card never shrinks; the next-up line inside it adds
-/// 30 pt. There the gaps around the row stay put, and the compact fit shrinks only the tiles.
+/// dial shrinks as far as it must. The screen never scrolls. While a track is in use the
+/// screen is the track screen, laid out by `TrackScreenLayout`.
 struct ScreenLayout {
     let dialDiameter: CGFloat
-    /// Below the time signature row; with a track, below the tempo and time signature row.
+    /// Below the time signature row.
     let sectionGap: CGFloat
-    /// Above the time signature row; with a track, between the dial and the row.
+    /// Above the time signature row.
     let settingsTopGap: CGFloat
     let tileHeight: CGFloat
     let bottomPadding: CGFloat
     let sideMargin: CGFloat
     /// Height of everything except the dial and the bottom padding.
     let fixedHeight: CGFloat
-    /// True when the next-up line is shown: above the Start row, or inside the player card.
+    /// True when the next-up line is shown above the Start row.
     let showsNextLine: Bool
 
     /// The least space kept between the accent tiles and the Start button.
@@ -204,19 +199,7 @@ struct ScreenLayout {
     /// The next-up line is left out when it would push the dial below this size.
     static let nextLineMinimumDial: CGFloat = 200
 
-    /// The tempo and time signature row of the track arrangement.
-    static let trackRowHeight: CGFloat = 56
-    /// The player card without the next-up line, which never shrinks: 12 + 30 + 12 + 40 + 12 + 68 + 18.
-    static let playerCardHeight: CGFloat = 192
-    /// The next-up line inside the player card with its gap: 18 + 12.
-    static let playerNextLineHeight: CGFloat = 30
-    /// The least space kept between the accent tiles and the player card.
-    static let playerCardTopGap: CGFloat = 16
-
-    init(
-        width: CGFloat, height: CGFloat, hasBottomInset: Bool, beats: Int, hasSetlist: Bool = false,
-        hasTrack: Bool = false
-    ) {
+    init(width: CGFloat, height: CGFloat, hasBottomInset: Bool, beats: Int, hasSetlist: Bool = false) {
         let sideMargin = width < Self.narrowWidth ? Self.narrowSideMargin : Theme.sideMargin
         self.sideMargin = sideMargin
         // Phones with a home indicator already have the design's bottom margin.
@@ -229,12 +212,8 @@ struct ScreenLayout {
         struct Gaps {
             let sectionGap, settingsTopGap, tileHeight: CGFloat
         }
-        let roomyGaps = hasTrack
-            ? Gaps(sectionGap: 12, settingsTopGap: 10, tileHeight: 76)
-            : Gaps(sectionGap: 22, settingsTopGap: 26, tileHeight: 76)
-        let compactGaps = hasTrack
-            ? Gaps(sectionGap: 12, settingsTopGap: 10, tileHeight: 56)
-            : Gaps(sectionGap: 16, settingsTopGap: 16, tileHeight: 56)
+        let roomyGaps = Gaps(sectionGap: 22, settingsTopGap: 26, tileHeight: 76)
+        let compactGaps = Gaps(sectionGap: 16, settingsTopGap: 16, tileHeight: 56)
 
         struct Fit {
             let dial, fixedHeight: CGFloat
@@ -245,18 +224,11 @@ struct ScreenLayout {
             func partsHeight(_ gaps: Gaps) -> CGFloat {
                 let header: CGFloat = 8 + 40
                 let dialTop: CGFloat = 12
-                // The track arrangement has no separate tempo controls; its one row holds them.
-                let controls: CGFloat = hasTrack ? 0 : 4 + TempoControls.height
-                let row: CGFloat = hasTrack ? Self.trackRowHeight : 60
+                let controls: CGFloat = 4 + TempoControls.height
+                let row: CGFloat = 60
                 let tiles = AccentTiles.height(forBeats: beats, singleRowTileHeight: gaps.tileHeight)
-                let footer: CGFloat
-                if hasTrack {
-                    let nextUp: CGFloat = nextLine ? Self.playerNextLineHeight : 0
-                    footer = Self.playerCardTopGap + Self.playerCardHeight + nextUp
-                } else {
-                    let nextUp: CGFloat = nextLine ? Self.nextLineHeight + Self.nextLineGap : 0
-                    footer = Self.buttonTopGap + nextUp + 68
-                }
+                let nextUp: CGFloat = nextLine ? Self.nextLineHeight + Self.nextLineGap : 0
+                let footer = Self.buttonTopGap + nextUp + 68
                 return header + dialTop + controls + gaps.settingsTopGap + row + gaps.sectionGap + tiles
                     + footer
             }

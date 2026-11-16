@@ -16,15 +16,10 @@ struct TempoControls: View {
 
 /// The outlined Tap tempo pill, with the hand icon. It fills the width it is given. While a
 /// series is open, from a tap until it would start over two seconds later, the outline is
-/// amber and the label changes. Used on both tempo rows.
+/// amber and the label changes.
 struct TapTempoPill: View {
     @Environment(MetronomeModel.self) private var model
-    var idleLabel = "Tap tempo"
-    var seriesLabel = "Tap again"
     let height: CGFloat
-    var iconSpacing: CGFloat = 8
-    var horizontalPadding: CGFloat = 20
-    var minimumScaleFactor: CGFloat = 0.7
     @ScaledMetric(relativeTo: .subheadline) private var labelSize = 15.0
     /// Goes up by one per tap; restarts the wait for the end of the series.
     @State private var tapCount = 0
@@ -38,7 +33,7 @@ struct TapTempoPill: View {
             tapCount += 1
             isTapping = true
         } label: {
-            HStack(spacing: iconSpacing) {
+            HStack(spacing: 8) {
                 Image(systemName: "hand.tap")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Theme.amber)
@@ -46,12 +41,12 @@ struct TapTempoPill: View {
                 // They take no touches themselves: a touch on the invisible one would
                 // otherwise be lost instead of reaching the button.
                 ZStack {
-                    label(idleLabel).opacity(isTapping ? 0 : 1)
-                    label(seriesLabel).opacity(isTapping ? 1 : 0)
+                    label("Tap tempo").opacity(isTapping ? 0 : 1)
+                    label("Tap again").opacity(isTapping ? 1 : 0)
                 }
                 .allowsHitTesting(false)
             }
-            .padding(.horizontal, horizontalPadding)
+            .padding(.horizontal, 20)
             .frame(maxWidth: .infinity)
             .frame(height: height)
             .overlay(Capsule().strokeBorder(isTapping ? Theme.amber : Theme.line, lineWidth: isTapping ? 1.5 : 1))
@@ -71,7 +66,7 @@ struct TapTempoPill: View {
             .font(.system(size: labelSize, weight: .semibold))
             .foregroundStyle(Theme.dialWhite)
             .lineLimit(1)
-            .minimumScaleFactor(minimumScaleFactor)
+            .minimumScaleFactor(0.7)
     }
 }
 
