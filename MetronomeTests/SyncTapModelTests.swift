@@ -169,6 +169,17 @@ struct SyncTapModelTests {
         #expect(model.isPlaying)
     }
 
+    @Test func tapTempoTicksForEveryTapWhilePlaying() throws {
+        let model = try makeModel()
+        model.togglePlayback()
+        let ticks = haptics.selectionCount
+        model.tapTrackTempo(at: 0)
+        model.tapTrackTempo(at: 0.5)
+        model.tapTrackTempo(at: 1.0)
+        #expect(haptics.selectionCount == ticks + 3)
+        #expect(model.isPlaying)
+    }
+
     @Test func tapTempoHasASeriesOfItsOwn() throws {
         let model = try makeModel()
         model.toggleBackingTracks()
