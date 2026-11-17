@@ -69,7 +69,7 @@ struct TrackScreenLayout {
     }
 }
 
-/// Sync mode's sizes (6.13). The tap pad takes the height the other parts leave, down to
+/// Sync mode's sizes (6.13). The tap pads take the height the other parts leave, down to
 /// 72 pt; below that single-row tiles shrink, and then the area between the header and
 /// the playback card scrolls.
 struct SyncModeLayout {
@@ -88,7 +88,7 @@ struct SyncModeLayout {
     /// The time signature row of 6.4.
     static let rowHeight: CGFloat = 60
     static let tilesTopGap: CGFloat = 14
-    /// Above and below the tap pad.
+    /// Above and below the tap pads.
     static let padGap: CGFloat = 14
     /// The label, 6 and the 48 pt pill.
     static let stepperHeight: CGFloat = 70
@@ -103,7 +103,7 @@ struct SyncModeLayout {
     static let handIconMinimumPad: CGFloat = 120
     static let compactTileHeight: CGFloat = 56
 
-    /// Everything but the tap pad and the bottom padding: 484 pt plus the tiles.
+    /// Everything but the tap pads and the bottom padding: 484 pt plus the tiles.
     static func partsHeight(tilesHeight: CGFloat) -> CGFloat {
         headerHeight + rowTopGap + rowHeight + tilesTopGap + tilesHeight + padGap * 2 + stepperHeight
             + countInTopGap + countInHeight + mixTopGap + mixHeight + cardTopGap + playbackCardHeight

@@ -31,4 +31,16 @@ struct TrackGrid: Equatable, Sendable {
     func firstClickIndex(countIn: CountIn) -> Int {
         -countIn.rawValue * beatsPerBar
     }
+
+    /// The offset Tap on beat 1 sets (7.11): `time` moved back or forward by whole bars at `bpm`
+    /// and `beatsPerBar` to the earliest place not before 0:00, in hundredths. Within 1e-9 bar of a
+    /// downbeat counts as on it, as in `firstIndex`, and a place that rounds to a whole bar is the
+    /// downbeat at 0.00: never the bar length itself.
+    static func foldedOffset(_ time: TimeInterval, bpm: Int, beatsPerBar: Int) -> Int {
+        let barLength = 60 * TimeInterval(beatsPerBar) / TimeInterval(Tempo.clamp(bpm))
+        let bars = (time / barLength + 1e-9).rounded(.down)
+        let hundredths = Int(((time - bars * barLength) * 100).rounded())
+        guard TimeInterval(hundredths) < barLength * 100 else { return 0 }
+        return max(hundredths, 0)
+    }
 }

@@ -59,18 +59,6 @@ struct SyncModeModelTests {
         #expect(model.isSyncModeShown == false)
     }
 
-    @Test func enteringStartsAFreshRun() throws {
-        let model = try bench.makeModel()
-        model.togglePlayback()
-        model.enterSyncMode()
-        engine.trackTime = 9.30
-        model.tapDownbeat()
-        #expect(model.tapRun.taps.count == 1)
-        model.leaveSyncMode()
-        model.enterSyncMode()
-        #expect(model.tapRun.isEmpty)
-    }
-
     @Test func doneSavesAWaitingChangeAtOnce() throws {
         let model = try bench.makeModel()
         model.enterSyncMode()

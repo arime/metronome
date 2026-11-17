@@ -450,17 +450,6 @@ struct TrackSongModelTests {
         #expect(short.loadedTrack?.offset == 200)
     }
 
-    @Test func loadingAnotherSongEndsTheTapRun() throws {
-        let setup = try makeModel()
-        let model = setup.model
-        model.togglePlayback()
-        engine.trackTime = 9.30
-        model.tapDownbeat()
-        #expect(model.tapRun.taps.count == 1)
-        model.loadSong(setup.other.id, from: setup.setlist)
-        #expect(model.tapRun.isEmpty)
-    }
-
     @Test func countInAndMixAreSaved() throws {
         let setup = try makeModel()
         let model = setup.model
@@ -706,36 +695,6 @@ struct TrackSongModelTests {
         #expect(mix.track == TrackMix.trackGain(at: 0.5))
         #expect(b.isPlaying)
         #expect(hapticCount(bHaptics) == haptics)
-    }
-
-    @Test func aTempoOrOffsetArrivingFromAnotherDeviceEndsTheRun() throws {
-        let (a, b, bEngine, _, song, _) = try twoDevicesPlayingATrack()
-        bEngine.trackTime = 9.30
-        b.tapDownbeat()
-        #expect(b.tapRun.taps.count == 1)
-        clock.advance()
-        a.loadSong(song.id, from: nil)
-        a.nudgeOffset(by: 2)
-        a.savePendingChanges()
-        cloud.send(.changed, toDevice: 1)
-        #expect(b.loadedTrack?.offset == 50)
-        #expect(b.tapRun.isEmpty)
-    }
-
-    @Test func aMixArrivingKeepsTheRun() throws {
-        let (a, b, bEngine, _, song, _) = try twoDevicesPlayingATrack()
-        bEngine.trackTime = 9.30
-        b.tapDownbeat()
-        b.savePendingChanges()
-        cloud.send(.changed, toDevice: 0)
-        clock.advance()
-        a.loadSong(song.id, from: nil)
-        #expect(a.loadedTrack?.offset == b.loadedTrack?.offset)
-        a.setMix(0.5)
-        a.savePendingChanges()
-        cloud.send(.changed, toDevice: 1)
-        #expect(b.loadedTrack?.mix == 0.5)
-        #expect(b.tapRun.taps.count == 1)
     }
 
     @Test func syncModeEndsWhenTheTrackIsRemovedElsewhere() throws {

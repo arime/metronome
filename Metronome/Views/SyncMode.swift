@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// Sync mode (6.13), in place of the track screen's header and content: its own header, then
-/// the time signature row, the accent tiles, the tap pad, the Tempo and Offset steppers, the
+/// the time signature row, the accent tiles, the two tap pads, the Tempo and Offset steppers, the
 /// count-in and the mix, and the playback card pinned to the bottom. The same stopped and
-/// playing. The pad takes the height the other parts leave; when even its least height does not
+/// playing. The pads take the height the other parts leave; when even their least height does not
 /// fit, the part between the header and the card scrolls.
 struct SyncModeView: View {
     @Environment(MetronomeModel.self) private var model
@@ -21,7 +21,7 @@ struct SyncModeView: View {
                     .frame(height: SyncModeLayout.headerHeight - 8)
                     .padding(.top, 8)
                 // A scroll view only where the parts do not fit, so that elsewhere none can delay or
-                // claim a touch on the pad.
+                // claim a touch on a pad.
                 if layout.scrollOverflow > 0 {
                     ScrollView { parts(layout) }
                 } else {
@@ -44,7 +44,7 @@ struct SyncModeView: View {
             // Two-row signatures keep their 44 pt tiles whatever the single-row height is.
             AccentTiles(singleRowTileHeight: layout.tileHeight)
                 .padding(.top, SyncModeLayout.tilesTopGap)
-            TapPad(showsHandIcon: layout.showsHandIcon)
+            TapPads(showsHandIcon: layout.showsHandIcon)
                 .frame(height: layout.padHeight)
                 .padding(.top, SyncModeLayout.padGap)
             SyncSteppers()
@@ -91,20 +91,61 @@ private struct SyncModeHeader: View {
     }
 }
 
-/// Where downbeats are tapped along with the track (7.11). A touch counts when the finger comes
-/// down, so a slide or the lift adds nothing. It works only while the file itself plays; otherwise
-/// it is dimmed and a touch does nothing. Start over in its top right corner forgets the run and is
-/// never a tap.
-private struct TapPad: View {
+/// Tap tempo above the Tempo stepper and Tap on beat 1 above the Offset stepper, 10 pt apart and
+/// sharing the width equally, as the steppers do.
+private struct TapPads: View {
+    let showsHandIcon: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            TapTempoPad(showsHandIcon: showsHandIcon)
+            TapOnBeat1Pad(showsHandIcon: showsHandIcon)
+        }
+    }
+}
+
+/// Sets the track's tempo by the plain tap tempo's rules (7.11). Works stopped and playing and is
+/// never dimmed. While a series is open, from a tap until it would start over two seconds later,
+/// the title reads `Tap again`.
+private struct TapTempoPad: View {
     @Environment(MetronomeModel.self) private var model
     let showsHandIcon: Bool
 
-    /// True while a finger is down; back to false when the touch ends or is cancelled.
-    @GestureState private var isPressed = false
+    /// Goes up by one per tap; restarts the wait for the end of the series.
+    @State private var tapCount = 0
+    /// True from a tap until the series would start over, two seconds later.
+    @State private var isTapping = false
 
-    private static let cornerRadius: CGFloat = 24
-    /// Room kept at the right for Start over when the text stands at the left.
-    private static let startOverClearance: CGFloat = 128
+    var body: some View {
+        SyncTapPad(showsHandIcon: showsHandIcon, onTouch: tap) {
+            // Both titles are laid out, so the pad's content keeps its size when they swap.
+            ZStack {
+                TapPadTitle(text: "Tap tempo").opacity(isTapping ? 0 : 1)
+                TapPadTitle(text: "Tap again").opacity(isTapping ? 1 : 0)
+            }
+        }
+        .accessibilityRepresentation {
+            Button("Tap tempo", action: tap)
+        }
+        .task(id: tapCount) {
+            guard tapCount > 0 else { return }
+            try? await Task.sleep(for: .seconds(TapTempo.seriesTimeout))
+            if !Task.isCancelled { isTapping = false }
+        }
+    }
+
+    private func tap() {
+        model.tapTrackTempo(at: ProcessInfo.processInfo.systemUptime)
+        tapCount += 1
+        isTapping = true
+    }
+}
+
+/// Sets the offset from the place being heard (7.11). It works only while the file itself plays;
+/// otherwise it is dimmed and a touch does nothing.
+private struct TapOnBeat1Pad: View {
+    @Environment(MetronomeModel.self) private var model
+    let showsHandIcon: Bool
 
     var body: some View {
         // Whether the file has started is read from the engine and not observed, so it is read
@@ -116,99 +157,65 @@ private struct TapPad: View {
         // Read at most every 0.1 s, so it only dims the pad. A touch always goes to the model,
         // which takes it only when it can count, so none is lost as the file starts.
         let canTap = model.canTapDownbeat
-        let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-        return labels
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.amberTint, in: shape)
-            .overlay(shape.strokeBorder(Theme.amber, lineWidth: 1.5))
-            .contentShape(shape)
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .updating($isPressed) { _, pressed, _ in pressed = true }
-            )
-            .onChange(of: isPressed) { _, pressed in
-                if pressed { model.tapDownbeat() }
-            }
-            // A button for VoiceOver, dimmed when a tap cannot count.
-            .accessibilityRepresentation {
-                Button("Tap on beat 1") { model.tapDownbeat() }
-                    .accessibilityValue(model.tapRun.spokenCountLine ?? "")
-                    .disabled(!canTap)
-            }
-            // Laid over the pad and not inside it, so a touch on it never reaches the pad's gesture.
-            .overlay(alignment: .topTrailing) {
-                StartOverButton(isDimmedAlone: canTap)
-                    .padding(.top, 12 - StartOverButton.touchInset)
-                    .padding(.trailing, 14 - StartOverButton.touchInset)
-            }
-            .opacity(canTap ? 1 : 0.4)
+        return SyncTapPad(showsHandIcon: showsHandIcon, onTouch: { model.tapDownbeat() }) {
+            TapPadTitle(text: "Tap on beat 1")
+        }
+        // A button for VoiceOver, dimmed when a tap cannot count.
+        .accessibilityRepresentation {
+            Button("Tap on beat 1") { model.tapDownbeat() }
+                .disabled(!canTap)
+        }
+        .opacity(canTap ? 1 : 0.4)
     }
+}
 
-    /// Centred under the hand icon on a tall pad; at the left and centred vertically on a short
-    /// one. The count line keeps its place before the first tap, so nothing moves on the first tap.
-    @ViewBuilder
-    private var labels: some View {
-        let countLine = model.tapRun.countLine
-        let title = Text("Tap on beat 1")
-            .font(.system(size: 22, weight: .heavy))
-            .foregroundStyle(Theme.dialWhite)
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-        let count = Text(countLine ?? " ")
-            .font(.system(size: 14, weight: .medium).monospacedDigit())
-            .foregroundStyle(Theme.muted)
-            .lineLimit(1)
-            .opacity(countLine == nil ? 0 : 1)
-        if showsHandIcon {
-            VStack(spacing: 6) {
+/// One tap pad: the amber tint fill, a 1.5 pt amber outline and 24 pt corners, with the hand icon
+/// and the title centred 8 pt apart, or the title alone on a short pad. A touch counts when the
+/// finger comes down, so a slide or the lift adds nothing.
+private struct SyncTapPad<Title: View>: View {
+    let showsHandIcon: Bool
+    let onTouch: () -> Void
+    @ViewBuilder let title: Title
+
+    /// True while a finger is down; back to false when the touch ends or is cancelled.
+    @GestureState private var isPressed = false
+
+    private static var cornerRadius: CGFloat { 24 }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+        VStack(spacing: 8) {
+            if showsHandIcon {
                 Image(systemName: "hand.tap")
                     .font(.system(size: 26, weight: .semibold))
                     .foregroundStyle(Theme.amber)
-                title
-                count
             }
-            .padding(.horizontal, 16)
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                title
-                count
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 16)
-            .padding(.trailing, Self.startOverClearance)
+            title
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.amberTint, in: shape)
+        .overlay(shape.strokeBorder(Theme.amber, lineWidth: 1.5))
+        .contentShape(shape)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .updating($isPressed) { _, pressed, _ in pressed = true }
+        )
+        .onChange(of: isPressed) { _, pressed in
+            if pressed { onTouch() }
         }
     }
 }
 
-/// A 30 pt outlined pill with a touch area of at least 44 × 44. A touch on it, even while it is
-/// dimmed, is kept from the pad below.
-private struct StartOverButton: View {
-    @Environment(MetronomeModel.self) private var model
-    /// True when it is dimmed on its own; while the whole pad is dimmed, it is dimmed with it.
-    let isDimmedAlone: Bool
-
-    /// How far the touch area reaches past the pill above and below: (44 − 30) / 2.
-    static let touchInset: CGFloat = 7
+/// A pad's title: 20 pt heavy dial white on one line, scaled down when the pad is too narrow for it.
+private struct TapPadTitle: View {
+    let text: String
 
     var body: some View {
-        let isEmpty = model.tapRun.isEmpty
-        Button { model.startTapRunOver() } label: {
-            Text("Start over")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.dialWhite)
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, 14)
-                .frame(height: 30)
-                .overlay(Capsule().strokeBorder(Color(hex: 0x3A3423), lineWidth: 1))
-                .opacity(isEmpty && isDimmedAlone ? 0.4 : 1)
-                .padding(Self.touchInset)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(isEmpty)
-        .accessibilityLabel("Start over")
-        // A disabled button lets touches through; this keeps them from the pad.
-        .background(Color.clear.contentShape(Rectangle()).onTapGesture {})
+        Text(text)
+            .font(.system(size: 20, weight: .heavy))
+            .foregroundStyle(Theme.dialWhite)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
     }
 }

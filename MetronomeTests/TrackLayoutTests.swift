@@ -4,8 +4,8 @@ import Testing
 
 /// Heights are the usable height (inside the safe areas). The track screen stacks the
 /// header (48), 8, the tempo reading's room, the tiles, 16 and the player card (192, or
-/// 222 with the next-up line). Sync mode's parts take 484 pt plus the tiles; the tap pad
-/// takes the rest.
+/// 222 with the next-up line). Sync mode's parts take 484 pt plus the tiles; the tap pads
+/// take the rest.
 struct TrackLayoutTests {
     private func trackScreen(
         width: CGFloat = 375, height: CGFloat, hasBottomInset: Bool = false, beats: Int = 4,

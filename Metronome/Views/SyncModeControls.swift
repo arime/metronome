@@ -17,9 +17,11 @@ private struct SyncLabel: View {
 private let labelColumnWidth: CGFloat = 76
 
 /// Tempo and Offset side by side, 10 pt apart, sharing the width equally. − and + repeat while
-/// held; a change applies at once.
+/// held; a change applies at once. Tapping the tempo value opens the tempo sheet for the track's
+/// tempo.
 struct SyncSteppers: View {
     @Environment(MetronomeModel.self) private var model
+    @State private var isEntryShown = false
 
     var body: some View {
         let bpm = model.loadedTrack?.bpm ?? model.tempoInEffect
@@ -29,7 +31,8 @@ struct SyncSteppers: View {
                 label: "TEMPO", value: "\(bpm)", unit: nil,
                 spokenName: "Tempo", spokenValue: "\(bpm) beats per minute",
                 less: ("Slower", { model.nudgeTrackTempo(by: -1) }),
-                more: ("Faster", { model.nudgeTrackTempo(by: 1) })
+                more: ("Faster", { model.nudgeTrackTempo(by: 1) }),
+                typeValue: { isEntryShown = true }
             )
             SyncStepper(
                 label: "OFFSET", value: seconds, unit: "s",
@@ -39,6 +42,10 @@ struct SyncSteppers: View {
             )
         }
         .frame(height: SyncModeLayout.stepperHeight)
+        .sheet(isPresented: $isEntryShown) {
+            TempoEntrySheet(current: bpm) { model.setTrackTempo($0) }
+                .environment(model)
+        }
     }
 
     /// Hundredths of a second with two decimals, worked out in whole numbers: 48 is `0.48`, 2540 is `25.40`.
@@ -49,7 +56,8 @@ struct SyncSteppers: View {
 }
 
 /// A label and, 6 pt below it, a 48 pt surface capsule holding −, the value and +. The value is
-/// scaled down rather than cut when it is wider than the room between the buttons.
+/// scaled down rather than cut when it is wider than the room between the buttons. With
+/// `typeValue`, tapping the value types a new one.
 private struct SyncStepper: View {
     let label: String
     let value: String
@@ -58,6 +66,7 @@ private struct SyncStepper: View {
     let spokenValue: String
     let less: (label: String, step: () -> Void)
     let more: (label: String, step: () -> Void)
+    var typeValue: (() -> Void)?
 
     private static let pillHeight: CGFloat = 48
     private static let buttonSize: CGFloat = 40
@@ -69,8 +78,11 @@ private struct SyncStepper: View {
             HStack(spacing: 0) {
                 button("minus", less)
                 valueText
-                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 4)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture { typeValue?() }
+                    .allowsHitTesting(typeValue != nil)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(spokenName)
                     .accessibilityValue(spokenValue)
@@ -80,6 +92,9 @@ private struct SyncStepper: View {
                         case .decrement: less.step()
                         @unknown default: break
                         }
+                    }
+                    .accessibilityActions {
+                        if let typeValue { Button("Type a tempo", action: typeValue) }
                     }
                 button("plus", more)
             }

@@ -67,6 +67,8 @@ final class MetronomeModel {
     /// The player while haptics are on, nil while they are off; every haptic goes through here.
     private var haptics: HapticsPlaying? { hapticsEnabled ? hapticsPlayer : nil }
     @ObservationIgnored private var taps = TapTempo()
+    /// Sync mode's Tap tempo keeps a series of its own, apart from the plain screen's.
+    @ObservationIgnored private var trackTaps = TapTempo()
     @ObservationIgnored private var beatCount = 0
 
     init(engine: ClickEngine, store: SettingsStore, haptics: HapticsPlaying, libraryStore: LibraryStore,
@@ -365,7 +367,6 @@ final class MetronomeModel {
     /// takes it, for example on Unload from a song whose file is missing.
     private func loadedTrackReplaced(replacing old: BackingTrack?) {
         trackPosition = 0
-        endTapRun()
         refreshTrackFile()
         if isPlaying, tempoInEffect != tempoInEffect(with: old) {
             engine.update(settingsInEffect, startNewBar: false)
@@ -423,7 +424,6 @@ final class MetronomeModel {
     func enterSyncMode() {
         guard isTrackPlayable else { return }
         isSyncModeShown = true
-        endTapRun()
     }
 
     /// Done, or the file going away while shown. Playback carries on as it is; a change still
@@ -431,7 +431,6 @@ final class MetronomeModel {
     func leaveSyncMode() {
         guard isSyncModeShown else { return }
         isSyncModeShown = false
-        endTapRun()
         savePendingChanges()
     }
 
@@ -456,14 +455,37 @@ final class MetronomeModel {
     /// The Sync tempo stepper: the track's tempo by `delta` BPM, within 30...300. The metronome's
     /// tempo is not touched, so this never makes the song edited. Only while a track is in use.
     func nudgeTrackTempo(by delta: Int) {
-        guard isTrackInUse, var track = loadedTrack else { return }
-        let bpm = Tempo.clamp(track.bpm + delta)
-        guard bpm != track.bpm else { return }
+        guard let bpm = loadedTrack?.bpm else { return }
+        setTrackTempo(bpm + delta)
+    }
+
+    /// `Set tempo` in the tempo sheet opened from Sync mode: the track's tempo, within 30...300,
+    /// with a tick when it changes. Only while a track is in use; never the metronome's tempo.
+    func setTrackTempo(_ bpm: Int) {
+        guard applyTrackTempo(bpm) else { return }
+        haptics?.selection()
+    }
+
+    /// Sync mode's Tap tempo: the rules of the plain tap tempo, on the track's tempo, with a series
+    /// of its own. A tick for every tap while a track is in use.
+    func tapTrackTempo(at time: TimeInterval) {
+        guard isTrackInUse else { return }
+        haptics?.selection()
+        guard let bpm = trackTaps.tap(at: time) else { return }
+        applyTrackTempo(bpm)
+    }
+
+    /// Sets the track's tempo, saved into the song and sent to a playing engine. Returns true when
+    /// it changed.
+    @discardableResult
+    private func applyTrackTempo(_ bpm: Int) -> Bool {
+        guard isTrackInUse, var track = loadedTrack else { return false }
+        let bpm = Tempo.clamp(bpm)
+        guard bpm != track.bpm else { return false }
         track.bpm = bpm
-        endTapRun()
         saveLoadedTrack(track)
         if isPlaying { engine.update(settingsInEffect, startNewBar: false) }
-        haptics?.selection()
+        return true
     }
 
     /// Each step is 0.01 s; the offset stays between 0:00 and the file's end.
@@ -472,7 +494,6 @@ final class MetronomeModel {
         let last = trackLength.map { Int(($0 * 100).rounded(.down)) } ?? .max
         let offset = min(max(track.offset + steps, 0), last)
         guard offset != track.offset else { return }
-        endTapRun()
         setOffset(offset)
         haptics?.selection()
     }
@@ -486,42 +507,22 @@ final class MetronomeModel {
 
     // MARK: - Tap on beat 1
 
-    /// The downbeats tapped so far (7.11). It belongs to one file at one tempo, offset and time
-    /// signature: changing any of them other than by a tap ends it.
-    private(set) var tapRun = TapRun()
-
     /// Only while the file itself is playing, not during the count-in's click alone. Read from
     /// the engine and not observed, so views read it again while playing.
     var canTapDownbeat: Bool {
         isPlayingTrack && !isCountingIn
     }
 
-    /// Marks the place being heard as a downbeat and sets the track's tempo and offset from the
-    /// run, as one change. A bounced finger is ignored.
+    /// Takes the place being heard as beat 1 and sets only the offset from it, folded back to the
+    /// first bar at the track's tempo. Each tap sets it afresh; the tempo is never changed.
     func tapDownbeat() {
-        guard canTapDownbeat, var track = loadedTrack, let heard = engine.trackTime, heard >= 0 else { return }
-        let beatsPerBar = settings.timeSignature.beatsPerBar
-        guard tapRun.add(at: heard, bpm: track.bpm, beatsPerBar: beatsPerBar) else { return }
+        guard canTapDownbeat, let track = loadedTrack, let heard = engine.trackTime, heard >= 0 else { return }
         haptics?.selection()
-        guard let fit = tapRun.fitted(bpm: track.bpm, beatsPerBar: beatsPerBar) else { return }
-        let old = track
-        track.bpm = fit.bpm
-        track.offset = fit.offset
-        guard track != old else { return }
-        saveLoadedTrack(track)
-        if track.bpm != old.bpm { engine.update(settingsInEffect, startNewBar: false) }
-        if track.offset != old.offset { engine.setOffset(track.offsetSeconds) }
-    }
-
-    /// Start over: the next tap begins a new run. The tempo and the offset stay.
-    func startTapRunOver() {
-        endTapRun()
-    }
-
-    /// Wherever a run ends. An empty run is left as it is, so views reading it are not told of a
-    /// change.
-    private func endTapRun() {
-        if !tapRun.isEmpty { tapRun = TapRun() }
+        let offset = TrackGrid.foldedOffset(
+            heard, bpm: track.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
+        )
+        guard offset != track.offset else { return }
+        setOffset(offset)
     }
 
     func setCountIn(_ countIn: CountIn) {
@@ -595,7 +596,6 @@ final class MetronomeModel {
     /// The same one does nothing.
     func selectTimeSignature(_ signature: TimeSignature) {
         guard settings.setTimeSignature(signature) else { return }
-        endTapRun()
         settingsChanged(startNewBar: true)
         meterChanged()
     }
@@ -623,7 +623,6 @@ final class MetronomeModel {
     /// Replaces all the settings at once, as loading a song does.
     private func apply(_ newSettings: MetronomeSettings, startNewBar: Bool = true) {
         guard newSettings != settings else { return }
-        if newSettings.timeSignature != settings.timeSignature { endTapRun() }
         settings = newSettings
         settingsChanged(startNewBar: startNewBar)
     }
@@ -1162,7 +1161,6 @@ final class MetronomeModel {
             loadedTrackReplaced(replacing: old)
             return
         }
-        if track.bpm != old.bpm || track.offset != old.offset { endTapRun() }
         if track.bpm != old.bpm, isPlaying, isTrackInUse { engine.update(settingsInEffect, startNewBar: false) }
         if track.offset != old.offset, isPlayingTrack { engine.setOffset(track.offsetSeconds) }
         if track.mix != old.mix { sendMix(track.mix) }

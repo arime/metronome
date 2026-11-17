@@ -35,7 +35,7 @@ enum ScreenshotScene: String, CaseIterable {
     /// Sync mode of `trackSync` with 9/8 chosen, as from the row, for the two-row tiles.
     case trackSyncNine
     /// Sync mode of `trackSync`, stopped, with an engine that plays nothing: its beats come from a
-    /// timer and its file time from the clock, count-in included, so Start, the tap pad and the
+    /// timer and its file time from the clock, count-in included, so Start, the tap pads and the
     /// transport can be tried where the simulator's audio does not run.
     case trackSyncTimer
     /// The track screen for the same song loaded on its own, outside the setlist.

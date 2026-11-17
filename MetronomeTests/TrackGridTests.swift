@@ -54,4 +54,31 @@ struct TrackGridTests {
         #expect(near(grid.beatInterval, 2))
         #expect(near(grid.time(ofBeat: 1), 2))
     }
+
+    // MARK: - Tap on beat 1's fold
+
+    @Test func theFoldGoesBackWholeBars() {
+        #expect(TrackGrid.foldedOffset(9.30, bpm: 120, beatsPerBar: 4) == 130)
+        #expect(TrackGrid.foldedOffset(1.30, bpm: 120, beatsPerBar: 4) == 130)
+        #expect(TrackGrid.foldedOffset(0.004, bpm: 120, beatsPerBar: 4) == 0)
+    }
+
+    @Test func anExactBarFoldsToZero() {
+        #expect(TrackGrid.foldedOffset(4.0, bpm: 120, beatsPerBar: 4) == 0)
+        #expect(TrackGrid.foldedOffset(6.0, bpm: 120, beatsPerBar: 4) == 0)
+    }
+
+    @Test func aFoldThatRoundsToAWholeBarGivesZero() {
+        #expect(TrackGrid.foldedOffset(3.998, bpm: 120, beatsPerBar: 4) == 0)
+    }
+
+    /// 12 beats at 30 BPM: a bar of 24 s.
+    @Test func theFoldWithABarLongerThanTheTap() {
+        #expect(TrackGrid.foldedOffset(1.0, bpm: 30, beatsPerBar: 12) == 100)
+    }
+
+    /// 4 beats at 30 BPM: a bar of 8 s.
+    @Test func theFoldAtTheSlowestTempo() {
+        #expect(TrackGrid.foldedOffset(9.0, bpm: 30, beatsPerBar: 4) == 100)
+    }
 }
