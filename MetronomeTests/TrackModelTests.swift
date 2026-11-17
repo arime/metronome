@@ -99,6 +99,83 @@ struct TrackModelTests {
         #expect(model.trackPosition == 0)
     }
 
+    // The heard place is behind the file's start by the output delay just after a start or a jump
+    // to 0:00; only a run started before the file's start counts in.
+
+    @Test func countInOffNeverShowsTheCountIn() throws {
+        let model = try makeModel(countIn: .off)
+        model.togglePlayback()
+        engine.trackTime = -0.05
+        #expect(model.isCountingIn == false)
+        #expect(model.trackTime == 0)
+        #expect(model.canTapDownbeat)
+    }
+
+    @Test func anOffsetLongerThanTheCountInShowsNoCountIn() throws {
+        let model = try makeModel(countIn: .twoBars)
+        // 4.48 s, further into the file than two bars at 120 BPM (4 s).
+        model.nudgeOffset(by: 400)
+        model.togglePlayback()
+        let started = try #require(engine.startedTracks.last)
+        #expect(started.startTime == 0)
+        engine.trackTime = -0.05
+        #expect(model.isCountingIn == false)
+    }
+
+    @Test func startingFromAKeptPositionShowsNoCountIn() throws {
+        let model = try makeModel()
+        model.seekTrack(to: 30)
+        model.togglePlayback()
+        engine.trackTime = -0.05
+        #expect(model.isCountingIn == false)
+    }
+
+    @Test func theCountInShowsUntilTheFileIsHeard() throws {
+        let model = try makeModel(countIn: .twoBars)
+        model.togglePlayback()
+        engine.trackTime = -2
+        #expect(model.isCountingIn)
+        #expect(model.canTapDownbeat == false)
+        engine.trackTime = 0.5
+        #expect(model.isCountingIn == false)
+        #expect(model.canTapDownbeat)
+    }
+
+    @Test func toTheBeginningWhilePlayingShowsNoCountIn() throws {
+        let model = try makeModel()
+        model.togglePlayback()
+        engine.trackTime = -2
+        model.goToTrackStart()
+        #expect(engine.seeks.isEmpty)
+        #expect(model.isCountingIn)
+        engine.trackTime = 30
+        model.goToTrackStart()
+        #expect(engine.seeks == [0])
+        engine.trackTime = -0.05
+        #expect(model.isCountingIn == false)
+    }
+
+    @Test func rewindingToZeroWhilePlayingShowsNoCountIn() throws {
+        let model = try makeModel()
+        model.togglePlayback()
+        engine.trackTime = 5
+        model.skipTrack(by: -15)
+        #expect(engine.seeks == [0])
+        engine.trackTime = -0.05
+        #expect(model.isCountingIn == false)
+    }
+
+    @Test func startingAgainAtZeroShowsTheCountInAgain() throws {
+        let model = try makeModel(countIn: .twoBars)
+        model.togglePlayback()
+        engine.trackTime = -1
+        model.togglePlayback()
+        #expect(model.isCountingIn == false)
+        model.togglePlayback()
+        engine.trackTime = -1
+        #expect(model.isCountingIn)
+    }
+
     @Test func stopWithinTheFirstSecondGoesToZeroAndCountsInAgain() throws {
         let model = try makeModel()
         model.togglePlayback()

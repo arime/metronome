@@ -159,6 +159,7 @@ final class MetronomeModel {
                 try engine.start(with: settings, track: playback)
                 isPlaying = true
                 isPlayingTrack = true
+                startedBeforeFile = playback.startTime < 0
                 return
             } catch {
                 // Falls through to the click alone.
@@ -175,6 +176,7 @@ final class MetronomeModel {
     private func becomeStopped() {
         isPlaying = false
         isPlayingTrack = false
+        startedBeforeFile = false
         currentBeat = nil
     }
 
@@ -316,9 +318,15 @@ final class MetronomeModel {
         min(max(time, 0), trackLength ?? .infinity)
     }
 
-    /// True while the count-in's click sounds alone, before the file has started.
+    /// This run started with the count-in's click before the file's start. A jump while playing
+    /// carries on without a count-in, so it ends this.
+    private var startedBeforeFile = false
+
+    /// True while the count-in's click sounds alone, before the file has started. Only a run
+    /// started before the file's start counts in: after any start or jump at 0:00 the place heard
+    /// is behind the file's start by the output delay, with no count-in.
     var isCountingIn: Bool {
-        isPlayingTrack && (engine.trackTime ?? 0) < 0
+        isPlayingTrack && startedBeforeFile && (engine.trackTime ?? 0) < 0
     }
 
     /// Fast-forward does nothing within the last 15 seconds.
@@ -346,6 +354,7 @@ final class MetronomeModel {
         let clamped = clampedToTrack(time)
         if isPlayingTrack {
             engine.seekTrack(to: clamped)
+            startedBeforeFile = false
         } else {
             trackPosition = clamped
         }
