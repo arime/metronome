@@ -211,12 +211,7 @@ struct SyncModeModelTests {
         model.toggleAccent(beat: 4)
         model.nudgeOffset(by: 1)
         #expect(bench.libraryDefaults.writes == writes)
-        // Waits for the save however busy the main actor is. Only one save can be waiting at a
-        // time, so once it has run no other can follow, and the count is final.
-        let deadline = ContinuousClock.now + .seconds(10)
-        while bench.libraryDefaults.writes == writes, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        try await bench.waitForASave(after: writes)
         #expect(bench.libraryDefaults.writes == writes + 1)
         let saved = bench.libraryStore.load().library.song(id: song.id)
         #expect(saved?.settings.accents == [1, 2, 3, 4])

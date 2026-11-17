@@ -21,44 +21,33 @@ struct TapTempoPill: View {
     @Environment(MetronomeModel.self) private var model
     let height: CGFloat
     @ScaledMetric(relativeTo: .subheadline) private var labelSize = 15.0
-    /// Goes up by one per tap; restarts the wait for the end of the series.
-    @State private var tapCount = 0
-    /// True from a tap until the series would start over, two seconds later.
-    @State private var isTapping = false
+    @State private var series = TapTempoSeries()
 
     var body: some View {
         Button {
             let time = ProcessInfo.processInfo.systemUptime
             model.tapTempo(at: time)
-            tapCount += 1
-            isTapping = true
+            series.tapped()
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "hand.tap")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Theme.amber)
-                // Both labels are laid out, so the pill keeps its width when they swap.
-                // They take no touches themselves: a touch on the invisible one would
-                // otherwise be lost instead of reaching the button.
-                ZStack {
-                    label("Tap tempo").opacity(isTapping ? 0 : 1)
-                    label("Tap again").opacity(isTapping ? 1 : 0)
-                }
-                .allowsHitTesting(false)
+                TapTempoLabels(isTapping: series.isTapping, label: label)
             }
             .padding(.horizontal, 20)
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .overlay(Capsule().strokeBorder(isTapping ? Theme.amber : Theme.line, lineWidth: isTapping ? 1.5 : 1))
+            .overlay(
+                Capsule().strokeBorder(
+                    series.isTapping ? Theme.amber : Theme.line, lineWidth: series.isTapping ? 1.5 : 1
+                )
+            )
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Tap tempo")
-        .task(id: tapCount) {
-            guard tapCount > 0 else { return }
-            try? await Task.sleep(for: .seconds(TapTempo.seriesTimeout))
-            if !Task.isCancelled { isTapping = false }
-        }
+        .endsTapTempoSeries($series)
     }
 
     private func label(_ text: String) -> some View {
@@ -67,6 +56,50 @@ struct TapTempoPill: View {
             .foregroundStyle(Theme.dialWhite)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
+    }
+}
+
+/// Whether a tap tempo series is open, for the controls that show it: from a tap until the series
+/// would start over, two seconds later. Shared by the plain screen's pill and Sync mode's pad.
+struct TapTempoSeries: Equatable {
+    /// Goes up by one per tap; restarts the wait for the end of the series.
+    private(set) var tapCount = 0
+    private(set) var isTapping = false
+
+    mutating func tapped() {
+        tapCount += 1
+        isTapping = true
+    }
+
+    mutating func ended() {
+        isTapping = false
+    }
+}
+
+extension View {
+    /// Closes the series two seconds after its last tap, as a new tap would start a new one then.
+    func endsTapTempoSeries(_ series: Binding<TapTempoSeries>) -> some View {
+        task(id: series.wrappedValue.tapCount) {
+            guard series.wrappedValue.tapCount > 0 else { return }
+            try? await Task.sleep(for: .seconds(TapTempo.seriesTimeout))
+            if !Task.isCancelled { series.wrappedValue.ended() }
+        }
+    }
+}
+
+/// `Tap tempo`, or `Tap again` while a series is open. Both labels are laid out, so the control
+/// keeps its size when they swap. They take no touches themselves: a touch on the invisible one
+/// would otherwise be lost instead of reaching the control.
+struct TapTempoLabels<Label: View>: View {
+    let isTapping: Bool
+    let label: (String) -> Label
+
+    var body: some View {
+        ZStack {
+            label("Tap tempo").opacity(isTapping ? 0 : 1)
+            label("Tap again").opacity(isTapping ? 1 : 0)
+        }
+        .allowsHitTesting(false)
     }
 }
 

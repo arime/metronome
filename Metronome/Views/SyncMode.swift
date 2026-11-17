@@ -120,33 +120,21 @@ private struct TapTempoPad: View {
     @Environment(MetronomeModel.self) private var model
     let showsHandIcon: Bool
 
-    /// Goes up by one per tap; restarts the wait for the end of the series.
-    @State private var tapCount = 0
-    /// True from a tap until the series would start over, two seconds later.
-    @State private var isTapping = false
+    @State private var series = TapTempoSeries()
 
     var body: some View {
         SyncTapPad(showsHandIcon: showsHandIcon, onTouch: tap) {
-            // Both titles are laid out, so the pad's content keeps its size when they swap.
-            ZStack {
-                TapPadTitle(text: "Tap tempo").opacity(isTapping ? 0 : 1)
-                TapPadTitle(text: "Tap again").opacity(isTapping ? 1 : 0)
-            }
+            TapTempoLabels(isTapping: series.isTapping) { TapPadTitle(text: $0) }
         }
         .accessibilityRepresentation {
             Button("Tap tempo", action: tap)
         }
-        .task(id: tapCount) {
-            guard tapCount > 0 else { return }
-            try? await Task.sleep(for: .seconds(TapTempo.seriesTimeout))
-            if !Task.isCancelled { isTapping = false }
-        }
+        .endsTapTempoSeries($series)
     }
 
     private func tap() {
         model.tapTrackTempo(at: ProcessInfo.processInfo.systemUptime)
-        tapCount += 1
-        isTapping = true
+        series.tapped()
     }
 }
 

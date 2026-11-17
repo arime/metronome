@@ -505,12 +505,7 @@ struct TrackSongModelTests {
         #expect(engine.mixes.count == 1)
         #expect(bench.libraryDefaults.writes == writes)
         #expect(savedTrack(of: setup.song)?.offset == 48)
-        // Waits for the save however busy the main actor is. Only one save can be waiting at a
-        // time, so once it has run no other can follow, and the count is final.
-        let deadline = ContinuousClock.now + .seconds(10)
-        while bench.libraryDefaults.writes == writes, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        try await bench.waitForASave(after: writes)
         #expect(bench.libraryDefaults.writes == writes + 1)
         #expect(savedTrack(of: setup.song)?.offset == 51)
         #expect(savedTrack(of: setup.song)?.mix == 0.4)

@@ -25,15 +25,6 @@ struct SyncTapModelTests {
         model.tapDownbeat()
     }
 
-    /// Waits for the deferred save however busy the main actor is. Only one save can be waiting at
-    /// a time, so once it has run no other can follow, and the count is final.
-    private func waitForASave(after writes: Int) async throws {
-        let deadline = ContinuousClock.now + .seconds(10)
-        while bench.libraryDefaults.writes == writes, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
-    }
-
     // MARK: - Tap on beat 1
 
     @Test func tapOnBeat1SetsTheOffsetFromTheHeardPlace() throws {
@@ -120,7 +111,7 @@ struct SyncTapModelTests {
         tapOnBeat1(model, at: 10.70)
         tapOnBeat1(model, at: 12.90)
         #expect(bench.libraryDefaults.writes == writes)
-        try await waitForASave(after: writes)
+        try await bench.waitForASave(after: writes)
         #expect(bench.libraryDefaults.writes == writes + 1)
         #expect(bench.libraryStore.load().library.song(id: song.id)?.track?.offset == 90)
     }
@@ -213,7 +204,7 @@ struct SyncTapModelTests {
         let writes = bench.libraryDefaults.writes
         for time in [0, 0.5, 1.0, 1.5] { model.tapTrackTempo(at: time) }
         #expect(bench.libraryDefaults.writes == writes)
-        try await waitForASave(after: writes)
+        try await bench.waitForASave(after: writes)
         #expect(bench.libraryDefaults.writes == writes + 1)
         let saved = bench.libraryStore.load().library.song(id: song.id)
         #expect(saved?.track?.bpm == 120)
