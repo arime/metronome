@@ -23,7 +23,7 @@ enum ScreenshotScene: String, CaseIterable {
     /// stopped. Not an App Store screenshot; for checking the screen in the simulator. The
     /// click and the track play for real, so their sync can be heard.
     case trackScreen
-    /// The track screen of `trackScreen`, playing from launch, so the tempo reading's pulse
+    /// The track screen of `trackScreen`, playing from launch, so the tempo reading's beat effect
     /// can be caught in a screenshot. It plays nothing: its beats come from a timer, so the
     /// screen pulses even where the simulator's audio does not run.
     case trackPlaying

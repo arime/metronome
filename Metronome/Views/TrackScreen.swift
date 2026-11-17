@@ -26,9 +26,8 @@ struct TrackScreenContent: View {
 
 /// The tempo in effect as one large number, and under it the time signature and the Sync
 /// button. The number and the time signature are readouts and take no touches. While
-/// playing the number lights amber on every beat, with a glow behind it, and fades back to
-/// dial white before the next beat (section 12). It never scales, so Reduce Motion leaves
-/// it as it is.
+/// playing the number marks every beat as the dial's number does (section 12): the glow flashes
+/// behind it and it pulses, the pulse left out with Reduce Motion. It stays dial white.
 struct TempoReading: View {
     @Environment(MetronomeModel.self) private var model
     private let numberFontSize: CGFloat
@@ -44,17 +43,14 @@ struct TempoReading: View {
 
     var body: some View {
         VStack(spacing: TrackScreenLayout.readingLineGap) {
-            KeyframeAnimator(initialValue: 0.0, trigger: model.lastBeat?.id) { level in
-                // Stopped, the number is dial white with no glow, even mid-fade.
-                number(level: model.isPlaying ? level : 0)
-            } keyframes: { _ in
-                // Replayed on every beat: jump to full, then decay. Setting a value and
-                // animating it back in one update could be merged away before it was drawn.
-                MoveKeyframe(1.0)
-                CubicKeyframe(0.0, duration: BeatPulse.decay(bpm: model.tempoInEffect))
-            }
+            number
             signatureLine
         }
+    }
+
+    /// The dial's glow, sized for this number as the dial's glow is for the dial's number.
+    private var glowDiameter: CGFloat {
+        numberFontSize * 300 / DialRing.numberSize
     }
 
     /// The digits are set tight between digits only, as on the dial, so the last one is not
@@ -68,18 +64,23 @@ struct TempoReading: View {
         return text
     }
 
-    private func number(level: Double) -> some View {
+    private var number: some View {
         Text(numberText)
             .font(.system(size: numberFontSize, weight: .heavy))
             .monospacedDigit()
-            .foregroundStyle(Theme.dialWhite.mix(with: Theme.amber, by: level))
+            .foregroundStyle(Theme.dialWhite)
             .lineLimit(1)
             .minimumScaleFactor(0.5)
             // Scaled for width only: the glyphs are taller than the 108/136 line they sit in.
             .fixedSize(horizontal: false, vertical: true)
+            .modifier(NumberPulse(lastBeat: model.lastBeat, bpm: model.tempoInEffect))
             .frame(maxWidth: .infinity)
             .frame(height: numberLineHeight)
-            .background { ReadingGlow().opacity(level) }
+            .background {
+                // Stopped, there is no glow, even mid-fade.
+                BeatGlow(lastBeat: model.lastBeat, bpm: model.tempoInEffect, diameter: glowDiameter)
+                    .opacity(model.isPlaying ? 1 : 0)
+            }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Tempo")
             .accessibilityValue("\(model.tempoInEffect) beats per minute")
@@ -97,25 +98,6 @@ struct TempoReading: View {
             SyncButton()
         }
         .frame(height: TrackScreenLayout.syncButtonHeight)
-    }
-}
-
-/// The amber glow behind the tempo reading's number: an ellipse 360 × 270 pt, 20 % at its
-/// centre and clear from 68 % of the way out. Its opacity is the pulse's level.
-private struct ReadingGlow: View {
-    var body: some View {
-        EllipticalGradient(
-            stops: [
-                .init(color: Theme.amber.opacity(0.20), location: 0),
-                .init(color: Theme.amber.opacity(0), location: 0.68),
-            ],
-            center: .center,
-            startRadiusFraction: 0,
-            endRadiusFraction: 0.5
-        )
-        .frame(width: 360, height: 270)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 }
 

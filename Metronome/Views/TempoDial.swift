@@ -6,7 +6,6 @@ struct TempoDial: View {
     @Environment(MetronomeModel.self) private var model
     let diameter: CGFloat
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isEntryShown = false
     /// The turn in progress, with the touch it belongs to.
     @State private var drag: (start: CGPoint, turn: DialDrag)?
@@ -71,17 +70,7 @@ struct TempoDial: View {
                 // scale factor clipped the right edge of the last digit.
                 .fixedSize()
                 .frame(height: DialRing.numberSize * scale)
-                // The number jumps up on the beat and settles within half the beat
-                // interval. With Reduce Motion on, the trigger never changes.
-                .keyframeAnimator(
-                    initialValue: 1.0,
-                    trigger: reduceMotion ? nil : model.lastBeat?.id
-                ) { view, scale in
-                    view.scaleEffect(scale)
-                } keyframes: { _ in
-                    MoveKeyframe(1.04)
-                    CubicKeyframe(1.0, duration: BeatPulse.decay(bpm: model.settings.bpm))
-                }
+                .modifier(NumberPulse(lastBeat: model.lastBeat, bpm: model.settings.bpm))
             // On a small dial the tempo name does not fit inside the ring.
             if DialGeometry.showsTempoName(dialDiameter: diameter) {
                 Text(model.tempoName)
@@ -128,7 +117,7 @@ struct TempoDial: View {
 
 /// The scale of ticks and the knob inside it: a raised disc with a ridged edge and an amber
 /// pointer, turned to the tempo. Drawn in a 300 pt coordinate space and scaled to fit.
-private struct DialRing: View {
+struct DialRing: View {
     let fraction: Double
 
     /// The BPM number on the knob's face, for two digits.

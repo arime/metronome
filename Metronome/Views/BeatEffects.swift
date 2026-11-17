@@ -32,6 +32,26 @@ struct BeatGlow: View {
     }
 }
 
+/// The number pulse: the BPM number scales 1.0 → 1.04 and back within half the beat interval on
+/// every beat. With Reduce Motion on, the trigger never changes, so the number stays still.
+struct NumberPulse: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let lastBeat: BeatEvent?
+    let bpm: Int
+
+    func body(content: Content) -> some View {
+        content.keyframeAnimator(
+            initialValue: 1.0,
+            trigger: reduceMotion ? nil : lastBeat?.id
+        ) { view, scale in
+            view.scaleEffect(scale)
+        } keyframes: { _ in
+            MoveKeyframe(1.04)
+            CubicKeyframe(1.0, duration: BeatPulse.decay(bpm: bpm))
+        }
+    }
+}
+
 enum BeatPulse {
     /// Half the beat interval, in seconds.
     static func decay(bpm: Int) -> Double {
