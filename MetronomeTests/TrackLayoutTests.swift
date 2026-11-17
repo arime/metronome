@@ -4,7 +4,7 @@ import Testing
 
 /// Heights are the usable height (inside the safe areas). The track screen stacks the
 /// header (48), 8, the tempo reading's room, the tiles, 16 and the player card (192, or
-/// 222 with the next-up line). Sync mode's parts take 484 pt plus the tiles; the tap pads
+/// 222 with the next-up line). Sync mode's parts take 514 pt plus the tiles; the tap pads
 /// take the rest.
 struct TrackLayoutTests {
     private func trackScreen(
@@ -110,63 +110,63 @@ struct TrackLayoutTests {
     }
 
     // MARK: - Sync mode (6.13)
+    // Sync mode is a large sheet. The heights are its content's, measured in the simulator: 778 pt
+    // on an iPhone 17 Pro (with the home indicator's 34 pt inset), 637 pt on an iPhone SE.
 
     @Test func syncModeOnAnIPhone17Pro() {
         let layout = syncMode(width: 402, height: 778, hasBottomInset: true)
-        #expect(layout.padHeight == 218)
+        #expect(layout.padHeight == 188)
         #expect(layout.tileHeight == 76)
         #expect(layout.scrollOverflow == 0)
         #expect(layout.showsHandIcon)
-        #expect(syncMode(width: 402, height: 778, hasBottomInset: true, beats: 9).padHeight == 196)
+        for beats in [9, 12] {
+            let twoRows = syncMode(width: 402, height: 778, hasBottomInset: true, beats: beats)
+            #expect(twoRows.padHeight == 166)
+            #expect(twoRows.scrollOverflow == 0)
+        }
     }
 
     @Test func syncModeOnAnIPhoneSE() {
-        let layout = syncMode(width: 375, height: 647)
+        let layout = syncMode(width: 375, height: 637)
         #expect(layout.tileHeight == 56)
-        #expect(layout.padHeight == 91)
-        #expect(layout.scrollOverflow == 0)
+        #expect(layout.padHeight == 72)
+        #expect(layout.scrollOverflow == 21)
         #expect(layout.showsHandIcon == false)
         for beats in [9, 12] {
-            let twoRows = syncMode(width: 375, height: 647, beats: beats)
+            let twoRows = syncMode(width: 375, height: 637, beats: beats)
             #expect(twoRows.padHeight == 72)
-            #expect(twoRows.scrollOverflow == 23)
+            #expect(twoRows.scrollOverflow == 63)
         }
     }
 
-    @Test func syncModeWithDisplayZoom() {
-        let layout = syncMode(width: 320, height: 548)
-        #expect(layout.tileHeight == 56)
-        #expect(layout.padHeight == 72)
-        #expect(layout.scrollOverflow == 80)
-        #expect(layout.sideMargin == 16)
-        for beats in [9, 12] {
-            #expect(syncMode(width: 320, height: 548, beats: beats).scrollOverflow == 122)
-        }
+    @Test func narrowPhonesGetTheNarrowMargins() {
+        #expect(syncMode(width: 320, height: 548).sideMargin == 16)
+        #expect(syncMode(width: 375, height: 637).sideMargin == Theme.sideMargin)
     }
 
     @Test func tallTilesStayWhileThePadHas72() {
-        let tall = syncMode(width: 402, height: 632, hasBottomInset: true)
+        let tall = syncMode(width: 402, height: 662, hasBottomInset: true)
         #expect(tall.tileHeight == 76)
         #expect(tall.padHeight == 72)
-        let compact = syncMode(width: 402, height: 631, hasBottomInset: true)
+        let compact = syncMode(width: 402, height: 661, hasBottomInset: true)
         #expect(compact.tileHeight == 56)
         #expect(compact.padHeight == 91)
     }
 
     @Test func theHandIconNeeds120() {
-        let shown = syncMode(width: 402, height: 680, hasBottomInset: true)
+        let shown = syncMode(width: 402, height: 710, hasBottomInset: true)
         #expect(shown.padHeight == 120)
         #expect(shown.showsHandIcon)
-        #expect(syncMode(width: 402, height: 679, hasBottomInset: true).showsHandIcon == false)
+        #expect(syncMode(width: 402, height: 709, hasBottomInset: true).showsHandIcon == false)
     }
 
     @Test func syncModeFitsOrScrollsByTheRest() {
         let cases: [(width: CGFloat, height: CGFloat, inset: Bool, beats: Int)] = [
             (402, 778, true, 4), (402, 778, true, 9),
-            (375, 647, false, 4), (375, 647, false, 9), (375, 647, false, 12),
+            (375, 637, false, 4), (375, 637, false, 9), (375, 637, false, 12),
             (320, 548, false, 4), (320, 548, false, 9), (320, 548, false, 12),
-            (402, 632, true, 4), (402, 631, true, 4),
-            (402, 680, true, 4), (402, 679, true, 4),
+            (402, 662, true, 4), (402, 661, true, 4),
+            (402, 710, true, 4), (402, 709, true, 4),
         ]
         for c in cases {
             let layout = syncMode(width: c.width, height: c.height, hasBottomInset: c.inset, beats: c.beats)

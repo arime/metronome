@@ -7,35 +7,40 @@ struct MetronomeScreen: View {
     @State private var isSettingsShown = false
 
     var body: some View {
-        Group {
-            // Sync mode takes the place of the header and the track screen's content.
-            if model.isSyncModeShown {
+        screen
+            .background(Theme.ink.ignoresSafeArea())
+            .sheet(isPresented: $isLibraryShown) {
+                LibrarySheet()
+                    .environment(model)
+            }
+            .sheet(isPresented: $isSettingsShown) {
+                SettingsSheet()
+                    .environment(model)
+            }
+            // Sync mode over the track screen. It follows the model, so it also closes when Sync
+            // mode ends by itself; closing it by hand leaves Sync mode as Done does.
+            .sheet(isPresented: syncModeShown) {
                 SyncModeView()
-            } else {
-                screen
+                    .environment(model)
             }
-        }
-        .background(Theme.ink.ignoresSafeArea())
-        // On the Group and not the header, which Sync mode takes away.
-        .sheet(isPresented: $isLibraryShown) {
-            LibrarySheet()
-                .environment(model)
-        }
-        .sheet(isPresented: $isSettingsShown) {
-            SettingsSheet()
-                .environment(model)
-        }
-        // Labels follow Dynamic Type up to the largest size that still fits the layout.
-        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        #if DEBUG
-        .onAppear {
-            switch ScreenshotScene.current {
-            case .library?, .setlist?: isLibraryShown = true
-            case .settings?: isSettingsShown = true
-            default: break
+            // Labels follow Dynamic Type up to the largest size that still fits the layout.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+            #if DEBUG
+            .onAppear {
+                switch ScreenshotScene.current {
+                case .library?, .setlist?: isLibraryShown = true
+                case .settings?: isSettingsShown = true
+                default: break
+                }
             }
-        }
-        #endif
+            #endif
+    }
+
+    private var syncModeShown: Binding<Bool> {
+        Binding(
+            get: { model.isSyncModeShown },
+            set: { shown in if !shown { model.leaveSyncMode() } }
+        )
     }
 
     /// The plain layout, or the track screen while a track is in use, under the header.

@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Sync mode (6.13), in place of the track screen's header and content: its own header, then
-/// the time signature row, the accent tiles, the two tap pads, the Tempo and Offset steppers, the
-/// count-in and the mix, and the playback card pinned to the bottom. The same stopped and
-/// playing. The pads take the height the other parts leave; when even their least height does not
-/// fit, the part between the header and the card scrolls.
+/// Sync mode (6.13), a full-height sheet over the track screen: its own header, then the time
+/// signature row, the accent tiles, the two tap pads, the Tempo and Offset steppers, the count-in
+/// and the mix, and the playback card pinned to the bottom. The same stopped and playing. The pads
+/// take the height the other parts leave; when even their least height does not fit, the part
+/// between the header and the card scrolls.
 struct SyncModeView: View {
     @Environment(MetronomeModel.self) private var model
 
@@ -18,8 +18,8 @@ struct SyncModeView: View {
             )
             VStack(spacing: 0) {
                 SyncModeHeader()
-                    .frame(height: SyncModeLayout.headerHeight - 8)
-                    .padding(.top, 8)
+                    .frame(height: SyncModeLayout.headerHeight - SyncModeLayout.headerTopGap)
+                    .padding(.top, SyncModeLayout.headerTopGap)
                 // A scroll view only where the parts do not fit, so that elsewhere none can delay or
                 // claim a touch on a pad.
                 if layout.scrollOverflow > 0 {
@@ -34,6 +34,14 @@ struct SyncModeView: View {
             .padding(.horizontal, layout.sideMargin)
             .padding(.bottom, layout.bottomPadding)
         }
+        .preferredColorScheme(.dark)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(28)
+        // The screen's own ink, not the surface of the other sheets: the steppers, the count-in,
+        // the time signature row and the playback card are surface and would not stand out on it.
+        .presentationBackground(Theme.ink)
     }
 
     /// Everything between the header and the playback card.
@@ -57,7 +65,8 @@ struct SyncModeView: View {
     }
 }
 
-/// `Sync` with the file name 2 pt below it at the left, and `Done` at the right.
+/// The sheet's title row, set as the other sheets set theirs: `Sync` with the file name 2 pt
+/// below it at the left, and `Done` at the right.
 private struct SyncModeHeader: View {
     @Environment(MetronomeModel.self) private var model
 
@@ -65,8 +74,8 @@ private struct SyncModeHeader: View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Sync")
-                    .font(.system(size: 20, weight: .heavy))
-                    .tracking(-0.2)
+                    .font(.system(size: 26, weight: .heavy))
+                    .tracking(-0.52)
                     .foregroundStyle(Theme.dialWhite)
                     .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)

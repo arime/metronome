@@ -83,7 +83,9 @@ struct SyncModeLayout {
     /// The hand icon is left out on a short pad.
     let showsHandIcon: Bool
 
-    static let headerHeight: CGFloat = 48
+    /// The sheet's title row: room for the grabber above it, then `Sync` and the file name.
+    static let headerHeight: CGFloat = 78
+    static let headerTopGap: CGFloat = 28
     static let rowTopGap: CGFloat = 16
     /// The time signature row of 6.4.
     static let rowHeight: CGFloat = 60
@@ -103,7 +105,7 @@ struct SyncModeLayout {
     static let handIconMinimumPad: CGFloat = 120
     static let compactTileHeight: CGFloat = 56
 
-    /// Everything but the tap pads and the bottom padding: 484 pt plus the tiles.
+    /// Everything but the tap pads and the bottom padding: 514 pt plus the tiles.
     static func partsHeight(tilesHeight: CGFloat) -> CGFloat {
         headerHeight + rowTopGap + rowHeight + tilesTopGap + tilesHeight + padGap * 2 + stepperHeight
             + countInTopGap + countInHeight + mixTopGap + mixHeight + cardTopGap + playbackCardHeight
