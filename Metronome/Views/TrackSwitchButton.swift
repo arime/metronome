@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Turns backing tracks on or off for the whole app. Shown in the header only for a song with a
-/// backing track. Never amber, so the Save button stays the header's only amber thing.
+/// backing track. Never amber: apart from a muted mute button, the badge on the menu button is
+/// the header's only amber thing.
 /// Works only while stopped; while playing it is dimmed and takes no touches.
 struct TrackSwitchButton: View {
     @Environment(MetronomeModel.self) private var model

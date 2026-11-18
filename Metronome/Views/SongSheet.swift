@@ -43,7 +43,7 @@ struct SongSheet: View {
         switch purpose {
         case .library(let id?): model.library.setlist(id: id)
         case .saveAsNew: model.loadedFromSetlist
-        default: nil
+        case .edit, .library(nil): nil
         }
     }
 

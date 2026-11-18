@@ -611,7 +611,8 @@ final class MetronomeModel {
 
     /// In Sync mode the time signature and the accents go into the song at once, as they are, an
     /// earlier unsaved accent change included; the metronome's tempo is never written. Nothing
-    /// then differs from the song, so the Save button goes away at once, as after Save.
+    /// then differs from the song, so the badge on the header's menu button goes away at once,
+    /// as after Save changes.
     private func meterChanged() {
         guard isSyncModeShown, let id = loadedSongID else {
             userChangedSettings()
@@ -673,7 +674,7 @@ final class MetronomeModel {
         if isEdited {
             isSaveOffered = true
         } else if isSaveOffered {
-            // Back on the saved values: take the button away only if they stay there.
+            // Back on the saved values: take the badge away only if they stay there.
             saveOfferHide = Task { [weak self, saveOfferDelay] in
                 try? await Task.sleep(for: saveOfferDelay)
                 guard !Task.isCancelled, let self else { return }
@@ -726,7 +727,7 @@ final class MetronomeModel {
     }
 
     /// The header's second line; nil when the song's name says it all. It is the same
-    /// with and without unsaved changes, which the Save button shows.
+    /// with and without unsaved changes, which the badge on the header's menu button shows.
     var headerSubtitle: String? {
         guard loadedSong != nil else { return "No song loaded" }
         guard let position else { return nil }
@@ -735,8 +736,8 @@ final class MetronomeModel {
         return "\(source) · \(place)"
     }
 
-    /// What VoiceOver reads for the header title. Unsaved changes are shown only by the Save
-    /// button appearing, which cannot be heard, so they are said here.
+    /// What VoiceOver reads for the header title. Unsaved changes are shown by the badge on the
+    /// header's menu button, which cannot be heard, so they are said here.
     var headerAccessibilityLabel: String {
         [headerTitle, isEdited ? "edited" : nil, headerSubtitle].compactMap { $0 }.joined(separator: ", ")
     }
@@ -780,8 +781,8 @@ final class MetronomeModel {
         loadSong(ids[position.index + offset], from: setlistID)
     }
 
-    /// Writes the current settings into the loaded song. The Save button goes away at once,
-    /// with a success haptic.
+    /// Writes the current settings into the loaded song. The badge on the header's menu button
+    /// goes away at once, with a success haptic.
     func saveChanges() {
         guard let id = loadedSongID else { return }
         library.updateSong(id, settings: settings, now: now())
