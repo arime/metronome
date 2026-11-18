@@ -225,7 +225,7 @@ struct LibraryTabs: View {
                 .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity)
                 .frame(height: 34)
-                .background(isSelected ? Theme.tileDot : Color.clear, in: Capsule())
+                .background(isSelected ? Theme.surfaceSelected : Color.clear, in: Capsule())
                 .contentShape(Rectangle().inset(by: -5))
         }
         .buttonStyle(.plain)
@@ -581,7 +581,7 @@ private struct SongListView: View {
                             Button("Delete") { deleting = song }
                                 .tint(Theme.red)
                             Button("Edit") { editingSong = song }
-                                .tint(Color(hex: 0x3A3A3F))
+                                .tint(Theme.surfaceSelected)
                         }
                     }
                 }

@@ -39,18 +39,17 @@ struct SyncModeView: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
-        // The screen's own ink, not the surface of the other sheets: the steppers, the count-in,
-        // the time signature row and the playback card are surface and would not stand out on it.
-        .presentationBackground(Theme.ink)
+        // Surface, as the other sheets have; the parts sit on surface raised to stand out on it.
+        .presentationBackground(Theme.surface)
     }
 
     /// Everything between the header and the playback card.
     private func parts(_ layout: SyncModeLayout) -> some View {
         VStack(spacing: 0) {
-            TimeSignatureRow(sideMargin: layout.sideMargin)
+            TimeSignatureRow(sideMargin: layout.sideMargin, fill: Theme.surfaceRaised)
                 .padding(.top, SyncModeLayout.rowTopGap)
             // Two-row signatures keep their 44 pt tiles whatever the single-row height is.
-            AccentTiles(singleRowTileHeight: layout.tileHeight)
+            AccentTiles(singleRowTileHeight: layout.tileHeight, idleFill: Theme.surfaceRaised)
                 .padding(.top, SyncModeLayout.tilesTopGap)
             TapPads(showsHandIcon: layout.showsHandIcon)
                 .frame(height: layout.padHeight)

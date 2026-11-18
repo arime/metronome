@@ -5,6 +5,9 @@ struct AccentTiles: View {
     @Environment(MetronomeModel.self) private var model
     /// Height of a tile when all beats fit in one row.
     let singleRowTileHeight: CGFloat
+    /// The fill of a tile that is neither accented nor sounding: surface on a screen, surface
+    /// raised inside a sheet.
+    var idleFill: Color = Theme.surface
 
     nonisolated static let rowGap: CGFloat = 10
     /// The gap between neighbouring tiles in a row.
@@ -35,7 +38,8 @@ struct AccentTiles: View {
                             isSounding: model.currentBeat == beat,
                             soundsAccented: model.lastBeat?.isAccented ?? false,
                             isCompact: isCompact,
-                            height: isCompact ? Self.twoRowTileHeight : singleRowTileHeight
+                            height: isCompact ? Self.twoRowTileHeight : singleRowTileHeight,
+                            idleFill: idleFill
                         ) {
                             model.toggleAccent(beat: beat)
                         }

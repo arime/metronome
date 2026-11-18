@@ -270,7 +270,7 @@ struct AddSongsView: View {
                         Spacer(minLength: 0)
                         Image(systemName: isIncluded ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 26))
-                            .foregroundStyle(isIncluded ? Theme.amber : Theme.tileDot)
+                            .foregroundStyle(isIncluded ? Theme.amber : Theme.surfaceSelected)
                             .frame(width: 28)
                     }
                     .frame(height: 62)

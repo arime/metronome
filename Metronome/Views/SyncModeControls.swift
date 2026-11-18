@@ -55,7 +55,8 @@ struct SyncSteppers: View {
     }
 }
 
-/// A label and, 6 pt below it, a 48 pt surface capsule holding −, the value and +. The value is
+/// A label and, 6 pt below it, a 48 pt surface-raised capsule holding −, the value and +, the
+/// buttons on surface selected. The value is
 /// scaled down rather than cut when it is wider than the room between the buttons. With
 /// `typeValue`, tapping the value types a new one.
 private struct SyncStepper: View {
@@ -100,13 +101,13 @@ private struct SyncStepper: View {
             }
             .padding(4)
             .frame(height: Self.pillHeight)
-            .background(Theme.surface, in: Capsule())
+            .background(Theme.surfaceRaised, in: Capsule())
         }
     }
 
     private func button(_ symbol: String, _ action: (label: String, step: () -> Void)) -> some View {
         StepButton(
-            symbol: symbol, label: action.label, size: Self.buttonSize, fill: Theme.surfaceRaised, symbolSize: 18,
+            symbol: symbol, label: action.label, size: Self.buttonSize, fill: Theme.surfaceSelected, symbolSize: 18,
             step: action.step
         )
     }
@@ -131,11 +132,10 @@ private struct SyncStepper: View {
     }
 }
 
-/// `COUNT-IN` and the three options, 6 pt apart; the selected one is `#3A3A40`, nothing amber.
+/// `COUNT-IN` and the three options, 6 pt apart, on surface raised; the selected one is surface
+/// selected, nothing amber.
 struct CountInRow: View {
     @Environment(MetronomeModel.self) private var model
-
-    private static let selectedFill = Color(hex: 0x3A3A40)
 
     var body: some View {
         HStack(spacing: 12) {
@@ -166,7 +166,7 @@ struct CountInRow: View {
                 .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity)
                 .frame(height: SyncModeLayout.countInHeight)
-                .background(isSelected ? Self.selectedFill : Theme.surface, in: shape)
+                .background(isSelected ? Theme.surfaceSelected : Theme.surfaceRaised, in: shape)
                 .contentShape(shape)
         }
         .buttonStyle(.plain)
@@ -266,9 +266,10 @@ struct MixSlider: View {
     }
 }
 
-/// Sync mode's card at the bottom: the progress bar and, 14 pt below it, To the beginning,
-/// Rewind, play / stop, Fast-forward and To the end, spread evenly with the outer two at the
-/// edges. No file name, no Previous or Next song and no next-up line.
+/// Sync mode's card at the bottom, on surface raised: the progress bar and, 14 pt below it, To
+/// the beginning, Rewind, play / stop, Fast-forward and To the end, spread evenly with the outer
+/// two at the edges. No file name, no Previous or Next song and no next-up line. The line's
+/// unplayed part, Rewind and Fast-forward are surface selected, so they show on the card.
 struct PlaybackCard: View {
     @Environment(MetronomeModel.self) private var model
 
@@ -276,15 +277,15 @@ struct PlaybackCard: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            TrackProgressBar()
+            TrackProgressBar(unplayed: Theme.surfaceSelected)
             HStack(spacing: 0) {
                 TrackEndButton(isEnd: false)
                 Spacer(minLength: 0)
-                TrackSkipButton(isForward: false)
+                TrackSkipButton(isForward: false, fill: Theme.surfaceSelected)
                 Spacer(minLength: 0)
                 SyncPlayStopButton()
                 Spacer(minLength: 0)
-                TrackSkipButton(isForward: true)
+                TrackSkipButton(isForward: true, fill: Theme.surfaceSelected)
                 Spacer(minLength: 0)
                 TrackEndButton(isEnd: true)
             }
@@ -294,7 +295,7 @@ struct PlaybackCard: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 14)
         .frame(height: SyncModeLayout.playbackCardHeight, alignment: .top)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .accessibilityElement(children: .contain)
     }
 }

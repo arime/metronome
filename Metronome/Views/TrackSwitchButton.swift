@@ -7,9 +7,6 @@ import SwiftUI
 struct TrackSwitchButton: View {
     @Environment(MetronomeModel.self) private var model
 
-    /// The fill while on; off has the mute button's surface fill.
-    private static let onFill = Color(hex: 0x3A3A40)
-
     var body: some View {
         let isOn = model.backingTracksOn
         let isPlaying = model.isPlaying
@@ -20,7 +17,8 @@ struct TrackSwitchButton: View {
                 .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(Theme.dialWhite)
                 .frame(width: 40, height: 40)
-                .background(isOn ? Self.onFill : Theme.surface, in: Circle())
+                // On is surface selected; off has the mute button's surface fill.
+                .background(isOn ? Theme.surfaceSelected : Theme.surface, in: Circle())
                 // Drawn at 40 pt; the touch area reaches 2 pt further for a 44 pt target.
                 .contentShape(Circle().inset(by: -2))
         }

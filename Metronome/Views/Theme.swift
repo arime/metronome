@@ -19,8 +19,8 @@ enum Theme {
     /// Unlit ticks on the dial: 3:1 against ink, so the rest of the range can be seen.
     static let tick = Color(hex: 0x606066)
 
-    /// The small dot on an idle, unaccented tile.
-    static let tileDot = Color(hex: 0x3A3A3F)
+    /// The selected segment of a switch-like control, and buttons that sit on surface raised.
+    static let surfaceSelected = Color(hex: 0x3A3A3F)
     /// Hint text on the selected (amber) picker option.
 
     static let sideMargin: CGFloat = 24

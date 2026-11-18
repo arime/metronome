@@ -150,6 +150,9 @@ private struct SongStepButton: View {
 /// Sync mode's playback card. 40 pt tall: a 22 pt band for the line and knob, then the times 2 pt below it.
 struct TrackProgressBar: View {
     @Environment(MetronomeModel.self) private var model
+    /// The unplayed part of the line: the line colour on surface, surface selected on surface
+    /// raised, where the line colour would not show.
+    var unplayed: Color = Theme.line
     /// Where the knob has been dragged from and to. Gesture state goes back to nil when the
     /// drag is cancelled as well as when it ends, so the knob never sticks off the position.
     @GestureState private var drag: KnobDrag?
@@ -186,7 +189,7 @@ struct TrackProgressBar: View {
                 let knobX = Self.knobSize / 2 + travel * fraction
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Theme.line)
+                        .fill(unplayed)
                         .frame(height: Self.lineHeight)
                     Capsule()
                         .fill(Theme.amber)
@@ -254,12 +257,14 @@ struct TrackProgressBar: View {
     }
 }
 
-/// Rewind and Fast-forward: 44 pt round on surface raised with a double chevron, 15 seconds
-/// back or forward. Fast-forward is dimmed within the last 15 seconds; both are dimmed, do
-/// nothing and are hidden from VoiceOver while the file is missing.
+/// Rewind and Fast-forward: 44 pt round with a double chevron, 15 seconds back or forward. On
+/// surface raised on the player card, and on surface selected on Sync mode's playback card.
+/// Fast-forward is dimmed within the last 15 seconds; both are dimmed, do nothing and are
+/// hidden from VoiceOver while the file is missing.
 struct TrackSkipButton: View {
     @Environment(MetronomeModel.self) private var model
     let isForward: Bool
+    var fill: Color = Theme.surfaceRaised
 
     static let skip: TimeInterval = 15
 
@@ -283,7 +288,7 @@ struct TrackSkipButton: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Theme.dialWhite)
                 .frame(width: 44, height: 44)
-                .background(Theme.surfaceRaised, in: Circle())
+                .background(fill, in: Circle())
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

@@ -5,6 +5,8 @@ struct TimeSignatureRow: View {
     @Environment(MetronomeModel.self) private var model
     /// The screen's side margin, which the picker shares.
     var sideMargin: CGFloat = Theme.sideMargin
+    /// The row's fill: surface on a screen, surface raised inside a sheet.
+    var fill: Color = Theme.surface
     @State private var isPickerShown = false
     @ScaledMetric(relativeTo: .body) private var labelSize = 16.0
 
@@ -31,7 +33,7 @@ struct TimeSignatureRow: View {
             .padding(.leading, 20)
             .padding(.trailing, 18)
             .frame(height: 60)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(fill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
