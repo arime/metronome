@@ -658,9 +658,10 @@ final class MetronomeModel {
         return saved != settings
     }
 
-    /// Whether the Save button is shown. It follows `isEdited`, except that it stays for a
-    /// moment when the user's own changes bring the settings back to the saved ones: turning
-    /// the dial past the saved tempo must not make the button blink out and in again.
+    /// Whether the badge on the header's menu button is shown. It follows `isEdited`, except
+    /// that it stays for a moment when the user's own changes bring the settings back to the
+    /// saved ones: turning the dial past the saved tempo must not make the badge blink out
+    /// and in again.
     private(set) var isSaveOffered = false
     @ObservationIgnored private var saveOfferHide: Task<Void, Never>?
     @ObservationIgnored private let saveOfferDelay: Duration
