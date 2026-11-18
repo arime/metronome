@@ -35,32 +35,26 @@ struct TrackDial: View {
     let diameter: CGFloat
 
     var body: some View {
-        Button { model.enterSyncMode() } label: {
-            ZStack {
-                DialRing(fraction: Tempo.arcFraction(for: model.tempoInEffect), style: .gauge)
-                // Stopped, there is no glow, even mid-fade.
-                BeatGlow(lastBeat: model.lastBeat, bpm: model.tempoInEffect, diameter: diameter)
-                    .opacity(model.isPlaying ? 1 : 0)
-                DialNumber(bpm: model.tempoInEffect, diameter: diameter)
-            }
-            .frame(width: diameter, height: diameter)
-            .contentShape(Circle())
+        ZStack {
+            DialRing(fraction: Tempo.arcFraction(for: model.tempoInEffect), style: .gauge)
+            // Stopped, there is no glow, even mid-fade.
+            BeatGlow(lastBeat: model.lastBeat, bpm: model.tempoInEffect, diameter: diameter)
+                .opacity(model.isPlaying ? 1 : 0)
+            DialNumber(bpm: model.tempoInEffect, diameter: diameter)
         }
-        .buttonStyle(GaugeButtonStyle())
+        .frame(width: diameter, height: diameter)
+        .contentShape(Circle())
+        // A tap gesture rather than a button: a finger that travels, a drag or a brush on
+        // stage, opens nothing. There is no pressed state, and disabled the dial keeps its
+        // look, as only the Sync row is dimmed (6.12).
+        .onTapGesture { model.enterSyncMode() }
         .disabled(model.isTrackMissing)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Tempo")
         .accessibilityValue("\(model.tempoInEffect) beats per minute")
         .accessibilityHint("Opens Sync mode")
         .accessibilityAddTraits(.isButton)
-    }
-}
-
-/// Draws the dial as it is, pressed or disabled: the plain style would dim it, and with the
-/// file missing only the Sync row is dimmed (6.12).
-private struct GaugeButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        .accessibilityAction { model.enterSyncMode() }
     }
 }
 
