@@ -115,9 +115,16 @@ struct DialNumber: View {
 }
 
 /// The scale of ticks and the knob inside it: a raised disc with a ridged edge and an amber
-/// pointer, turned to the tempo. Drawn in a 300 pt coordinate space and scaled to fit.
+/// pointer, turned to the tempo. As a gauge, on the track screen (6.12), a flat disc in the
+/// surface colour takes the knob's place, so the dial looks locked. Drawn in a 300 pt
+/// coordinate space and scaled to fit.
 struct DialRing: View {
+    enum Style {
+        case knob, gauge
+    }
+
     let fraction: Double
+    var style: Style = .knob
 
     private static let tickCount = 48
     private static let tickOuter = 146.0
@@ -180,6 +187,13 @@ struct DialRing: View {
                     with: .color(tickFraction <= fraction + 0.0001 ? Theme.amber : Theme.tick),
                     style: StrokeStyle(lineWidth: (isMajor ? 3 : 2) * scale, lineCap: .round)
                 )
+            }
+
+            if style == .gauge {
+                // A flat disc of the knob's radius: no shadow, ridges, face or pointer.
+                context.fill(circle(Self.knobRadius), with: .color(Theme.surface))
+                context.stroke(circle(Self.knobRadius), with: .color(Theme.line), lineWidth: 1.5 * scale)
+                return
             }
 
             // The knob's body, lit from above and standing off the background.

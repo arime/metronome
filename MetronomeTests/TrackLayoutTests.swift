@@ -3,9 +3,9 @@ import Testing
 @testable import Metronome
 
 /// Heights are the usable height (inside the safe areas). The track screen stacks the
-/// header (48), 8, the tempo reading's room, the tiles, 16 and the player card (192, or
-/// 222 with the next-up line). Sync mode's parts take 514 pt plus the tiles; the tap pads
-/// take the rest.
+/// header (48), 12, the dial, 26, the Sync row (60), 22, the tiles, at least 16 and the
+/// player card (192, or 222 with the next-up line); the compact step makes both gaps 16.
+/// Sync mode's parts take 514 pt plus the tiles; the tap pads take the rest.
 struct TrackLayoutTests {
     private func trackScreen(
         width: CGFloat = 375, height: CGFloat, hasBottomInset: Bool = false, beats: Int = 4,
@@ -26,86 +26,68 @@ struct TrackLayoutTests {
 
     @Test func theTrackScreenOnAnIPhone17Pro() {
         let layout = trackScreen(width: 402, height: 778, hasBottomInset: true, hasSetlist: true)
+        #expect(layout.dialDiameter == 296)
         #expect(layout.showsNextLine)
-        #expect(layout.readingRoom == 408)
-        #expect(layout.numberFontSize == 136)
         #expect(layout.cardHeight == 222)
-        #expect(layout.bottomPadding == 0)
-        for beats in [9, 12] {
-            #expect(
-                trackScreen(width: 402, height: 778, hasBottomInset: true, beats: beats, hasSetlist: true)
-                    .readingRoom == 386
-            )
-        }
-        let noSetlist = trackScreen(width: 402, height: 778, hasBottomInset: true)
-        #expect(noSetlist.readingRoom == 438)
-        #expect(noSetlist.cardHeight == 192)
+        #expect(layout.rowTopGap == 26)
+        #expect(layout.rowBottomGap == 22)
+        #expect(layout.tileHeight == 76)
+        #expect(trackScreen(width: 402, height: 778, hasBottomInset: true, beats: 9, hasSetlist: true).dialDiameter == 274)
+        #expect(trackScreen(width: 402, height: 778, hasBottomInset: true).dialDiameter == 326)
+        #expect(trackScreen(width: 402, height: 778, hasBottomInset: true, beats: 12).dialDiameter == 304)
     }
 
     @Test func theTrackScreenOnAnIPhoneSE() {
-        let layout = trackScreen(width: 375, height: 647, hasSetlist: true)
+        let layout = trackScreen(height: 647, hasSetlist: true)
         #expect(layout.showsNextLine == false)
-        #expect(layout.readingRoom == 291)
         #expect(layout.cardHeight == 192)
-        #expect(layout.bottomPadding == 16)
-        #expect(layout.numberFontSize == 136)
-        for beats in [9, 12] {
-            let twoRows = trackScreen(width: 375, height: 647, beats: beats, hasSetlist: true)
-            #expect(twoRows.readingRoom == 269)
-            #expect(twoRows.tilesHeight == 98)
-        }
+        #expect(layout.dialDiameter == 215)
+        #expect(layout.rowTopGap == 16)
+        #expect(layout.rowBottomGap == 16)
+        #expect(layout.tileHeight == 56)
+        #expect(trackScreen(height: 647, beats: 9, hasSetlist: true).dialDiameter == 173)
     }
 
     @Test func theTrackScreenWithDisplayZoom() {
-        let layout = trackScreen(width: 320, height: 548, hasSetlist: true)
-        #expect(layout.showsNextLine == false)
-        #expect(layout.readingRoom == 192)
-        #expect(layout.sideMargin == 16)
-        #expect(layout.numberFontSize == 136)
-        for beats in [9, 12] {
-            #expect(trackScreen(width: 320, height: 548, beats: beats, hasSetlist: true).readingRoom == 170)
-        }
+        #expect(trackScreen(width: 320, height: 548, hasSetlist: true).dialDiameter == 116)
+        #expect(trackScreen(width: 320, height: 548, hasSetlist: true).showsNextLine == false)
+        #expect(trackScreen(width: 320, height: 548, beats: 9, hasSetlist: true).dialDiameter == 74)
     }
 
-    @Test func theNextUpLineNeeds280OfRoom() {
-        let shown = trackScreen(width: 402, height: 650, hasBottomInset: true, hasSetlist: true)
-        #expect(shown.showsNextLine)
-        #expect(shown.readingRoom == 280)
-        let leftOut = trackScreen(width: 402, height: 649, hasBottomInset: true, hasSetlist: true)
-        #expect(leftOut.showsNextLine == false)
-        #expect(leftOut.readingRoom == 309)
+    @Test func theDialGrowsTo340AndNoWiderThanTheMargins() {
+        #expect(trackScreen(width: 402, height: 900, hasBottomInset: true).dialDiameter == 340)
+        #expect(trackScreen(width: 375, height: 900, hasBottomInset: true).dialDiameter == 327)
     }
 
-    @Test func theNumberScalesBelow152OfRoom() {
-        let full = trackScreen(width: 402, height: 492, hasBottomInset: true)
-        #expect(full.readingRoom == 152)
-        #expect(full.numberFontSize == 136)
-        let scaled = trackScreen(width: 402, height: 438, hasBottomInset: true)
-        #expect(scaled.readingRoom == 98)
-        #expect(scaled.numberFontSize == 68)
+    @Test func theNextUpLineIsLeftOutBelowA200Dial() {
+        // With the line and the compact step the fixed parts are 168 + 56 + 222 = 446.
+        #expect(trackScreen(height: 446 + 200, hasBottomInset: true, hasSetlist: true).showsNextLine)
+        #expect(trackScreen(height: 446 + 199, hasBottomInset: true, hasSetlist: true).showsNextLine == false)
     }
 
-    @Test func anImpossiblyShortScreenKeepsTheSmallestNumber() {
-        #expect(trackScreen(width: 375, height: 300).numberFontSize == 24)
+    @Test func theDialShrinksTo240BeforeTheGapsGiveWay() {
+        // Without the line the fixed parts are 184 + 76 + 192 = 452 with the full gaps.
+        let roomy = trackScreen(height: 452 + 240, hasBottomInset: true)
+        #expect(roomy.dialDiameter == 240)
+        #expect(roomy.tileHeight == 76)
+        let compact = trackScreen(height: 452 + 239, hasBottomInset: true)
+        #expect(compact.tileHeight == 56)
+        #expect(compact.rowTopGap == 16)
     }
 
-    @Test func theTrackScreenFillsTheHeight() {
-        let cases: [(width: CGFloat, height: CGFloat, inset: Bool, beats: Int, setlist: Bool)] = [
-            (402, 778, true, 4, true), (402, 778, true, 9, true), (402, 778, true, 12, true),
-            (402, 778, true, 4, false),
-            (375, 647, false, 4, true), (375, 647, false, 9, true), (375, 647, false, 12, true),
-            (320, 548, false, 4, true), (320, 548, false, 9, true), (320, 548, false, 12, true),
-            (402, 650, true, 4, true), (402, 649, true, 4, true),
-            (402, 492, true, 4, false), (402, 438, true, 4, false),
-            (375, 300, false, 4, false),
-        ]
-        for c in cases {
-            let layout = trackScreen(
-                width: c.width, height: c.height, hasBottomInset: c.inset, beats: c.beats, hasSetlist: c.setlist
-            )
-            let total = TrackScreenLayout.headerHeight + TrackScreenLayout.readingTopGap + layout.readingRoom
-                + layout.tilesHeight + TrackScreenLayout.cardTopGap + layout.cardHeight + layout.bottomPadding
-            #expect(total == c.height)
+    @Test func anImpossiblyShortScreenKeepsTheSmallestDial() {
+        #expect(trackScreen(height: 200).dialDiameter == TrackScreenLayout.minimumDial)
+    }
+
+    @Test func theTrackScreenFillsTheHeightOrLeavesSpareAboveTheCard() {
+        for height in stride(from: CGFloat(560), through: 900, by: 17) {
+            for beats in [4, 7, 9, 12] {
+                let layout = trackScreen(height: height, hasBottomInset: true, beats: beats, hasSetlist: true)
+                let used = TrackScreenLayout.headerHeight + TrackScreenLayout.dialTopGap + layout.dialDiameter
+                    + layout.rowTopGap + TrackScreenLayout.rowHeight + layout.rowBottomGap + layout.tilesHeight
+                    + TrackScreenLayout.cardTopGap + layout.cardHeight
+                #expect(used <= height)
+            }
         }
     }
 

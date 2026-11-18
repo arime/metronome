@@ -1,71 +1,94 @@
 import CoreGraphics
 
-/// The track screen's sizes (6.12). Every part keeps its size; the tempo reading takes the
-/// height that is left, its room, and its number scales down only when the room is less
-/// than the reading's full 152 pt.
+/// The track screen's sizes (6.12), fitted by the plain screen's rule (6.8): the dial takes
+/// the spare height, growing up to 340 pt; on a short screen it shrinks to 240 pt, then the
+/// gaps around the Sync row and single-row tiles give way, then the dial shrinks as far as it
+/// must. Height still left over stays between the tiles and the player card.
 struct TrackScreenLayout {
     let sideMargin: CGFloat
     let bottomPadding: CGFloat
-    /// The height between the gap under the header and the accent tiles; the reading is
-    /// centred in it.
-    let readingRoom: CGFloat
-    let numberFontSize: CGFloat
+    let dialDiameter: CGFloat
+    /// Between the dial and the Sync row.
+    let rowTopGap: CGFloat
+    /// Between the Sync row and the accent tiles.
+    let rowBottomGap: CGFloat
+    /// Single-row accent tiles; two rows keep their 44 pt whatever this is.
+    let tileHeight: CGFloat
     /// The player card, with the next-up line when it is shown.
     let cardHeight: CGFloat
+    /// The accent tiles at `tileHeight`.
     let tilesHeight: CGFloat
     /// True when the next-up line is shown inside the player card.
     let showsNextLine: Bool
 
     /// The header of 6.1: 8 + 40.
     static let headerHeight: CGFloat = 48
-    static let readingTopGap: CGFloat = 8
-    /// The number's line, the gap and the time signature and Sync line: 108 + 10 + 34.
-    static let readingHeight: CGFloat = 152
-    static let fullNumberSize: CGFloat = 136
-    /// The number's line at the full size; it is 108/136 of the font size at any size.
-    static let numberLineHeight: CGFloat = 108
-    static let readingLineGap: CGFloat = 10
-    static let syncButtonHeight: CGFloat = 34
-    static let tileHeight: CGFloat = 76
+    static let dialTopGap: CGFloat = 12
+    /// The Sync row, as tall as the time signature row of 6.4.
+    static let rowHeight: CGFloat = 60
     /// The least space kept between the accent tiles and the player card.
     static let cardTopGap: CGFloat = 16
     /// The player card without the next-up line: 12 + 30 + 12 + 40 + 12 + 68 + 18.
     static let playerCardHeight: CGFloat = 192
     /// The next-up line inside the player card with its gap: 18 + 12.
     static let playerNextLineHeight: CGFloat = 30
-    /// The next-up line is left out when it would leave the reading less room than this.
-    static let nextLineMinimumRoom: CGFloat = 280
-    /// A safety floor only; no supported iPhone gets near it.
-    static let minimumNumberSize: CGFloat = 24
+    /// The next-up line is left out when it would push the dial below this size.
+    static let nextLineMinimumDial: CGFloat = 200
+    /// A safety floor only; the smallest supported case, Display Zoom in 9/8, gets 74 pt.
+    static let minimumDial: CGFloat = 60
 
     init(width: CGFloat, height: CGFloat, hasBottomInset: Bool, beats: Int, hasSetlist: Bool) {
-        sideMargin = width < ScreenLayout.narrowWidth ? ScreenLayout.narrowSideMargin : Theme.sideMargin
+        let sideMargin = width < ScreenLayout.narrowWidth ? ScreenLayout.narrowSideMargin : Theme.sideMargin
+        self.sideMargin = sideMargin
         // Phones with a home indicator already have the design's bottom margin.
         let bottomPadding: CGFloat = hasBottomInset ? 0 : 16
         self.bottomPadding = bottomPadding
-        let tilesHeight = AccentTiles.height(forBeats: beats, singleRowTileHeight: Self.tileHeight)
-        self.tilesHeight = tilesHeight
+        let available = height - bottomPadding
+        // The dial never grows wider than the space between the side margins.
+        let largestDial = min(ScreenLayout.maximumDial, max(ScreenLayout.fullDial, width - 2 * sideMargin))
 
-        func room(cardHeight: CGFloat) -> CGFloat {
-            height - bottomPadding - Self.headerHeight - Self.readingTopGap - tilesHeight - Self.cardTopGap
-                - cardHeight
+        struct Gaps {
+            let rowTopGap, rowBottomGap, tileHeight: CGFloat
+        }
+        let roomyGaps = Gaps(rowTopGap: 26, rowBottomGap: 22, tileHeight: 76)
+        let compactGaps = Gaps(rowTopGap: 16, rowBottomGap: 16, tileHeight: 56)
+
+        struct Fit {
+            let dial: CGFloat
+            let gaps: Gaps
         }
 
-        let roomWithLine = room(cardHeight: Self.playerCardHeight + Self.playerNextLineHeight)
-        if hasSetlist && roomWithLine >= Self.nextLineMinimumRoom {
+        func fit(nextLine: Bool) -> Fit {
+            func partsHeight(_ gaps: Gaps) -> CGFloat {
+                let tiles = AccentTiles.height(forBeats: beats, singleRowTileHeight: gaps.tileHeight)
+                let card = Self.playerCardHeight + (nextLine ? Self.playerNextLineHeight : 0)
+                return Self.headerHeight + Self.dialTopGap + gaps.rowTopGap + Self.rowHeight + gaps.rowBottomGap
+                    + tiles + Self.cardTopGap + card
+            }
+
+            let roomy = available - partsHeight(roomyGaps)
+            if roomy >= ScreenLayout.roomyMinimumDial {
+                return Fit(dial: min(largestDial, roomy), gaps: roomyGaps)
+            }
+            let compact = available - partsHeight(compactGaps)
+            return Fit(dial: min(largestDial, max(Self.minimumDial, compact)), gaps: compactGaps)
+        }
+
+        let withLine = hasSetlist ? fit(nextLine: true) : nil
+        let chosen: Fit
+        if let withLine, withLine.dial >= Self.nextLineMinimumDial {
+            chosen = withLine
             showsNextLine = true
-            cardHeight = Self.playerCardHeight + Self.playerNextLineHeight
-            readingRoom = roomWithLine
         } else {
+            chosen = fit(nextLine: false)
             showsNextLine = false
-            cardHeight = Self.playerCardHeight
-            readingRoom = room(cardHeight: Self.playerCardHeight)
         }
-
-        // The number's line is 108/136 of its font size; the rest of the reading keeps its 44 pt.
-        let otherReadingHeight = Self.readingHeight - Self.numberLineHeight
-        let fittingSize = (readingRoom - otherReadingHeight) * Self.fullNumberSize / Self.numberLineHeight
-        numberFontSize = min(Self.fullNumberSize, max(Self.minimumNumberSize, fittingSize))
+        dialDiameter = chosen.dial
+        rowTopGap = chosen.gaps.rowTopGap
+        rowBottomGap = chosen.gaps.rowBottomGap
+        tileHeight = chosen.gaps.tileHeight
+        tilesHeight = AccentTiles.height(forBeats: beats, singleRowTileHeight: chosen.gaps.tileHeight)
+        cardHeight = Self.playerCardHeight + (showsNextLine ? Self.playerNextLineHeight : 0)
     }
 }
 
@@ -103,6 +126,7 @@ struct SyncModeLayout {
     static let playbackCardHeight: CGFloat = 136
     static let minimumPad: CGFloat = 72
     static let handIconMinimumPad: CGFloat = 120
+    static let fullTileHeight: CGFloat = 76
     static let compactTileHeight: CGFloat = 56
 
     /// Everything but the tap pads and the bottom padding: 514 pt plus the tiles.
@@ -122,7 +146,7 @@ struct SyncModeLayout {
             return height - bottomPadding - Self.partsHeight(tilesHeight: tiles)
         }
 
-        var tileHeight = TrackScreenLayout.tileHeight
+        var tileHeight = Self.fullTileHeight
         var padHeight = pad(tileHeight: tileHeight)
         if padHeight < Self.minimumPad {
             tileHeight = Self.compactTileHeight

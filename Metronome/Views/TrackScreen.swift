@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// The track screen under the header (6.12): the tempo reading centred in its room, the accent
-/// tiles directly below it and the player card pinned to the bottom. Every part but the
-/// reading keeps its size; the layout gives the reading what is left.
+/// The track screen under the header (6.12): the dial as a locked gauge where the plain screen
+/// has its dial, the Sync row where it has the time signature row, the accent tiles below it
+/// and the player card pinned to the bottom. The layout sizes the dial by the plain screen's
+/// rule; height still left over stays above the card.
 struct TrackScreenContent: View {
     let layout: TrackScreenLayout
 
@@ -12,118 +13,88 @@ struct TrackScreenContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TempoReading(numberFontSize: layout.numberFontSize)
-                .frame(maxWidth: .infinity)
-                .frame(height: max(0, layout.readingRoom))
-                .padding(.top, TrackScreenLayout.readingTopGap)
+            TrackDial(diameter: layout.dialDiameter)
+                .padding(.top, TrackScreenLayout.dialTopGap)
+            SyncRow()
+                .padding(.top, layout.rowTopGap)
             // Two-row signatures keep their 44 pt tiles whatever the single-row height is.
-            AccentTiles(singleRowTileHeight: TrackScreenLayout.tileHeight)
+            AccentTiles(singleRowTileHeight: layout.tileHeight)
+                .padding(.top, layout.rowBottomGap)
             Spacer(minLength: TrackScreenLayout.cardTopGap)
             PlayerCard(showsNextLine: layout.showsNextLine)
         }
     }
 }
 
-/// The tempo in effect as one large number, and under it the time signature and the Sync
-/// button. The number and the time signature are readouts and take no touches. While
-/// playing the number marks every beat as the dial's number does (section 12): the glow flashes
-/// behind it and it pulses, the pulse left out with Reduce Motion. It stays dial white.
-struct TempoReading: View {
+/// The dial as a gauge of the tempo in effect: the ticks lit to it, a flat disc and the
+/// number. It never changes the tempo; a tap opens Sync mode, stopped or playing, and does
+/// nothing while the file is missing, as Sync needs the file. While playing the number marks
+/// every beat as on the plain screen (section 12).
+struct TrackDial: View {
     @Environment(MetronomeModel.self) private var model
-    private let numberFontSize: CGFloat
-
-    init(numberFontSize: CGFloat) {
-        self.numberFontSize = numberFontSize
-    }
-
-    /// The number's line is 108/136 of its font size.
-    private var numberLineHeight: CGFloat {
-        numberFontSize * TrackScreenLayout.numberLineHeight / TrackScreenLayout.fullNumberSize
-    }
+    let diameter: CGFloat
 
     var body: some View {
-        VStack(spacing: TrackScreenLayout.readingLineGap) {
-            number
-            signatureLine
-        }
-    }
-
-    /// The dial's glow, sized for this number as the dial's glow is for the dial's number.
-    private var glowDiameter: CGFloat {
-        numberFontSize * 300 / DialGeometry.fullNumberSize
-    }
-
-    /// The digits are set tight between digits only, as on the dial, so the last one is not
-    /// clipped. The number never grows wider than the margins.
-    private var numberText: AttributedString {
-        var text = AttributedString("\(model.tempoInEffect)")
-        text.kern = -0.05 * numberFontSize
-        if let last = text.characters.indices.last {
-            text[last...].kern = 0
-        }
-        return text
-    }
-
-    private var number: some View {
-        Text(numberText)
-            .font(.system(size: numberFontSize, weight: .heavy))
-            .monospacedDigit()
-            .foregroundStyle(Theme.dialWhite)
-            .lineLimit(1)
-            .minimumScaleFactor(0.5)
-            // Scaled for width only: the glyphs are taller than the 108/136 line they sit in.
-            .fixedSize(horizontal: false, vertical: true)
-            .modifier(NumberPulse(lastBeat: model.lastBeat, bpm: model.tempoInEffect))
-            .frame(maxWidth: .infinity)
-            .frame(height: numberLineHeight)
-            .background {
+        Button { model.enterSyncMode() } label: {
+            ZStack {
+                DialRing(fraction: Tempo.arcFraction(for: model.tempoInEffect), style: .gauge)
                 // Stopped, there is no glow, even mid-fade.
-                BeatGlow(lastBeat: model.lastBeat, bpm: model.tempoInEffect, diameter: glowDiameter)
+                BeatGlow(lastBeat: model.lastBeat, bpm: model.tempoInEffect, diameter: diameter)
                     .opacity(model.isPlaying ? 1 : 0)
+                DialNumber(bpm: model.tempoInEffect, diameter: diameter)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Tempo")
-            .accessibilityValue("\(model.tempoInEffect) beats per minute")
-    }
-
-    /// The time signature and, 12 pt to its right, Sync; centred as one line.
-    private var signatureLine: some View {
-        HStack(spacing: 12) {
-            Text(model.settings.timeSignature.rawValue)
-                .font(.system(size: 18, weight: .heavy))
-                .foregroundStyle(Theme.muted)
-                .fixedSize()
-                .accessibilityLabel("Time signature")
-                .accessibilityValue(model.settings.timeSignature.rawValue)
-            SyncButton()
+            .frame(width: diameter, height: diameter)
+            .contentShape(Circle())
         }
-        .frame(height: TrackScreenLayout.syncButtonHeight)
+        .buttonStyle(GaugeButtonStyle())
+        .disabled(model.isTrackMissing)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Tempo")
+        .accessibilityValue("\(model.tempoInEffect) beats per minute")
+        .accessibilityHint("Opens Sync mode")
+        .accessibilityAddTraits(.isButton)
     }
 }
 
-/// Opens Sync mode, stopped or playing. Dimmed and doing nothing while the file is missing,
-/// as Sync needs the file.
-private struct SyncButton: View {
-    @Environment(MetronomeModel.self) private var model
+/// Draws the dial as it is, pressed or disabled: the plain style would dim it, and with the
+/// file missing only the Sync row is dimmed (6.12).
+private struct GaugeButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+    }
+}
 
-    /// The pill is 34 pt tall; its touch area is 44 pt, reaching 5 pt above and below.
-    private static let touchHeight: CGFloat = 44
+/// Opens Sync mode, stopped or playing, from where the plain screen has the time signature
+/// row, and built like it. Dimmed and doing nothing while the file is missing.
+struct SyncRow: View {
+    @Environment(MetronomeModel.self) private var model
+    @ScaledMetric(relativeTo: .body) private var labelSize = 16.0
 
     var body: some View {
         let isMissing = model.isTrackMissing
         Button { model.enterSyncMode() } label: {
-            Text("Sync")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Theme.dialWhite)
-                .padding(.horizontal, 18)
-                .frame(height: TrackScreenLayout.syncButtonHeight)
-                .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 1))
-                .frame(height: Self.touchHeight)
-                .contentShape(Rectangle())
+            HStack(spacing: 12) {
+                Text("Sync backing track")
+                    .font(.system(size: labelSize, weight: .medium))
+                    .foregroundStyle(Theme.dialWhite)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.muted)
+                    .frame(width: 16, height: 16)
+            }
+            .padding(.leading, 20)
+            .padding(.trailing, 18)
+            .frame(height: TrackScreenLayout.rowHeight)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
         .opacity(isMissing ? 0.4 : 1)
         .disabled(isMissing)
-        .accessibilityLabel("Sync")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Sync backing track")
+        .accessibilityAddTraits(.isButton)
     }
 }
