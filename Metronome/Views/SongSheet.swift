@@ -11,7 +11,8 @@ struct SongSheet: View {
         /// From the library: the song is created but not loaded. With a setlist,
         /// a switch offers to add it there.
         case library(setlistID: UUID?)
-        /// From the title menu: the song is created and becomes the loaded one.
+        /// From the header menu: the song is created and becomes the loaded one, added to
+        /// the loaded-from setlist when the switch is on.
         case saveAsNew
     }
 
@@ -37,9 +38,13 @@ struct SongSheet: View {
     @State private var sheetHeight: CGFloat = 560
     @FocusState private var isNameFocused: Bool
 
+    /// The setlist the Add to switch offers, if any.
     private var setlist: Setlist? {
-        if case .library(let id?) = purpose { return model.library.setlist(id: id) }
-        return nil
+        switch purpose {
+        case .library(let id?): model.library.setlist(id: id)
+        case .saveAsNew: model.loadedFromSetlist
+        default: nil
+        }
     }
 
     private var editedSong: Song? {
@@ -374,7 +379,9 @@ struct SongSheet: View {
         case .edit(let song):
             model.editSong(song.id, name: name, settings: draft, track: trackEdit)
         case .saveAsNew:
-            model.saveAsNewSong(name: name, settings: draft, track: picked) != nil
+            model.saveAsNewSong(
+                name: name, settings: draft, track: picked, addingToLoadedSetlist: addToSetlist
+            ) != nil
         case .library:
             model.createSong(name: name, settings: draft, addingTo: addToSetlist ? setlist?.id : nil, track: picked) != nil
         }
