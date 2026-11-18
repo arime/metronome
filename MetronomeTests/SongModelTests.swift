@@ -536,6 +536,62 @@ struct SongModelTests {
         #expect(model.library.song(id: songs[0].id)?.settings.bpm == 60)
     }
 
+    @Test func saveAsNewSongIntoTheLoadedSetlistKeepsThePlace() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
+        model.setBPM(66)
+        let made = try #require(model.saveAsNewSong(name: "Slow, faster", settings: model.settings, addingToLoadedSetlist: true))
+        #expect(model.loadedSong?.id == made.id)
+        #expect(model.loadedFromSetlistID == setlist)
+        #expect(model.library.setlist(id: setlist)?.songIDs == songs.map(\.id) + [made.id])
+        #expect(model.position?.index == 3)
+        #expect(model.position?.count == 4)
+        #expect(model.canGoPrevious)
+        #expect(model.canGoNext == false)
+        #expect(model.isEdited == false)
+        #expect(model.library.song(id: songs[0].id)?.settings.bpm == 60)
+    }
+
+    @Test func saveAsNewSongWithNoSetlistIgnoresTheSwitch() throws {
+        let model = makeModel()
+        model.setBPM(132)
+        let made = try #require(model.saveAsNewSong(name: "Song", settings: model.settings, addingToLoadedSetlist: true))
+        #expect(model.loadedSong?.id == made.id)
+        #expect(model.loadedFromSetlistID == nil)
+        #expect(model.position == nil)
+    }
+
+    @Test func saveAsNewSongAfterTheSetlistWasDeletedLoadsItOnItsOwn() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
+        model.deleteSetlist(setlist)
+        let made = try #require(model.saveAsNewSong(name: "Copy", settings: model.settings, addingToLoadedSetlist: true))
+        #expect(model.loadedSong?.id == made.id)
+        #expect(model.loadedFromSetlistID == nil)
+    }
+
+    @Test func loadedFromSetlistFollowsTheLoadedSong() {
+        let (model, songs, setlist) = modelWithSetlist()
+        #expect(model.loadedFromSetlist == nil)
+        model.loadSong(songs[1].id, from: setlist)
+        #expect(model.loadedFromSetlist?.id == setlist)
+        model.loadSong(songs[1].id, from: nil)
+        #expect(model.loadedFromSetlist?.id == setlist)
+        model.unloadSong()
+        #expect(model.loadedFromSetlist == nil)
+    }
+
+    @Test func takingTheLoadedSongOutOfItsSetlistKeepsItLoaded() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
+        model.setSong(songs[1].id, inSetlist: setlist, included: false)
+        #expect(model.loadedSong?.id == songs[1].id)
+        #expect(model.loadedFromSetlistID == nil)
+        #expect(model.position == nil)
+        model.setSong(songs[1].id, inSetlist: setlist, included: true)
+        #expect(model.library.setlist(id: setlist)?.songIDs.last == songs[1].id)
+    }
+
     @Test func previousAndNextStepThroughTheSetlistAndStopAtTheEnds() {
         let (model, songs, setlist) = modelWithSetlist()
         model.loadSong(songs[0].id, from: setlist)

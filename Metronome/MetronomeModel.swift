@@ -642,6 +642,11 @@ final class MetronomeModel {
         loadedSongID.flatMap(library.song(id:))
     }
 
+    /// The setlist the loaded song was loaded from; nil when there is none or it no longer exists.
+    var loadedFromSetlist: Setlist? {
+        loadedFromSetlistID.flatMap(library.setlist(id:))
+    }
+
     /// True when a song is loaded and the current settings differ from it. While a track is in use
     /// only the time signature and the accents count, as the tempo on screen is the track's; an
     /// unsaved metronome tempo is kept and counts whenever no track is in use.
@@ -812,12 +817,18 @@ final class MetronomeModel {
         haptics?.selection()
     }
 
-    /// Creates a song and makes it the loaded one. It is in no setlist. When either song has a
+    /// Creates a song and makes it the loaded one. It is in no setlist, unless
+    /// `addingToLoadedSetlist` adds it at the end of the setlist the song was loaded from; then
+    /// it is loaded from that setlist, so Previous and Next stay. When either song has a
     /// playable track, playback stops. nil when the name is empty or a picked file cannot be
     /// stored; then nothing changes (10.3).
     @discardableResult
-    func saveAsNewSong(name: String, settings newSettings: MetronomeSettings, track picked: PickedTrack? = nil) -> Song? {
+    func saveAsNewSong(
+        name: String, settings newSettings: MetronomeSettings, track picked: PickedTrack? = nil,
+        addingToLoadedSetlist: Bool = false
+    ) -> Song? {
         guard Library.cleanName(name) != nil else { return nil }
+        let setlistID = addingToLoadedSetlist ? loadedFromSetlist?.id : nil
         var track: BackingTrack?
         if let picked {
             guard let stored = newTrack(picked, bpm: newSettings.sanitized().bpm, replacing: nil) else { return nil }
@@ -825,9 +836,14 @@ final class MetronomeModel {
         }
         if isTrackPlayable || isPlayable(track) { stop() }
         let old = loadedTrack
-        guard let song = library.addSong(name: name, settings: newSettings, track: track, now: now()) else { return nil }
+        let moment = now()
+        guard let song = library.addSong(name: name, settings: newSettings, track: track, now: moment) else { return nil }
+        if let setlistID {
+            library.add(song.id, toSetlist: setlistID, now: moment)
+            library.touchSetlist(setlistID, now: moment)
+        }
         loadedSongID = song.id
-        loadedFromSetlistID = nil
+        loadedFromSetlistID = setlistID
         loadedTrackReplaced(replacing: old)
         apply(song.settings)
         persistLibrary()
