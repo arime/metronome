@@ -6,6 +6,14 @@ struct LibrarySheet: View {
     @Environment(MetronomeModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
+    /// A song to start a new setlist with: the library then opens inside that setlist, ready
+    /// for naming, as New setlist in a song's menu does.
+    let newSetlistWith: UUID?
+
+    init(newSetlistWith: UUID? = nil) {
+        self.newSetlistWith = newSetlistWith
+    }
+
     /// The top level has two tabs, all the songs and the list of setlists. A setlist opens
     /// from its tab, and is changed in its own view; adding songs opens from there.
     enum Mode {
@@ -24,6 +32,9 @@ struct LibrarySheet: View {
     @State private var creatingID: UUID?
     /// The last song taken out of a setlist, while it can still be put back.
     @State private var removal: MetronomeModel.SetlistRemoval?
+    /// True once the setlist asked for with newSetlistWith has been made, so it is made only
+    /// once: the library appears again when a sheet over it closes.
+    @State private var madeNewSetlist = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -75,8 +86,18 @@ struct LibrarySheet: View {
         }
         // The library opens on all the songs, so a song can be picked at once. When the
         // loaded song came from a setlist it opens inside that setlist, where the user is.
+        // Asked to start a setlist with a song, it opens inside the new setlist instead,
+        // with no slide, as the sheet is only just appearing.
         .onAppear {
-            if model.loadedFromSetlistID != nil {
+            if let songID = newSetlistWith {
+                guard !madeNewSetlist else { return }
+                madeNewSetlist = true
+                let id = model.createSetlist()
+                model.setSong(songID, inSetlist: id, included: true)
+                namingID = id
+                creatingID = id
+                mode = .setlist
+            } else if model.loadedFromSetlistID != nil {
                 model.showLoadedSetlist()
                 mode = .setlist
             }
@@ -518,23 +539,15 @@ private struct SongListView: View {
         }
     }
 
-    /// The line between the Songs tab's header and its list: the search field, and Unload
-    /// at its right end while there is a song to unload. A setlist has no such line.
+    /// The line between the Songs tab's header and its list: the search field. A setlist has
+    /// no such line.
     @ViewBuilder
     private var controls: some View {
         if setlist == nil {
             VStack(spacing: 0) {
-                HStack(spacing: 10) {
-                    SearchField(text: $query)
-                    if model.loadedSong != nil {
-                        UnloadSongButton(settings: model.settings) {
-                            model.unloadSong()
-                            close()
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 12)
+                SearchField(text: $query)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
                 Rectangle()
                     .fill(Theme.line)
                     .frame(height: 1)
@@ -806,21 +819,6 @@ private struct SearchField: View {
         .frame(maxWidth: .infinity)
         .frame(height: 36)
         .background(Theme.surfaceRaised, in: Capsule())
-    }
-}
-
-/// The grey pill above the Songs tab's list, shown only while a song is loaded. Tapping it
-/// unloads the song and keeps the settings.
-private struct UnloadSongButton: View {
-    let settings: MetronomeSettings
-    let unload: () -> Void
-
-    var body: some View {
-        PillButton(text: "Unload", symbol: "eject.fill", look: .neutral, action: unload)
-            .accessibilityLabel("Unload song")
-            .accessibilityHint(
-                "Unloads the current song and keeps \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)"
-            )
     }
 }
 
