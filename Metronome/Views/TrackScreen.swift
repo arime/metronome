@@ -49,12 +49,14 @@ struct TrackDial: View {
         // look, as only the Sync row is dimmed (6.12).
         .onTapGesture { model.enterSyncMode() }
         .disabled(model.isTrackMissing)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Tempo")
-        .accessibilityValue("\(model.tempoInEffect) beats per minute")
-        .accessibilityHint("Opens Sync mode")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { model.enterSyncMode() }
+        // VoiceOver gets a real button, so it reads the dial as dimmed while the file is
+        // missing, as the tap gesture alone cannot say (13).
+        .accessibilityRepresentation {
+            Button("Tempo") { model.enterSyncMode() }
+                .accessibilityValue("\(model.tempoInEffect) beats per minute")
+                .accessibilityHint("Opens Sync mode")
+                .disabled(model.isTrackMissing)
+        }
     }
 }
 
@@ -87,8 +89,6 @@ struct SyncRow: View {
         .buttonStyle(.plain)
         .opacity(isMissing ? 0.4 : 1)
         .disabled(isMissing)
-        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Sync backing track")
-        .accessibilityAddTraits(.isButton)
     }
 }

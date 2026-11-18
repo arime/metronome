@@ -27,8 +27,8 @@ enum ScreenshotScene: String, CaseIterable {
     /// stopped. Not an App Store screenshot; for checking the screen in the simulator. The
     /// click and the track play for real, so their sync can be heard.
     case trackScreen
-    /// The track screen of `trackScreen`, playing from launch, so the tempo reading's beat effect
-    /// can be caught in a screenshot. It plays nothing: its beats come from a timer, so the
+    /// The track screen of `trackScreen`, playing from launch, so the dial's number marking the
+    /// beat can be caught in a screenshot. It plays nothing: its beats come from a timer, so the
     /// screen pulses even where the simulator's audio does not run.
     case trackPlaying
     /// The track screen in Sync mode.
@@ -50,13 +50,17 @@ enum ScreenshotScene: String, CaseIterable {
     case trackFirst
     /// The track screen with the track on the setlist's last song, loaded from the setlist.
     case trackLast
+    /// The track screen of `trackScreen` with the track at 168 BPM while the song stays at 120, so
+    /// the two tempos differ. Not an App Store screenshot; for checking that the track screen's
+    /// dial shows the track's tempo. The demo file still ticks at 120, so it plays out of sync.
+    case trackOtherTempo
 
     /// The scenes with a backing track. They write their own audio file at launch, except
     /// the scene whose file is missing.
     var hasTrack: Bool {
         switch self {
         case .trackScreen, .trackPlaying, .trackSync, .trackSyncWide, .trackSyncNine, .trackSyncTimer, .trackSolo,
-             .trackMissing, .trackFirst, .trackLast: true
+             .trackMissing, .trackFirst, .trackLast, .trackOtherTempo: true
         default: false
         }
     }
@@ -105,6 +109,7 @@ enum ScreenshotScene: String, CaseIterable {
                 track.offset = 2540
                 track.bpm = 288
             }
+            if self == .trackOtherTempo { track.bpm = 168 }
             sample.attachTrack(track, now: Self.date)
         }
         libraryStore.save(LibraryState(

@@ -80,13 +80,26 @@ struct TrackLayoutTests {
     }
 
     @Test func theTrackScreenFillsTheHeightOrLeavesSpareAboveTheCard() {
-        for height in stride(from: CGFloat(560), through: 900, by: 17) {
-            for beats in [4, 7, 9, 12] {
-                let layout = trackScreen(height: height, hasBottomInset: true, beats: beats, hasSetlist: true)
-                let used = TrackScreenLayout.headerHeight + TrackScreenLayout.dialTopGap + layout.dialDiameter
-                    + layout.rowTopGap + TrackScreenLayout.rowHeight + layout.rowBottomGap + layout.tilesHeight
-                    + TrackScreenLayout.cardTopGap + layout.cardHeight
-                #expect(used <= height)
+        for width: CGFloat in [320, 375, 402] {
+            for hasBottomInset in [true, false] {
+                for hasSetlist in [true, false] {
+                    for height in stride(from: CGFloat(560), through: 900, by: 17) {
+                        for beats in [4, 7, 9, 12] {
+                            let layout = trackScreen(
+                                width: width, height: height, hasBottomInset: hasBottomInset, beats: beats,
+                                hasSetlist: hasSetlist
+                            )
+                            let used = TrackScreenLayout.headerHeight + TrackScreenLayout.dialTopGap
+                                + layout.dialDiameter + layout.rowTopGap + TrackScreenLayout.rowHeight
+                                + layout.rowBottomGap + layout.tilesHeight + TrackScreenLayout.cardTopGap
+                                + layout.cardHeight + layout.bottomPadding
+                            #expect(
+                                used <= height,
+                                "width \(width), inset \(hasBottomInset), setlist \(hasSetlist), height \(height), beats \(beats)"
+                            )
+                        }
+                    }
+                }
             }
         }
     }
