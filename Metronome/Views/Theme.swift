@@ -21,7 +21,6 @@ enum Theme {
 
     /// The selected segment of a switch-like control, and buttons that sit on surface raised.
     static let surfaceSelected = Color(hex: 0x3A3A3F)
-    /// Hint text on the selected (amber) picker option.
 
     static let sideMargin: CGFloat = 24
 }

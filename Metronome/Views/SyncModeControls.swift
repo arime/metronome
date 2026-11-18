@@ -56,9 +56,8 @@ struct SyncSteppers: View {
 }
 
 /// A label and, 6 pt below it, a 48 pt surface-raised capsule holding −, the value and +, the
-/// buttons on surface selected. The value is
-/// scaled down rather than cut when it is wider than the room between the buttons. With
-/// `typeValue`, tapping the value types a new one.
+/// buttons on surface selected. The value is scaled down rather than cut when it is wider than
+/// the room between the buttons. With `typeValue`, tapping the value types a new one.
 private struct SyncStepper: View {
     let label: String
     let value: String
