@@ -5,12 +5,17 @@ struct MetronomeScreen: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isLibraryShown = false
     @State private var isSettingsShown = false
+    /// The song that the library, when opened from the header menu's New setlist, makes a
+    /// new setlist with.
+    @State private var newSetlistSongID: UUID?
 
     var body: some View {
         screen
             .background(Theme.ink.ignoresSafeArea())
-            .sheet(isPresented: $isLibraryShown) {
-                LibrarySheet()
+            // Captured here, so that the body reads the ID and the sheet gets the one set
+            // together with isLibraryShown rather than an earlier one.
+            .sheet(isPresented: $isLibraryShown, onDismiss: { newSetlistSongID = nil }) { [newSetlistSongID] in
+                LibrarySheet(newSetlistWith: newSetlistSongID)
                     .environment(model)
             }
             .sheet(isPresented: $isSettingsShown) {
@@ -87,25 +92,24 @@ struct MetronomeScreen: View {
         }
     }
 
-    /// Title, the Save button while the song has unsaved changes, the Backing tracks switch for
-    /// a song with a backing track, mute and gear.
+    /// Title, the Backing tracks switch for a song with a backing track, mute and the menu
+    /// button, which carries the badge while the song has unsaved changes.
     private var header: some View {
         HStack(spacing: 8) {
             SongTitle { isLibraryShown = true }
-            if model.isSaveOffered {
-                SaveButton()
-                    // Fades in, but leaves at once, so that after Save only the menu's own
-                    // closing animation is left on screen.
-                    .transition(.asymmetric(insertion: .opacity, removal: .identity))
-            }
             if model.loadedTrack != nil {
                 TrackSwitchButton()
             }
             MuteButton()
-            SettingsButton { isSettingsShown = true }
+            HeaderMenuButton(
+                openSettings: { isSettingsShown = true },
+                newSetlist: { songID in
+                    newSetlistSongID = songID
+                    isLibraryShown = true
+                }
+            )
         }
         .frame(height: 40)
-        .animation(.easeOut(duration: 0.15), value: model.isSaveOffered)
     }
 
     /// Previous and Next sit beside Start only for a song loaded from a setlist, with the

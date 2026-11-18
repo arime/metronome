@@ -19,6 +19,10 @@ enum ScreenshotScene: String, CaseIterable {
     case timeSignature
     /// The settings sheet.
     case settings
+    /// The metronome with a song loaded from the setlist, stopped, and its tempo 4 BPM up, so
+    /// the badge and the full header menu show. Not an App Store screenshot; for checking the
+    /// header in the simulator.
+    case edited
     /// The track screen: a song with a playable backing track, loaded from the setlist and
     /// stopped. Not an App Store screenshot; for checking the screen in the simulator. The
     /// click and the track play for real, so their sync can be heard.
@@ -159,6 +163,7 @@ enum ScreenshotScene: String, CaseIterable {
             now: { Self.date }
         )
         if self == .playing { model.togglePlayback() }
+        if self == .edited { model.nudgeBPM(by: 4) }
         return model
     }
 }
