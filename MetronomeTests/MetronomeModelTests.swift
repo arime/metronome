@@ -95,7 +95,6 @@ struct MetronomeModelTests {
         #expect(model.isPlaying == false)
         #expect(model.currentBeat == nil)
         #expect(model.settings.bpm == 90)
-        #expect(model.tempoName == "Andante")
     }
 
     @Test func togglePlaybackStarts() {

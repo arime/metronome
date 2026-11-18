@@ -8,21 +8,6 @@ enum Tempo {
         min(max(bpm, range.lowerBound), range.upperBound)
     }
 
-    static func name(for bpm: Int) -> String {
-        switch bpm {
-        case ..<40: "Grave"
-        case 40..<60: "Largo"
-        case 60..<66: "Larghetto"
-        case 66..<76: "Adagio"
-        case 76..<108: "Andante"
-        case 108..<120: "Moderato"
-        case 120..<156: "Allegro"
-        case 156..<176: "Vivace"
-        case 176..<200: "Presto"
-        default: "Prestissimo"
-        }
-    }
-
     private static var span: Double { Double(range.upperBound - range.lowerBound) }
 
     /// Position of a tempo along the dial arc, 0 at 30 BPM and 1 at 300 BPM.
@@ -53,11 +38,13 @@ enum DialGeometry {
         return relative < gapMiddle ? 1 : 0
     }
 
-    /// Below this dial size the tempo name no longer fits inside the ring.
-    static let tempoNameMinimumDiameter = 180.0
+    /// The BPM number on the knob's face of a 300 pt dial, for two digits.
+    static let fullNumberSize = 114.0
 
-    static func showsTempoName(dialDiameter: Double) -> Bool {
-        dialDiameter >= tempoNameMinimumDiameter
+    /// The BPM number's font size, scaled with the dial. Three-digit tempos are drawn at 88 %
+    /// so they stay clear of the face's edge and the pointer.
+    static func numberSize(bpm: Int, dialDiameter: Double) -> Double {
+        fullNumberSize * dialDiameter / 300 * (bpm >= 100 ? 0.88 : 1)
     }
 
     /// True when the touch starts on the dial: anywhere within 0.55 dial diameters of the

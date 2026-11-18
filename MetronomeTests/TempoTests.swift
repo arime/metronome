@@ -9,15 +9,6 @@ struct TempoTests {
         #expect(Tempo.defaultBPM == 120)
     }
 
-    @Test func namesFollowTheSpecTable() {
-        let bpms = [30, 39, 40, 59, 60, 65, 66, 75, 76, 107, 108, 119, 120, 155, 156, 175, 176, 199, 200, 300]
-        #expect(bpms.map(Tempo.name(for:)) == [
-            "Grave", "Grave", "Largo", "Largo", "Larghetto", "Larghetto", "Adagio", "Adagio",
-            "Andante", "Andante", "Moderato", "Moderato", "Allegro", "Allegro", "Vivace", "Vivace",
-            "Presto", "Presto", "Prestissimo", "Prestissimo",
-        ])
-    }
-
     @Test func arcFractionIsLinearOverTheRange() {
         #expect(Tempo.arcFraction(for: 30) == 0)
         #expect(Tempo.arcFraction(for: 300) == 1)
@@ -48,11 +39,15 @@ struct DialGeometryTests {
         #expect(DialGeometry.arcFraction(dx: 0.1, dy: 1) == 1)
     }
 
-    @Test func tempoNameIsHiddenOnASmallDial() {
-        #expect(DialGeometry.showsTempoName(dialDiameter: 300))
-        #expect(DialGeometry.showsTempoName(dialDiameter: 180))
-        #expect(!DialGeometry.showsTempoName(dialDiameter: 179))
-        #expect(!DialGeometry.showsTempoName(dialDiameter: 108))
+    @Test func theDialNumberIs114AndSmallerForThreeDigits() {
+        #expect(DialGeometry.numberSize(bpm: 99, dialDiameter: 300) == 114)
+        #expect(abs(DialGeometry.numberSize(bpm: 100, dialDiameter: 300) - 100.32) < 0.001)
+        #expect(abs(DialGeometry.numberSize(bpm: 300, dialDiameter: 300) - 100.32) < 0.001)
+    }
+
+    @Test func theDialNumberScalesWithTheDial() {
+        #expect(DialGeometry.numberSize(bpm: 60, dialDiameter: 150) == 57)
+        #expect(abs(DialGeometry.numberSize(bpm: 120, dialDiameter: 340) - 113.696) < 0.001)
     }
 
     @Test func aTurnCanStartAnywhereOnTheDial() {

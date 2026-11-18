@@ -50,7 +50,7 @@ struct TempoReading: View {
 
     /// The dial's glow, sized for this number as the dial's glow is for the dial's number.
     private var glowDiameter: CGFloat {
-        numberFontSize * 300 / DialRing.numberSize
+        numberFontSize * 300 / DialGeometry.fullNumberSize
     }
 
     /// The digits are set tight between digits only, as on the dial, so the last one is not

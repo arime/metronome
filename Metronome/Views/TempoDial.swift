@@ -10,9 +10,6 @@ struct TempoDial: View {
     /// The turn in progress, with the touch it belongs to.
     @State private var drag: (start: CGPoint, turn: DialDrag)?
 
-    /// Everything is drawn for a 300 pt dial and scaled.
-    private var scale: CGFloat { diameter / 300 }
-
     var body: some View {
         ZStack {
             DialRing(fraction: Tempo.arcFraction(for: model.settings.bpm))
@@ -27,7 +24,7 @@ struct TempoDial: View {
         .gesture(ringDrag)
         .accessibilityElement()
         .accessibilityLabel("Tempo")
-        .accessibilityValue("\(model.settings.bpm) beats per minute, \(model.tempoName)")
+        .accessibilityValue("\(model.settings.bpm) beats per minute")
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: model.nudgeBPM(by: 1)
@@ -42,42 +39,8 @@ struct TempoDial: View {
         }
     }
 
-    /// Sized to sit on the knob's face. Three-digit tempos are drawn a little smaller so
-    /// they stay clear of its edge.
-    private var numberSize: CGFloat {
-        DialRing.numberSize * scale * (model.settings.bpm >= 100 ? 0.88 : 1)
-    }
-
-    /// The digits are set tighter than normal, but only between digits. Tightening after
-    /// the last digit as well (as the tracking modifier does) makes the text narrower than
-    /// its ink, and the right edge of the last digit gets clipped.
-    private var numberText: AttributedString {
-        var text = AttributedString("\(model.settings.bpm)")
-        text.kern = -0.05 * numberSize
-        if let last = text.characters.indices.last {
-            text[last...].kern = 0
-        }
-        return text
-    }
-
     private var readout: some View {
-        VStack(spacing: 6 * scale) {
-            Text(numberText)
-                .font(.system(size: numberSize, weight: .heavy))
-                .monospacedDigit()
-                .foregroundStyle(Theme.dialWhite)
-                // Laid out at its natural width. Squeezing it into a fixed width with a
-                // scale factor clipped the right edge of the last digit.
-                .fixedSize()
-                .frame(height: DialRing.numberSize * scale)
-                .modifier(NumberPulse(lastBeat: model.lastBeat, bpm: model.settings.bpm))
-            // On a small dial the tempo name does not fit inside the ring.
-            if DialGeometry.showsTempoName(dialDiameter: diameter) {
-                Text(model.tempoName)
-                    .font(.system(size: 15).italic())
-                    .foregroundStyle(Theme.muted)
-            }
-        }
+        DialNumber(bpm: model.settings.bpm, diameter: diameter)
     }
 
     /// Turns the knob by the angle the finger travels around the centre, from wherever on the
@@ -115,13 +78,46 @@ struct TempoDial: View {
     }
 }
 
+/// The BPM number on a dial's face, pulsing with the beat. Its line keeps the two-digit
+/// height, so the number does not move up or down when a third digit makes it smaller.
+struct DialNumber: View {
+    @Environment(MetronomeModel.self) private var model
+    let bpm: Int
+    let diameter: CGFloat
+
+    private var numberSize: CGFloat {
+        DialGeometry.numberSize(bpm: bpm, dialDiameter: diameter)
+    }
+
+    /// The digits are set tighter than normal, but only between digits. Tightening after
+    /// the last digit as well (as the tracking modifier does) makes the text narrower than
+    /// its ink, and the right edge of the last digit gets clipped.
+    private var numberText: AttributedString {
+        var text = AttributedString("\(bpm)")
+        text.kern = -0.05 * numberSize
+        if let last = text.characters.indices.last {
+            text[last...].kern = 0
+        }
+        return text
+    }
+
+    var body: some View {
+        Text(numberText)
+            .font(.system(size: numberSize, weight: .heavy))
+            .monospacedDigit()
+            .foregroundStyle(Theme.dialWhite)
+            // Laid out at its natural width. Squeezing it into a fixed width with a
+            // scale factor clipped the right edge of the last digit.
+            .fixedSize()
+            .frame(height: DialGeometry.fullNumberSize * diameter / 300)
+            .modifier(NumberPulse(lastBeat: model.lastBeat, bpm: bpm))
+    }
+}
+
 /// The scale of ticks and the knob inside it: a raised disc with a ridged edge and an amber
 /// pointer, turned to the tempo. Drawn in a 300 pt coordinate space and scaled to fit.
 struct DialRing: View {
     let fraction: Double
-
-    /// The BPM number on the knob's face, for two digits.
-    static let numberSize = 90.0
 
     private static let tickCount = 48
     private static let tickOuter = 146.0
@@ -132,10 +128,10 @@ struct DialRing: View {
     private static let faceRadius = 104.0
     private static let ridgeCount = 90
     private static let ridgeLength = 10.0
-    /// The pointer on the face. It starts far enough out to stay clear of a three-digit
-    /// number beside it.
-    private static let pointerOuter = 101.0
-    private static let pointerInner = 86.0
+    /// The pointer sits on the knob's rim, over the ridges and outside the widest
+    /// three-digit number.
+    private static let pointerOuter = 112.0
+    private static let pointerInner = 98.0
 
     private static let knobTop = Color(hex: 0x2C2C31)
     private static let knobBottom = Color(hex: 0x141416)

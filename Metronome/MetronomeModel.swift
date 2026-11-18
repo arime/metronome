@@ -54,8 +54,6 @@ final class MetronomeModel {
     /// nil while sync is off.
     private(set) var syncStatus: SyncStatus?
 
-    var tempoName: String { Tempo.name(for: settings.bpm) }
-
     @ObservationIgnored private let engine: ClickEngine
     @ObservationIgnored private let store: SettingsStore
     @ObservationIgnored private let libraryStore: LibraryStore
