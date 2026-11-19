@@ -247,17 +247,42 @@ struct TrackSongModelTests {
         #expect(trackFiles.hasFile(old.fileID) == false)
     }
 
-    @Test func pickingAFileForAMissingTrackChangesNoPart() throws {
+    @Test func pickingAFileWithTheSameNameForAMissingTrackChangesNoPart() throws {
         let setup = try makeModel(missing: true)
         let model = setup.model
         let library = model.library
         #expect(model.isTrackMissing)
-        model.editSong(setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked(offset: 99)))
+        model.editSong(
+            setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked("Song.m4a", offset: 99))
+        )
         #expect(model.library == library)
         #expect(model.isTrackPlayable)
         #expect(model.isTrackMissing == false)
         #expect(model.trackLength == 222)
         #expect(trackFiles.hasFile(try #require(setup.song.track?.fileID)))
+    }
+
+    @Test func pickingAFileWithAnotherNameRenamesTheTrackAndKeepsTheRest() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        let old = try #require(setup.song.track)
+        let parts = try #require(model.library.songRecords[setup.song.id]?.parts)
+        let before = Date()
+        model.editSong(setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked(offset: 99)))
+        let after = Date()
+        let track = try #require(model.library.song(id: setup.song.id)?.track)
+        #expect(track.fileName == "Take.wav")
+        #expect(track.fileID == old.fileID)
+        #expect(track.bpm == old.bpm)
+        #expect(track.offset == old.offset)
+        #expect(track.countIn == old.countIn)
+        #expect(track.mix == old.mix)
+        let edited = try #require(model.library.songRecords[setup.song.id]?.parts)
+        let time = try #require(edited[SongRecord.trackKey]?.time)
+        #expect(time >= before && time <= after)
+        #expect(edited[SongRecord.nameKey] == parts[SongRecord.nameKey])
+        #expect(edited[SongRecord.tempoKey] == parts[SongRecord.tempoKey])
+        #expect(edited[SongRecord.meterKey] == parts[SongRecord.meterKey])
     }
 
     @Test func attachingATrackGivesItTheSongsTempoAsSaved() throws {
@@ -421,6 +446,87 @@ struct TrackSongModelTests {
         #expect(model.loadedSongID == setup.song.id)
         #expect(model.isPlaying)
         #expect(engine.stopCount == 0)
+    }
+
+    // MARK: - Choose file on the player card
+
+    @Test func choosingAFileFromTheCardStoresItAtOnce() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        let library = model.library
+        #expect(model.backingTracksOn)
+        #expect(model.isTrackMissing)
+        #expect(model.chooseFileForLoadedTrack(try picked("Song.m4a", offset: 99)))
+        #expect(model.isTrackMissing == false)
+        #expect(model.isTrackPlayable)
+        #expect(model.trackPosition == 0)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+        #expect(model.library == library)
+        #expect(trackFiles.hasFile(try #require(setup.song.track?.fileID)))
+    }
+
+    @Test func choosingAFileWithAnotherNameFromTheCardRenamesTheTrack() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        let old = try #require(setup.song.track)
+        #expect(model.chooseFileForLoadedTrack(try picked(offset: 99)))
+        let track = try #require(model.loadedTrack)
+        #expect(track.fileName == "Take.wav")
+        #expect(track.fileID == old.fileID)
+        #expect(track.bpm == old.bpm)
+        #expect(track.offset == old.offset)
+        #expect(track.countIn == old.countIn)
+        #expect(track.mix == old.mix)
+        #expect(model.isEdited == false)
+        #expect(model.isTrackPlayable)
+    }
+
+    @Test func choosingAFileWhilePlayingStopsPlayback() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        model.togglePlayback()
+        #expect(model.isPlaying)
+        #expect(model.chooseFileForLoadedTrack(try picked()))
+        #expect(model.isPlaying == false)
+        #expect(engine.stopCount == 1)
+        #expect(model.trackPosition == 0)
+    }
+
+    @Test func choosingAFileThatCannotBeStoredChangesNothing() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        let library = model.library
+        #expect(model.chooseFileForLoadedTrack(unstorable()) == false)
+        #expect(model.isTrackMissing)
+        #expect(model.loadedTrack?.fileName == "Song.m4a")
+        #expect(model.library == library)
+    }
+
+    @Test func choosingAFileWhenTheTrackIsNotMissingDoesNothing() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        let library = model.library
+        let fileID = try #require(setup.song.track?.fileID)
+        let pick = try picked()
+        try Data("another".utf8).write(to: pick.url)
+        model.togglePlayback()
+        #expect(model.chooseFileForLoadedTrack(pick))
+        #expect(try Data(contentsOf: try #require(trackFiles.url(for: fileID))) == Data("audio".utf8))
+        #expect(model.library == library)
+        #expect(model.isPlaying)
+        #expect(model.isPlayingTrack)
+        #expect(engine.stopCount == 0)
+
+        // No song loaded.
+        model.togglePlayback()
+        model.unloadSong()
+        model.togglePlayback()
+        let stops = engine.stopCount
+        #expect(model.chooseFileForLoadedTrack(pick))
+        #expect(model.library == library)
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == stops)
     }
 
     // MARK: - Sync mode

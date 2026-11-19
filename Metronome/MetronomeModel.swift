@@ -406,6 +406,17 @@ final class MetronomeModel {
         }
     }
 
+    /// A file picked for a missing track, stored under the identifier the track already has (5.1,
+    /// 10.3). Returns the track as it then is: with the picked file's name when the names differ,
+    /// unchanged when they are the same, its tempo, offset, count-in and mix kept either way. nil
+    /// when the file cannot be stored.
+    private func storePicked(_ picked: PickedTrack, forMissing missing: BackingTrack) -> BackingTrack? {
+        guard store(picked, as: missing.fileID) else { return nil }
+        var track = missing
+        track.fileName = picked.fileName
+        return track
+    }
+
     /// A picked file stored under a new identifier, with its offset. The tempo, the count-in and
     /// the mix are kept from the track it replaces; a track that replaces none gets `bpm`, the
     /// song's tempo as the sheet saves it. nil when the file cannot be stored.
@@ -902,10 +913,11 @@ final class MetronomeModel {
     /// carries on unless the time signature changed. A new name alone leaves the metronome,
     /// and any unsaved changes, as they are.
     ///
-    /// The track: a file picked for a missing one is stored under its identifier and the part is
-    /// left alone; any other file gets a new identifier and a new part. On the loaded song, a file
-    /// picked or a playable track removed stops playback and goes to 0:00; with the switch off
-    /// nothing stops, and a file picked still goes to 0:00.
+    /// The track: a file picked for a missing one is stored under its identifier; the part takes
+    /// the picked file's name when it differs and is left alone when it is the same. Any other
+    /// file gets a new identifier and a new part. On the loaded song, a file picked or a playable
+    /// track removed stops playback and goes to 0:00; with the switch off nothing stops, and a
+    /// file picked still goes to 0:00.
     ///
     /// Returns false only when a picked file cannot be stored; then nothing is saved at all, so the
     /// song sheet can stay open with what the user entered (10.3). True otherwise, also when there
@@ -925,7 +937,8 @@ final class MetronomeModel {
             if song.track != nil { newPart = .some(nil) }
         case .attach(let picked):
             if let missing = song.track, !trackFiles.hasFile(missing.fileID) {
-                guard store(picked, as: missing.fileID) else { return false }
+                guard let track = storePicked(picked, forMissing: missing) else { return false }
+                if track != missing { newPart = .some(track) }
             } else {
                 let bpm = newSettings.sanitized().bpm
                 guard let track = newTrack(picked, bpm: bpm, replacing: song.track) else { return false }
@@ -950,6 +963,26 @@ final class MetronomeModel {
         }
         if isLoaded, filePicked || newPart != nil { loadedTrackReplaced(replacing: song.track) }
         syncSaveOffer()
+        persistLibrary()
+        return true
+    }
+
+    /// `Choose file` on the player card (6.12): the file is stored at once for the loaded song's
+    /// missing track, by the rule for a file picked for a missing track (see `editSong`), and the
+    /// song's settings are not touched, so it does not become edited. With Backing tracks on,
+    /// playback stops; either way the position goes to 0:00 (7.10).
+    ///
+    /// Returns false only when the file cannot be stored; then nothing changes. True, doing
+    /// nothing, when no song is loaded, it has no track or its file is on this device.
+    @discardableResult
+    func chooseFileForLoadedTrack(_ picked: PickedTrack) -> Bool {
+        guard let songID = loadedSongID, let missing = loadedTrack, !trackFiles.hasFile(missing.fileID) else {
+            return true
+        }
+        guard let track = storePicked(picked, forMissing: missing) else { return false }
+        if backingTracksOn, isPlaying { stop() }
+        if track != missing { library.setTrack(songID, to: track, now: now()) }
+        loadedTrackReplaced(replacing: missing)
         persistLibrary()
         return true
     }

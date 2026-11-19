@@ -34,17 +34,14 @@ enum TrackRowState: Equatable {
     case none, file(String), missing
 
     /// `saved` is the song's track before the sheet, nil for a new song; `isSavedMissing` when its
-    /// file is not on this device. A file picked for a missing track keeps the track's name.
+    /// file is not on this device. A picked file shows its own name, also one picked for a missing
+    /// track, which takes that name on saving.
     init(saved: BackingTrack?, isSavedMissing: Bool, edit: TrackEdit) {
         switch edit {
         case .remove:
             self = .none
         case .attach(let picked):
-            if let saved, isSavedMissing {
-                self = .file(saved.fileName)
-            } else {
-                self = .file(picked.fileName)
-            }
+            self = .file(picked.fileName)
         case .keep:
             if let saved {
                 self = isSavedMissing ? .missing : .file(saved.fileName)

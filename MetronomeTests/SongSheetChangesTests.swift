@@ -126,8 +126,8 @@ import Testing
         #expect(TrackRowState(saved: savedTrack, isSavedMissing: false, edit: .attach(pickedTrack)) == .file("Take.wav"))
     }
 
-    @Test func aFilePickedForAMissingTrackKeepsTheSavedName() {
-        #expect(TrackRowState(saved: savedTrack, isSavedMissing: true, edit: .attach(pickedTrack)) == .file("Song.m4a"))
+    @Test func aFilePickedForAMissingTrackShowsThePickedName() {
+        #expect(TrackRowState(saved: savedTrack, isSavedMissing: true, edit: .attach(pickedTrack)) == .file("Take.wav"))
     }
 
     @Test func theRowShowsARemovedTrackAsNone() {
