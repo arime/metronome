@@ -1,5 +1,10 @@
 import SwiftUI
 
+/// The space between the header's tab switch and its menu button, and between the controls
+/// line's search field and the +'s slot: both 40 pt slots stand at the margin, so the tab
+/// switch and the search field end on one line (8.1, 8.2).
+private let controlGap: CGFloat = 12
+
 /// The library's top-level header: the tab switch filling the row, and the tab's menu
 /// button 12 pt after it (8.1).
 struct LibraryTabHeader<MenuButton: View>: View {
@@ -8,7 +13,7 @@ struct LibraryTabHeader<MenuButton: View>: View {
     @ViewBuilder let menu: MenuButton
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: controlGap) {
             LibraryTabs(selected: selected, select: select)
                 .frame(maxWidth: .infinity)
             menu
@@ -18,7 +23,7 @@ struct LibraryTabHeader<MenuButton: View>: View {
     }
 }
 
-/// The line between a tab's header and its list: the search field, 10 pt, and the +, then
+/// The line between a tab's header and its list: the search field, 14 pt, and the +, then
 /// 12 pt of space and a divider (8.2, 9.1).
 struct ControlsLine<Trailing: View>: View {
     @Binding var query: String
@@ -29,9 +34,9 @@ struct ControlsLine<Trailing: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // 8 pt to the +'s slot, which is 2 pt wider on each side than the +: 10 pt to
-            // the + itself.
-            HStack(spacing: 8) {
+            // 12 pt to the +'s slot, as the tab switch to the ⋯, so the field ends where the
+            // tab switch does; the slot is 2 pt wider on each side than the +: 14 pt to the +.
+            HStack(spacing: controlGap) {
                 SearchField(text: $query, accessibilityName: searchName)
                 trailing
             }
