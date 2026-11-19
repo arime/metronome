@@ -99,8 +99,8 @@ struct SearchField: View {
 }
 
 /// The amber + at the end of the controls line: New song or New setlist. It is centred in
-/// a 40 pt slot at the margin, so that it stands under the header's ⋯ and on the axis of
-/// the rows' ⋯ buttons, which are 40 pt at the same margin.
+/// a 40 pt slot at the margin, so that it stands centred under the header's ⋯, which is
+/// 40 pt at the same margin.
 struct AddButton: View {
     /// `New song` or `New setlist`.
     let accessibilityName: String

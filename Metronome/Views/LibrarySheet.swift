@@ -324,8 +324,8 @@ private struct UndoBar: View {
     }
 }
 
-/// The round ⋯ button at the end of a row or in a header; it opens a menu. Drawn 40 pt, it
-/// takes touches over 44 pt.
+/// The round ⋯ button in a header; it opens the header's menu. Drawn 40 pt, it takes
+/// touches over 44 pt.
 struct MoreButtonLabel: View {
     var body: some View {
         Image(systemName: "ellipsis")
@@ -738,12 +738,13 @@ private struct SongListView: View {
                                 close()
                             }
                         },
-                        menu: { rowMenu(for: song) }
+                        // Only the Songs tab's rows have a menu. In a setlist a held row
+                        // lifts to be moved, and a menu on the same hold took the drag over.
+                        menu: setlist == nil ? rowMenu(for: song) : nil
                     )
                     .sheetRow()
-                    // The swipe is a shortcut to items of the row's menu: Delete and Edit on the
-                    // Songs tab, Remove from setlist and Edit in a setlist (8.3). Remove is
-                    // amber, so it is not taken for Delete. Select mode has none.
+                    // Delete and Edit on the Songs tab, Remove and Edit in a setlist (8.2,
+                    // 8.3). Remove is amber, so it is not taken for Delete. Select mode has none.
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if selection == nil {
                             if let setlist {
@@ -806,7 +807,7 @@ private struct SongListView: View {
     }
     #endif
 
-    /// Everything that can be done with a song, the same in every list.
+    /// The menu a long press on a Songs tab row opens (8.4).
     @ViewBuilder
     private func rowMenu(for song: Song) -> some View {
         Menu {
@@ -840,14 +841,6 @@ private struct SongListView: View {
             editingSong = song
         } label: {
             Label("Edit", systemImage: "pencil")
-        }
-        if let setlist {
-            Button {
-                remove(song, from: setlist)
-            } label: {
-                // Without the setlist's name: with it the item wraps onto two lines.
-                Label("Remove from setlist", systemImage: "minus.circle")
-            }
         }
         Button(role: .destructive) {
             deleting = song

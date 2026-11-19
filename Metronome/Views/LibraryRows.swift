@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// One song: name, tempo and time signature. Tapping it loads it; the ⋯ button at the
-/// end opens the row's menu. In select mode a tick takes the button's place, and tapping
-/// the row ticks or unticks it.
+/// One song: name, tempo and time signature. Tapping it loads it; holding it opens its
+/// menu, when it has one. In select mode a tick ends the row, tapping the row ticks or
+/// unticks it, and holding it opens nothing.
 struct SongRow<MenuContent: View>: View {
     let song: Song
     let number: Int?
@@ -11,46 +11,44 @@ struct SongRow<MenuContent: View>: View {
     let isTicked: Bool?
     /// Loads the song, or in select mode ticks or unticks it.
     let tap: () -> Void
-    @ViewBuilder let menu: MenuContent
+    /// The items of the menu a long press opens (8.4); nil for a row without one.
+    let menu: MenuContent?
 
     var body: some View {
+        if isTicked == nil, let menu {
+            content
+                .contextMenu { menu }
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         HStack(spacing: 12) {
-            HStack(spacing: 12) {
-                if let number {
-                    Text("\(number)")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(isLoaded ? Theme.amber : Theme.mutedDim)
-                        .frame(width: 24, alignment: .leading)
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(song.name)
-                        .font(.system(size: 17, weight: isLoaded ? .bold : .semibold))
-                        .foregroundStyle(isLoaded ? Theme.amber : Theme.dialWhite)
-                        .lineLimit(1)
-                    SongDetailLine(song: song, isLoaded: isLoaded)
-                }
-                Spacer(minLength: 0)
-                // Inside the tapped area, so that the whole row takes the tap.
-                if let isTicked {
-                    SelectionTick(isOn: isTicked)
-                }
+            if let number {
+                Text("\(number)")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(isLoaded ? Theme.amber : Theme.mutedDim)
+                    .frame(width: 24, alignment: .leading)
             }
-            .frame(maxHeight: .infinity)
-            .contentShape(Rectangle())
-            .rowTap(tap)
-            .accessibilityLabel(song.spokenDescription + (isLoaded ? ", loaded" : ""))
-            .accessibilityAddTraits(isTicked == true ? .isSelected : [])
-            if isTicked == nil {
-                Menu {
-                    menu
-                } label: {
-                    MoreButtonLabel()
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("More for \(song.name)")
+            VStack(alignment: .leading, spacing: 3) {
+                Text(song.name)
+                    .font(.system(size: 17, weight: isLoaded ? .bold : .semibold))
+                    .foregroundStyle(isLoaded ? Theme.amber : Theme.dialWhite)
+                    .lineLimit(1)
+                SongDetailLine(song: song, isLoaded: isLoaded)
+            }
+            Spacer(minLength: 0)
+            // Inside the tapped area, so that the whole row takes the tap.
+            if let isTicked {
+                SelectionTick(isOn: isTicked)
             }
         }
         .frame(height: 62)
+        .contentShape(Rectangle())
+        .rowTap(tap)
+        .accessibilityLabel(song.spokenDescription + (isLoaded ? ", loaded" : ""))
+        .accessibilityAddTraits(isTicked == true ? .isSelected : [])
     }
 }
 
@@ -105,7 +103,7 @@ private struct SheetRow: ViewModifier {
             .listRowSeparatorTint(Theme.line)
             // Separators span the row instead of starting at the row's text.
             .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-            // And end at the margin, in line with the ⋯ buttons and the line above the list.
+            // And end at the margin, in line with the header's ⋯ and the line above the list.
             // Left to the system they end at the list's own layout margin, which is 16 pt on
             // narrower phones. The row spans from margin to margin.
             .alignmentGuide(.listRowSeparatorTrailing) { $0.width }
