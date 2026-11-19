@@ -97,11 +97,10 @@ struct SetlistsTab: View {
     }
 }
 
-/// A full-width row that does something: amber by default, red for deleting.
+/// A full-width amber row that does something.
 struct ActionRow: View {
     let text: String
     let symbol: String
-    var color = Theme.amber
     let action: () -> Void
 
     static let height: CGFloat = 56
@@ -115,7 +114,7 @@ struct ActionRow: View {
                     .font(.system(size: 17, weight: .semibold))
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(color)
+            .foregroundStyle(Theme.amber)
             .frame(height: Self.height)
             .contentShape(Rectangle())
         }
@@ -236,7 +235,7 @@ struct AddSongsView: View {
     /// What is typed in the search field. It starts empty, as the view is made afresh each
     /// time the screen opens.
     @State private var query = ""
-    /// The library's songs when New song was opened, so a song made there can be told apart.
+    /// The library's song ids when New song was opened, so a song made there can be told apart.
     @State private var songIDsBeforeNewSong: Set<UUID> = []
 
     private var setlistName: String { model.library.setlist(id: setlistID)?.name ?? "setlist" }
@@ -280,10 +279,10 @@ struct AddSongsView: View {
         isNewSongShown = true
     }
 
-    /// A song made with New song goes straight into the setlist; the search is emptied so it
-    /// is listed. Cancel leaves the text.
+    /// A song made with New song empties the search so it is listed, whether or not it went
+    /// into the setlist. Cancel leaves the library and the text as they were.
     private func emptyQueryAfterNewSong() {
-        if members.contains(where: { !songIDsBeforeNewSong.contains($0) }) { query = "" }
+        if songs.contains(where: { !songIDsBeforeNewSong.contains($0.id) }) { query = "" }
     }
 
     private var list: some View {
