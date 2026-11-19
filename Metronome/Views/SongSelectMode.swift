@@ -12,7 +12,14 @@ struct SelectHeader: View {
             SheetTitle(text: title)
                 .accessibilityAddTraits(.isHeader)
         } trailing: {
-            PillButton(text: "Done", action: done)
+            PillButton(text: "Done") {
+                // The search field keeps its focus when the mode ends; Done puts the
+                // keyboard away with it.
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
+                )
+                done()
+            }
         }
         // As tall as the top-level header, a 40 pt row and 12 pt below it, so that the
         // controls line and the list stay in place as select mode begins and ends.

@@ -56,7 +56,11 @@ struct LibrarySheet: View {
                         model.selectFilter(id)
                         go(to: .setlist)
                     },
-                    newSetlist: { startCreating(with: []) }
+                    newSetlist: {
+                        // So that the new setlist is listed when the user comes back.
+                        setlistQuery = ""
+                        startCreating(with: [])
+                    }
                 )
                 .transition(slide)
             case .setlist:
