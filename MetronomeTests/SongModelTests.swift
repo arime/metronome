@@ -2,15 +2,34 @@ import Foundation
 import Testing
 @testable import Metronome
 
+/// A clock the tests move by hand, so that a later load really is later.
+@MainActor
+private final class Clock {
+    private var current = Date(timeIntervalSince1970: 2_000_000_000)
+
+    func now() -> Date {
+        current
+    }
+
+    func advance() {
+        current += 10
+    }
+}
+
 @MainActor
 struct SongModelTests {
     private let engine = FakeClickEngine()
     private let haptics = FakeHaptics()
     private let store = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
     private let libraryStore = LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+    private let clock = Clock()
 
     private func makeModel() -> MetronomeModel {
-        MetronomeModel(engine: engine, store: store, haptics: haptics, libraryStore: libraryStore, trackFiles: .temporary())
+        let clock = clock
+        return MetronomeModel(
+            engine: engine, store: store, haptics: haptics, libraryStore: libraryStore,
+            now: { clock.now() }, trackFiles: .temporary()
+        )
     }
 
     private func settings(_ bpm: Int, _ signature: TimeSignature = .fourFour) -> MetronomeSettings {
@@ -742,5 +761,113 @@ struct SongModelTests {
         #expect(relaunched.isPlaying == false)
         relaunched.goToNext()
         #expect(relaunched.loadedSong?.id == songs[2].id)
+    }
+
+    // MARK: - Last played and the orders
+
+    @Test func loadingASongSetsItsLastPlayedTime() {
+        let (model, songs, setlist) = modelWithSetlist()
+        #expect(model.lastPlayed.isEmpty)
+        clock.advance()
+        model.loadSong(songs[1].id, from: nil)
+        #expect(model.lastPlayed == [songs[1].id: clock.now()])
+        clock.advance()
+        model.loadSong(songs[2].id, from: setlist)
+        #expect(model.lastPlayed[songs[2].id] == clock.now())
+    }
+
+    @Test func previousAndNextSetTheLastPlayedTime() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
+        clock.advance()
+        model.goToNext()
+        #expect(model.lastPlayed[songs[1].id] == clock.now())
+        clock.advance()
+        model.goToPrevious()
+        #expect(model.lastPlayed[songs[0].id] == clock.now())
+    }
+
+    @Test func tappingTheLoadedSongAgainKeepsItsTime() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
+        let loadedAt = clock.now()
+        clock.advance()
+        model.loadSong(songs[1].id, from: setlist)
+        model.loadSong(songs[1].id, from: nil)
+        #expect(model.lastPlayed == [songs[1].id: loadedAt])
+    }
+
+    @Test func saveAsNewSongAndNamingTheSettingsSetTheTime() throws {
+        let model = makeModel()
+        model.setBPM(132)
+        clock.advance()
+        let named = try #require(model.createSong(name: "Named", settings: model.settings, addingTo: nil))
+        #expect(model.loadedSong?.id == named.id)
+        #expect(model.lastPlayed[named.id] == clock.now())
+        clock.advance()
+        let made = try #require(model.saveAsNewSong(name: "Copy", settings: model.settings))
+        #expect(model.lastPlayed[made.id] == clock.now())
+        clock.advance()
+        let other = try #require(model.createSong(name: "Other", settings: model.settings, addingTo: nil))
+        #expect(model.loadedSong?.id == made.id)
+        #expect(model.lastPlayed[other.id] == nil)
+    }
+
+    @Test func restoringTheLoadedSongAtLaunchSetsNoTime() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
+        clock.advance()
+        let relaunched = makeModel()
+        #expect(relaunched.loadedSong?.id == songs[1].id)
+        #expect(relaunched.lastPlayed == model.lastPlayed)
+    }
+
+    @Test func deletingASongDropsItsLastPlayedTime() {
+        let (model, songs, _) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: nil)
+        clock.advance()
+        model.loadSong(songs[0].id, from: nil)
+        model.deleteSong(songs[1].id)
+        #expect(model.lastPlayed == [songs[0].id: clock.now()])
+        #expect(makeModel().lastPlayed == model.lastPlayed)
+    }
+
+    @Test func theChosenOrdersAreRemembered() {
+        let model = makeModel()
+        #expect(model.songOrder == .name)
+        #expect(model.setlistOrder == .recentlyUsed)
+        model.songOrder = .recentlyAdded
+        model.setlistOrder = .name
+        let relaunched = makeModel()
+        #expect(relaunched.songOrder == .recentlyAdded)
+        #expect(relaunched.setlistOrder == .name)
+    }
+
+    @Test func orderedSongsFollowTheChosenOrder() {
+        let (model, songs, _) = modelWithSetlist()
+        model.createSong(name: "Zed", settings: settings(130), addingTo: nil)
+        #expect(model.orderedSongs.map(\.name) == ["Fast", "Mid", "Slow", "Zed"])
+        model.songOrder = .recentlyAdded
+        #expect(model.orderedSongs.map(\.name) == ["Zed", "Fast", "Mid", "Slow"])
+        model.loadSong(songs[2].id, from: nil)
+        clock.advance()
+        model.loadSong(songs[1].id, from: nil)
+        model.songOrder = .recentlyPlayed
+        #expect(model.orderedSongs.map(\.name) == ["Mid", "Fast", "Slow", "Zed"])
+    }
+
+    @Test func orderedSetlistsFollowTheChosenOrder() {
+        let model = makeModel()
+        let beta = model.createSetlist()
+        model.renameSetlist(beta, to: "beta")
+        clock.advance()
+        let alpha = model.createSetlist()
+        model.renameSetlist(alpha, to: "Alpha")
+        #expect(model.orderedSetlists.map(\.name) == ["Alpha", "beta"])
+        clock.advance()
+        model.selectFilter(beta)
+        #expect(model.orderedSetlists.map(\.name) == ["beta", "Alpha"])
+        model.setlistOrder = .name
+        #expect(model.orderedSetlists.map(\.name) == ["Alpha", "beta"])
     }
 }

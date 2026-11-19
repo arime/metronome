@@ -112,6 +112,32 @@ struct SyncModelTests {
         #expect(b.model.isEdited == false)
     }
 
+    @Test func lastPlayedTimesAndOrdersStayOnTheDevice() throws {
+        let (a, b, song) = twoDevicesSharingASong()
+        clock.advance()
+        let other = try #require(a.model.createSong(name: "Other", settings: settings(90), addingTo: nil))
+        cloud.send(.changed, toDevice: 1)
+        b.model.loadSong(song.id, from: nil)
+        clock.advance()
+        b.model.loadSong(other.id, from: nil)
+        let bLoadedOther = clock.now()
+        b.model.songOrder = .recentlyPlayed
+        b.model.setlistOrder = .name
+
+        clock.advance()
+        a.model.loadSong(other.id, from: nil)
+        a.model.deleteSong(song.id)
+        cloud.send(.changed, toDevice: 1)
+
+        #expect(b.model.library.song(id: song.id) == nil)
+        #expect(b.model.lastPlayed == [other.id: bLoadedOther])
+        #expect(b.model.songOrder == .recentlyPlayed)
+        #expect(b.model.setlistOrder == .name)
+        #expect(a.model.lastPlayed == [other.id: clock.now()])
+        #expect(a.model.songOrder == .name)
+        #expect(a.model.setlistOrder == .recentlyUsed)
+    }
+
     @Test func anArrivedNameShowsInTheHeaderAtOnce() {
         let (a, b, song) = twoDevicesSharingASong()
         b.model.loadSong(song.id, from: nil)

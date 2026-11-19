@@ -48,6 +48,19 @@ final class MetronomeModel {
     private(set) var loadedFromSetlistID: UUID?
     /// What the library sheet shows; nil means all songs.
     private(set) var selectedSetlistID: UUID?
+    /// When each song last became the loaded song on this device. Not synced.
+    private(set) var lastPlayed: [UUID: Date]
+    /// The Songs tab's order, remembered on this device. Saved directly, not through
+    /// `persistLibrary()`, as the library does not change and nothing goes to iCloud.
+    var songOrder: SongOrder {
+        didSet { if songOrder != oldValue { libraryStore.save(currentLibraryState) } }
+    }
+    /// The Setlists tab's order, remembered on this device.
+    var setlistOrder: SetlistOrder {
+        didSet { if setlistOrder != oldValue { libraryStore.save(currentLibraryState) } }
+    }
+    var orderedSongs: [Song] { library.songs(orderedBy: songOrder, lastPlayed: lastPlayed) }
+    var orderedSetlists: [Setlist] { library.setlists(orderedBy: setlistOrder) }
 
     /// True while sync with iCloud is switched on.
     private(set) var syncEnabled = false
@@ -97,6 +110,9 @@ final class MetronomeModel {
         loadedSongID = state.loadedSongID
         loadedFromSetlistID = state.loadedFromSetlistID
         selectedSetlistID = state.selectedSetlistID
+        lastPlayed = state.lastPlayed
+        songOrder = state.songOrder
+        setlistOrder = state.setlistOrder
         engine.onBeat = { [weak self] beat in self?.beatSounded(beat) }
         engine.onStopped = { [weak self] in self?.engineStopped() }
         engine.onTrackEnded = { [weak self] in self?.trackEnded() }
@@ -774,6 +790,7 @@ final class MetronomeModel {
         if isAnotherSong {
             loadedTrackReplaced(replacing: old)
             apply(song.settings)
+            markPlayed(id)
         }
         persistLibrary()
         haptics?.selection()
@@ -864,8 +881,14 @@ final class MetronomeModel {
         loadedFromSetlistID = setlistID
         loadedTrackReplaced(replacing: old)
         apply(song.settings)
+        markPlayed(song.id)
         persistLibrary()
         return song
+    }
+
+    /// For a song that has just become the loaded one. Not for restoring or combining a state.
+    private func markPlayed(_ id: UUID) {
+        lastPlayed[id] = now()
     }
 
     // MARK: - The library
@@ -898,6 +921,7 @@ final class MetronomeModel {
             loadedFromSetlistID = members.contains(song.id) ? setlistID : nil
             if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: moment) }
             loadedTrackReplaced(replacing: nil)
+            markPlayed(song.id)
         }
         persistLibrary()
         return song
@@ -1007,6 +1031,7 @@ final class MetronomeModel {
         if isLoaded, isPlayingTrack { stop() }
         let old = loadedTrack
         library.deleteSong(id, now: now())
+        lastPlayed[id] = nil
         if isLoaded {
             loadedSongID = nil
             loadedFromSetlistID = nil
@@ -1169,7 +1194,10 @@ final class MetronomeModel {
             library: library,
             loadedSongID: loadedSongID,
             loadedFromSetlistID: loadedFromSetlistID,
-            selectedSetlistID: selectedSetlistID
+            selectedSetlistID: selectedSetlistID,
+            lastPlayed: lastPlayed,
+            songOrder: songOrder,
+            setlistOrder: setlistOrder
         )
     }
 
@@ -1216,6 +1244,8 @@ final class MetronomeModel {
         loadedSongID = state.loadedSongID
         loadedFromSetlistID = state.loadedFromSetlistID
         selectedSetlistID = state.selectedSetlistID
+        // This device's own: the orders stay, and only times for songs that went are dropped.
+        lastPlayed = state.lastPlayed
         if loadedTrack != trackBefore { loadedTrackArrived(replacing: trackBefore) }
         libraryStore.save(state)
         trackFiles.removeAll(except: library.referencedFileIDs)

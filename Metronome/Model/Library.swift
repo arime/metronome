@@ -12,10 +12,21 @@ extension Song {
     /// True when the name contains the query, ignoring case, accents and the spaces at the
     /// query's ends. A query with nothing else in it matches every song.
     func matches(search query: String) -> Bool {
-        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return true }
-        return name.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        nameMatches(name, search: query)
     }
+}
+
+extension Setlist {
+    /// The same rule as `Song.matches(search:)`.
+    func matches(search query: String) -> Bool {
+        nameMatches(name, search: query)
+    }
+}
+
+private func nameMatches(_ name: String, search query: String) -> Bool {
+    let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !query.isEmpty else { return true }
+    return name.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
 }
 
 /// A named, ordered selection of songs. It refers to songs; it does not own them.
@@ -118,12 +129,17 @@ struct Library: Codable, Equatable, Sendable {
     /// A–Z ignoring case; songs with the same name keep their order of creation.
     var sortedSongs: [Song] {
         songs.enumerated().sorted { first, second in
-            switch first.element.name.localizedCaseInsensitiveCompare(second.element.name) {
-            case .orderedAscending: true
-            case .orderedDescending: false
-            case .orderedSame: first.offset < second.offset
-            }
+            Self.inNameOrder(first.element.name, second.element.name) { first.offset < second.offset }
         }.map(\.element)
+    }
+
+    /// A–Z ignoring case, by the phone's language rules; `tie` decides between equal names.
+    static func inNameOrder(_ first: String, _ second: String, tie: () -> Bool) -> Bool {
+        switch first.localizedCaseInsensitiveCompare(second) {
+        case .orderedAscending: true
+        case .orderedDescending: false
+        case .orderedSame: tie()
+        }
     }
 
     /// The setlist's songs in the setlist's order.

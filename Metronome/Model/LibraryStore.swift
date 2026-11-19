@@ -8,6 +8,10 @@ struct LibraryState: Codable, Equatable, Sendable {
     var loadedFromSetlistID: UUID?
     /// What the library sheet shows; nil means all songs.
     var selectedSetlistID: UUID?
+    /// When each song last became the loaded song on this device (8.6).
+    var lastPlayed: [UUID: Date] = [:]
+    var songOrder = SongOrder.name
+    var setlistOrder = SetlistOrder.recentlyUsed
 
     /// Drops anything that points at a song or setlist that is no longer there.
     func sanitized() -> LibraryState {
@@ -16,6 +20,7 @@ struct LibraryState: Codable, Equatable, Sendable {
         if let id = copy.loadedSongID, copy.library.song(id: id) == nil {
             copy.loadedSongID = nil
         }
+        copy.lastPlayed = lastPlayed.filter { copy.library.song(id: $0.key) != nil }
         if let id = copy.loadedFromSetlistID {
             let members = copy.library.setlist(id: id)?.songIDs ?? []
             if copy.loadedSongID.map(members.contains) != true {
@@ -26,6 +31,26 @@ struct LibraryState: Codable, Equatable, Sendable {
             copy.selectedSetlistID = nil
         }
         return copy
+    }
+}
+
+extension LibraryState {
+    private enum CodingKeys: String, CodingKey {
+        case library, loadedSongID, loadedFromSetlistID, selectedSetlistID, lastPlayed, songOrder, setlistOrder
+    }
+
+    /// A state saved before the last-played times and the orders existed gets the defaults.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            library: try container.decode(Library.self, forKey: .library),
+            loadedSongID: try container.decodeIfPresent(UUID.self, forKey: .loadedSongID),
+            loadedFromSetlistID: try container.decodeIfPresent(UUID.self, forKey: .loadedFromSetlistID),
+            selectedSetlistID: try container.decodeIfPresent(UUID.self, forKey: .selectedSetlistID),
+            lastPlayed: try container.decodeIfPresent([UUID: Date].self, forKey: .lastPlayed) ?? [:],
+            songOrder: try container.decodeIfPresent(SongOrder.self, forKey: .songOrder) ?? .name,
+            setlistOrder: try container.decodeIfPresent(SetlistOrder.self, forKey: .setlistOrder) ?? .recentlyUsed
+        )
     }
 }
 

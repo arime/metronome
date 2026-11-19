@@ -89,6 +89,51 @@ struct LibraryStoreTests {
         #expect(deleted.songs.isEmpty)
     }
 
+    // Review Focus 1
+    @Test func aStateSavedWithoutTheNewValuesStillLoads() throws {
+        var state = LibraryState()
+        let song = state.library.addSong(name: "One", settings: MetronomeSettings(), now: t(0))!
+        let gig = state.library.addSetlist(name: "Gig", now: t(1))
+        state.library.add(song.id, toSetlist: gig.id, now: t(2))
+        state.lastPlayed = [song.id: t(3)]
+        state.songOrder = .recentlyPlayed
+        state.setlistOrder = .name
+        var object = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any]
+        )
+        for key in ["lastPlayed", "songOrder", "setlistOrder"] {
+            #expect(object.removeValue(forKey: key) != nil)
+        }
+        defaults.set(try JSONSerialization.data(withJSONObject: object), forKey: "metronome.library.v2")
+        let loaded = store.load()
+        #expect(loaded.library.song(id: song.id)?.name == "One")
+        #expect(loaded.library.setlist(id: gig.id)?.songIDs == [song.id])
+        #expect(loaded.lastPlayed.isEmpty)
+        #expect(loaded.songOrder == .name)
+        #expect(loaded.setlistOrder == .recentlyUsed)
+    }
+
+    @Test func theNewValuesSurviveSavingAndLoading() {
+        var state = LibraryState()
+        let song = state.library.addSong(name: "One", settings: MetronomeSettings(), now: t(0))!
+        state.lastPlayed = [song.id: t(5)]
+        state.songOrder = .recentlyPlayed
+        state.setlistOrder = .name
+        store.save(state)
+        let loaded = store.load()
+        #expect(loaded == state)
+        #expect(loaded.lastPlayed == [song.id: t(5)])
+    }
+
+    @Test func aLastPlayedTimeForAMissingSongIsDropped() {
+        var state = LibraryState()
+        let kept = state.library.addSong(name: "Kept", settings: MetronomeSettings(), now: t(0))!
+        let deleted = state.library.addSong(name: "Deleted", settings: MetronomeSettings(), now: t(1))!
+        state.library.deleteSong(deleted.id, now: t(2))
+        state.lastPlayed = [kept.id: t(3), deleted.id: t(4), UUID(): t(5)]
+        #expect(state.sanitized().lastPlayed == [kept.id: t(3)])
+    }
+
     @Test func theNewFormatRoundTripsAndWinsOverTheOldKey() {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         defaults.set(Data("not json".utf8), forKey: "metronome.library.v1")
