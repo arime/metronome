@@ -1112,40 +1112,66 @@ final class MetronomeModel {
         persistLibrary()
     }
 
-    /// What is needed to put a song back where it was in a setlist.
+    /// What is needed to put songs back where they were in a setlist (8.5).
     struct SetlistRemoval: Equatable {
-        let songID: UUID
-        let songName: String
+        /// The removed songs, in the setlist's order.
+        let songIDs: [UUID]
+        let firstSongName: String
         let setlistID: UUID
         /// The setlist's order just before the removal.
         let order: [UUID]
-        /// True when the song was the loaded one, loaded from this setlist.
-        let wasLoadedFromIt: Bool
+        /// The loaded song, when it was among them and loaded from this setlist.
+        let loadedSongID: UUID?
+
+        /// The Undo bar's text: `Removed <song name>` for one song, `Removed 3 songs` for several.
+        var text: String {
+            songIDs.count == 1 ? "Removed \(firstSongName)" : "Removed \(songIDs.count) songs"
+        }
     }
 
     /// Takes the song out of the setlist and returns what `undo` needs to put it back;
     /// nil when it was not in the setlist.
     @discardableResult
     func removeSong(_ songID: UUID, fromSetlist setlistID: UUID) -> SetlistRemoval? {
-        guard let setlist = library.setlist(id: setlistID), setlist.songIDs.contains(songID),
-              let song = library.song(id: songID)
-        else { return nil }
+        removeSongs([songID], fromSetlist: setlistID)
+    }
+
+    /// Takes those of the songs that are in the setlist out of it, saves once, and returns
+    /// what `undo` needs to put them back; nil when none of them is in it. A removed loaded
+    /// song loaded from this setlist stays loaded on its own.
+    @discardableResult
+    func removeSongs(_ songIDs: [UUID], fromSetlist setlistID: UUID) -> SetlistRemoval? {
+        guard let setlist = library.setlist(id: setlistID) else { return nil }
+        let asked = Set(songIDs)
+        let removed = setlist.songIDs.filter(asked.contains)
+        guard let first = removed.first, let firstSong = library.song(id: first) else { return nil }
+        let loadedRemoved: UUID? =
+            if let loaded = loadedSongID, removed.contains(loaded), loadedFromSetlistID == setlistID {
+                loaded
+            } else {
+                nil
+            }
         let removal = SetlistRemoval(
-            songID: songID, songName: song.name, setlistID: setlistID, order: setlist.songIDs,
-            wasLoadedFromIt: loadedSongID == songID && loadedFromSetlistID == setlistID
+            songIDs: removed, firstSongName: firstSong.name, setlistID: setlistID,
+            order: setlist.songIDs, loadedSongID: loadedRemoved
         )
-        setSong(songID, inSetlist: setlistID, included: false)
+        let moment = now()
+        for id in removed { library.remove(id, fromSetlist: setlistID, now: moment) }
+        if loadedRemoved != nil { loadedFromSetlistID = nil }
+        persistLibrary()
         return removal
     }
 
-    /// Puts a removed song back in its place. If the setlist has changed since, the song
-    /// goes back at the end. Does nothing when the song or the setlist is gone.
+    /// Puts removed songs back in their places. If the setlist has changed since, they go
+    /// back at the end in the order they had. A song deleted from the library meanwhile does
+    /// not come back; nothing happens when none is left or the setlist is gone.
     func undo(_ removal: SetlistRemoval) {
-        guard library.song(id: removal.songID) != nil, library.setlist(id: removal.setlistID) != nil else { return }
+        let songIDs = removal.songIDs.filter { library.song(id: $0) != nil }
+        guard !songIDs.isEmpty, library.setlist(id: removal.setlistID) != nil else { return }
         let moment = now()
-        library.add(removal.songID, toSetlist: removal.setlistID, now: moment)
+        for id in songIDs { library.add(id, toSetlist: removal.setlistID, now: moment) }
         library.reorder(setlist: removal.setlistID, to: removal.order, now: moment)
-        if removal.wasLoadedFromIt, loadedSongID == removal.songID, loadedFromSetlistID == nil {
+        if let loaded = removal.loadedSongID, loadedSongID == loaded, loadedFromSetlistID == nil {
             loadedFromSetlistID = removal.setlistID
         }
         persistLibrary()

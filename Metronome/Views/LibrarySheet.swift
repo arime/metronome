@@ -81,7 +81,7 @@ struct LibrarySheet: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .overlay(alignment: .bottom) {
             if let removal {
-                UndoBar(text: "Removed \(removal.songName)") {
+                UndoBar(text: removal.text) {
                     model.undo(removal)
                     self.removal = nil
                 }

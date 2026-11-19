@@ -167,7 +167,7 @@ struct SongModelTests {
     @Test func removingASongFromASetlistCanBeUndoneInPlace() {
         let (model, songs, setlist) = modelWithSetlist()
         let removal = model.removeSong(songs[1].id, fromSetlist: setlist)
-        #expect(removal?.songName == "Mid")
+        #expect(removal?.text == "Removed Mid")
         #expect(model.library.songs(inSetlist: setlist).map(\.name) == ["Slow", "Fast"])
         model.undo(removal!)
         #expect(model.library.songs(inSetlist: setlist).map(\.name) == ["Slow", "Mid", "Fast"])
@@ -195,6 +195,92 @@ struct SongModelTests {
         let (model, _, setlist) = modelWithSetlist()
         let other = model.createSong(name: "Other", settings: settings(70), addingTo: nil)!
         #expect(model.removeSong(other.id, fromSetlist: setlist) == nil)
+    }
+
+    @Test func removingSeveralSongsCanBeUndoneInPlace() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        let removal = try #require(model.removeSongs([songs[2].id, songs[0].id], fromSetlist: setlist))
+        #expect(model.library.songs(inSetlist: setlist).map(\.name) == ["Mid"])
+        #expect(removal.songIDs == [songs[0].id, songs[2].id])
+        #expect(removal.text == "Removed 2 songs")
+        model.undo(removal)
+        #expect(model.library.songs(inSetlist: setlist).map(\.name) == ["Slow", "Mid", "Fast"])
+    }
+
+    @Test func removingSongsNotInTheSetlistGivesNothingToUndo() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        let other = model.createSong(name: "Other", settings: settings(70), addingTo: nil)!
+        #expect(model.removeSongs([other.id], fromSetlist: setlist) == nil)
+        let removal = try #require(model.removeSongs([other.id, songs[1].id], fromSetlist: setlist))
+        #expect(removal.songIDs == [songs[1].id])
+        #expect(removal.text == "Removed Mid")
+    }
+
+    @Test func removingSeveralKeepsTheLoadedSongLoadedOnItsOwn() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
+        let removal = try #require(model.removeSongs([songs[0].id, songs[1].id], fromSetlist: setlist))
+        #expect(removal.loadedSongID == songs[1].id)
+        #expect(model.loadedSong?.id == songs[1].id)
+        #expect(model.loadedFromSetlistID == nil)
+        #expect(model.position == nil)
+        #expect(model.headerSubtitle == nil)
+    }
+
+    @Test func undoingSeveralBringsBackTheLoadedSongsPlace() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
+        let removal = try #require(model.removeSongs([songs[0].id, songs[1].id], fromSetlist: setlist))
+        model.undo(removal)
+        #expect(model.loadedFromSetlistID == setlist)
+        #expect(model.position?.index == 1)
+        #expect(model.position?.count == 3)
+    }
+
+    @Test func removingSeveralWithoutTheLoadedSongLeavesItsSetlist() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
+        let removal = try #require(model.removeSongs([songs[0].id, songs[2].id], fromSetlist: setlist))
+        #expect(model.loadedFromSetlistID == setlist)
+        #expect(removal.loadedSongID == nil)
+        #expect(model.position?.index == 0)
+        #expect(model.position?.count == 1)
+    }
+
+    @Test func undoingSeveralAfterTheSetlistChangedPutsThemAtTheEnd() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        let removal = try #require(model.removeSongs([songs[0].id, songs[1].id], fromSetlist: setlist))
+        model.createSong(name: "New", settings: settings(130), addingTo: setlist)
+        model.undo(removal)
+        #expect(model.library.songs(inSetlist: setlist).map(\.name) == ["Fast", "New", "Slow", "Mid"])
+    }
+
+    @Test func undoingSeveralSkipsASongDeletedMeanwhile() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        let removal = try #require(model.removeSongs([songs[0].id, songs[1].id], fromSetlist: setlist))
+        model.deleteSong(songs[0].id)
+        model.undo(removal)
+        #expect(model.library.songs(inSetlist: setlist).map(\.name) == ["Fast", "Mid"])
+    }
+
+    @Test func undoingWhenEverySongIsGoneDoesNothing() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        let removal = try #require(model.removeSongs([songs[0].id, songs[1].id], fromSetlist: setlist))
+        model.deleteSongs([songs[0].id, songs[1].id])
+        let before = model.library
+        model.undo(removal)
+        #expect(model.library == before)
+    }
+
+    @Test func numbersFollowTheSetlistAfterARemoval() {
+        let model = makeModel()
+        let songs = ["A", "B", "C", "D"].map { model.createSong(name: $0, settings: settings(100), addingTo: nil)! }
+        let setlist = model.createSetlist()
+        model.addSongs(songs.map(\.id), toSetlist: setlist)
+        model.removeSong(songs[1].id, fromSetlist: setlist)
+        let rows = SetlistSearch.rows(model.library.songs(inSetlist: setlist), matching: "d")
+        #expect(rows.map(\.number) == [3])
+        #expect(rows.map(\.song.name) == ["D"])
     }
 
     @Test func theLibraryShowsTheSetlistTheLoadedSongCameFrom() {
