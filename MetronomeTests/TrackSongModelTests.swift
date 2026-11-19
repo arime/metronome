@@ -144,8 +144,34 @@ struct TrackSongModelTests {
         model.loadSong(setup.other.id, from: setup.setlist)
         #expect(model.trackLength == 200)
         model.seekTrack(to: 50)
-        model.loadSong(setup.other.id, from: setup.setlist)
+        model.loadSong(setup.song.id, from: setup.setlist)
         #expect(model.trackPosition == 0)
+    }
+
+    @Test func selectingTheLoadedSongKeepsTheTrackPlaying() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        #expect(model.backingTracksOn)
+        #expect(model.isTrackPlayable)
+        model.seekTrack(to: 30)
+        model.togglePlayback()
+        engine.trackTime = 40
+        model.loadSong(setup.song.id, from: setup.setlist)
+        #expect(model.isPlaying)
+        #expect(model.isPlayingTrack)
+        #expect(engine.stopCount == 0)
+        #expect(engine.startCount == 1)
+        #expect(model.trackPosition == 30)
+        #expect(model.trackTime == 40)
+    }
+
+    @Test func selectingTheLoadedSongWhileStoppedKeepsThePosition() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.seekTrack(to: 30)
+        model.loadSong(setup.song.id, from: setup.setlist)
+        #expect(model.isPlaying == false)
+        #expect(model.trackPosition == 30)
     }
 
     @Test func unloadStopsOnlyAPlayingTrack() throws {

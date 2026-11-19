@@ -523,6 +523,64 @@ struct SongModelTests {
         #expect(model.isEdited == false)
     }
 
+    @Test func selectingTheLoadedSongKeepsUnsavedEdits() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        model.setBPM(96)
+        let edited = model.settings
+        model.loadSong(song.id, from: nil)
+        #expect(model.loadedSong?.id == song.id)
+        #expect(model.settings == edited)
+        #expect(model.isEdited)
+        #expect(model.library.song(id: song.id)?.settings == song.settings)
+    }
+
+    @Test func selectingTheLoadedSongWhilePlayingStartsNoNewBar() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90, .threeFour), addingTo: nil)!
+        model.loadSong(song.id, from: nil, start: true)
+        model.setBPM(96)
+        engine.lastUpdate = nil
+        engine.lastUpdateStartedNewBar = nil
+        model.loadSong(song.id, from: nil, start: true)
+        #expect(model.isPlaying)
+        #expect(engine.startCount == 1)
+        #expect(engine.stopCount == 0)
+        #expect(engine.lastUpdate == nil)
+        #expect(engine.lastUpdateStartedNewBar == nil)
+        #expect(model.settings.bpm == 96)
+    }
+
+    @Test func selectingTheLoadedSongInASetlistLoadsItFromThatSetlist() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: nil)
+        #expect(model.loadedFromSetlistID == nil)
+        model.setBPM(104)
+        let edited = model.settings
+        model.loadSong(songs[1].id, from: setlist)
+        #expect(model.loadedSong?.id == songs[1].id)
+        #expect(model.loadedFromSetlistID == setlist)
+        #expect(model.position?.index == 1)
+        #expect(model.position?.count == 3)
+        #expect(model.settings == edited)
+        #expect(model.isEdited)
+    }
+
+    @Test func selectingTheLoadedSongOnTheSongsTabKeepsItsSetlist() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[2].id, from: setlist)
+        model.setBPM(170)
+        let edited = model.settings
+        model.loadSong(songs[2].id, from: nil)
+        #expect(model.loadedSong?.id == songs[2].id)
+        #expect(model.loadedFromSetlistID == setlist)
+        #expect(model.position?.index == 2)
+        #expect(model.position?.count == 3)
+        #expect(model.settings == edited)
+        #expect(model.isEdited)
+    }
+
     @Test func saveAsNewSongLoadsTheNewOne() {
         let (model, songs, setlist) = modelWithSetlist()
         model.loadSong(songs[0].id, from: setlist)

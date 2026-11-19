@@ -489,6 +489,7 @@ All four ways of setting the tempo work when stopped and when playing. They are 
 - When playing, it keeps playing: the next beat is beat 1 of a new bar with the new settings. With Backing tracks on, when the song being left or the song being loaded has a playable backing track, playback stops instead (7.10).
 - Loading a song never changes the Backing tracks switch (7.12).
 - The loaded song's backing track, if it has one, is at 0:00.
+- Tapping the loaded song's own row in the library is not a load. Nothing on the metronome changes, playing or stopped: playback carries on without a new bar, the track keeps its position, the tempo, time signature and accents stay as they are, and unsaved edits are kept; Revert is how they are dropped. Only the loaded-from setlist follows the tap, by the same rule as a load (8.2, 8.3).
 
 **Tapping the title** always opens the library sheet (section 8), edited or not. Unsaved edits are kept while the library is open.
 
@@ -629,7 +630,7 @@ Every rule that stops playback when a song with a backing track is loaded, unloa
 
 **Changing songs.**
 
-- Loading a song from the library or with Previous / Next stops playback when the song being left or the song being loaded has a playable backing track, and the loaded song is at 0:00. Between two songs without playable backing tracks 7.6 holds and playback carries on.
+- Loading a song from the library or with Previous / Next stops playback when the song being left or the song being loaded has a playable backing track, and the loaded song is at 0:00. Between two songs without playable backing tracks 7.6 holds and playback carries on. Tapping the loaded song's own row is not a load (7.6), so playback carries on and the position is kept.
 - Unload (7.6) stops playback when the loaded song's track is playable and playing. The settings stay as plain settings, with the metronome's tempo, not the track's, and the screen goes back to the plain layout without the switch.
 - When the loaded song's backing track is attached or replaced with Edit song (10.2), or a file is picked for a missing one there or with `Choose file` on the player card (6.12), playback stops if it is playing and the position is 0:00, as the track can then play: once the sheet is saved, or at once from the card. Removing a playable backing track does the same; removing one whose file is missing does not stop playback.
 - With Backing tracks off, none of these stop playback, and attaching, replacing or removing a track changes nothing on the metronome screen but the switch appearing or going away. Attaching or replacing a track, or picking a file for a missing one, still sets the position to 0:00.
@@ -718,7 +719,7 @@ There is no Edit button and no separate edit mode: everything that changes a set
 - Then every song (or every song the search finds), sorted by name A–Z, ignoring case and following the phone's language rules. Songs with the same name keep their order of creation.
 - Each row shows the name (17 pt), and below it the song's tempo and time signature, for example `120 BPM · 4/4`; a backing track's own tempo is not shown. A song with a backing track has a mark, a 13 pt music-note in muted, 5 pt after its time signature on the same line, whether or not the file is on this device; on the loaded song's row `· loaded` follows the mark; the mark is the same in a setlist (8.3) and on the Add song screen (9.3). At the right is the **menu button**: a 40 pt round surface-raised button with a dial-white ⋯ (8.4).
 - The loaded song's row is marked: an amber name and `· loaded` after its details.
-- **Tapping a row** loads the song and closes the sheet. It does not start the metronome; Start is under the thumb when the sheet has closed. If the metronome is already playing, it keeps playing with the new song, unless Backing tracks is on and either song has a playable backing track (7.10).
+- **Tapping a row** loads the song and closes the sheet. It does not start the metronome; Start is under the thumb when the sheet has closed. If the metronome is already playing, it keeps playing with the new song, unless Backing tracks is on and either song has a playable backing track (7.10). The loaded song's own row closes the sheet and changes nothing on the metronome, playing or stopped, unsaved edits included (7.6).
 - A song loaded from this view keeps the setlist that was being stepped through when it is in that setlist, so the header still shows its position and Previous / Next stay. A song that is not in that setlist, or one loaded while no setlist was being stepped through, has no loaded-from setlist, and Previous / Next are hidden.
 - **Swiping a row left** reveals **Edit** and **Delete**, as a shortcut to the same items in the row's menu.
 - Empty library: centred, `No songs yet` (17 pt, semibold, dial white) and a large amber **New song** button (48 pt tall). While the library is empty the header has no New song button; it is in the middle instead.
@@ -996,6 +997,7 @@ Songs and setlists:
 - [x] Naming the current settings while nothing is loaded loads the new song, from the setlist it was added to; in other cases a new song from the library is not loaded. *(Unit tested.)*
 - [ ] The next-up line names the song Next would load, says so at the last song, and is left out when it would push the dial below 200 pt. *(The song and the layout rule are unit tested, and the line was seen in the simulator. The last song and a small phone were not seen on screen.)*
 - [x] Opening the library keeps unsaved edits; loading another song drops them.
+- [x] Tapping the loaded song's own row changes nothing on the metronome, playing or stopped: no new bar and no stop, the track keeps its position, and the settings and unsaved edits are kept; only the loaded-from setlist follows the tap, from the setlist's view or the Songs tab. *(Unit tested: selectingTheLoadedSongKeepsUnsavedEdits, selectingTheLoadedSongWhilePlayingStartsNoNewBar, selectingTheLoadedSongInASetlistLoadsItFromThatSetlist, selectingTheLoadedSongOnTheSongsTabKeepsItsSetlist, selectingTheLoadedSongKeepsTheTrackPlaying and selectingTheLoadedSongWhileStoppedKeepsThePosition.)*
 - [x] A setlist can be created, renamed, duplicated and deleted; deleting it leaves its songs in the library.
 - [x] Songs can be added to a setlist, removed from it and reordered; the order is kept.
 - [x] A new song can be created from inside a setlist and lands in that setlist.
