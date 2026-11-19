@@ -456,7 +456,7 @@ struct TrackSongModelTests {
         let library = model.library
         #expect(model.backingTracksOn)
         #expect(model.isTrackMissing)
-        #expect(model.chooseFileForLoadedTrack(try picked("Song.m4a", offset: 99)))
+        #expect(model.chooseFileForLoadedTrack(try picked("Song.m4a", offset: 99), for: try #require(setup.song.track?.fileID)))
         #expect(model.isTrackMissing == false)
         #expect(model.isTrackPlayable)
         #expect(model.trackPosition == 0)
@@ -470,7 +470,7 @@ struct TrackSongModelTests {
         let setup = try makeModel(missing: true)
         let model = setup.model
         let old = try #require(setup.song.track)
-        #expect(model.chooseFileForLoadedTrack(try picked(offset: 99)))
+        #expect(model.chooseFileForLoadedTrack(try picked(offset: 99), for: old.fileID))
         let track = try #require(model.loadedTrack)
         #expect(track.fileName == "Take.wav")
         #expect(track.fileID == old.fileID)
@@ -487,7 +487,7 @@ struct TrackSongModelTests {
         let model = setup.model
         model.togglePlayback()
         #expect(model.isPlaying)
-        #expect(model.chooseFileForLoadedTrack(try picked()))
+        #expect(model.chooseFileForLoadedTrack(try picked(), for: try #require(setup.song.track?.fileID)))
         #expect(model.isPlaying == false)
         #expect(engine.stopCount == 1)
         #expect(model.trackPosition == 0)
@@ -497,7 +497,7 @@ struct TrackSongModelTests {
         let setup = try makeModel(missing: true)
         let model = setup.model
         let library = model.library
-        #expect(model.chooseFileForLoadedTrack(unstorable()) == false)
+        #expect(model.chooseFileForLoadedTrack(unstorable(), for: try #require(setup.song.track?.fileID)) == false)
         #expect(model.isTrackMissing)
         #expect(model.loadedTrack?.fileName == "Song.m4a")
         #expect(model.library == library)
@@ -511,7 +511,7 @@ struct TrackSongModelTests {
         let pick = try picked()
         try Data("another".utf8).write(to: pick.url)
         model.togglePlayback()
-        #expect(model.chooseFileForLoadedTrack(pick))
+        #expect(model.chooseFileForLoadedTrack(pick, for: fileID))
         #expect(try Data(contentsOf: try #require(trackFiles.url(for: fileID))) == Data("audio".utf8))
         #expect(model.library == library)
         #expect(model.isPlaying)
@@ -523,10 +523,36 @@ struct TrackSongModelTests {
         model.unloadSong()
         model.togglePlayback()
         let stops = engine.stopCount
-        #expect(model.chooseFileForLoadedTrack(pick))
+        #expect(model.chooseFileForLoadedTrack(pick, for: fileID))
         #expect(model.library == library)
         #expect(model.isPlaying)
         #expect(engine.stopCount == stops)
+    }
+
+    @Test func choosingAFileForAnotherTrackDoesNothing() throws {
+        let moment = Date()
+        var library = Library()
+        let firstTrack = try bench.makeTrack(missing: true)
+        let secondTrack = try bench.makeTrack(missing: true)
+        let added = [
+            library.addSong(name: "First", settings: MetronomeSettings(), track: firstTrack, now: moment),
+            library.addSong(name: "Second", settings: MetronomeSettings(), track: secondTrack, now: moment),
+        ]
+        let first = try #require(added[0])
+        let second = try #require(added[1])
+        bench.libraryStore.save(LibraryState(library: library, loadedSongID: first.id))
+        let model = bench.relaunch()
+        // The pill was tapped for the first song's track; the second song is loaded while the file is read.
+        let fileID = try #require(model.loadedTrack?.fileID)
+        #expect(fileID == firstTrack.fileID)
+        model.loadSong(second.id, from: nil)
+        let loaded = model.library
+        #expect(model.chooseFileForLoadedTrack(try picked(), for: fileID))
+        #expect(model.isTrackMissing)
+        #expect(model.loadedTrack?.fileName == "Song.m4a")
+        #expect(model.library == loaded)
+        #expect(trackFiles.hasFile(firstTrack.fileID) == false)
+        #expect(trackFiles.hasFile(secondTrack.fileID) == false)
     }
 
     // MARK: - Sync mode

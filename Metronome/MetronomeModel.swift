@@ -972,11 +972,17 @@ final class MetronomeModel {
     /// song's settings are not touched, so it does not become edited. With Backing tracks on,
     /// playback stops; either way the position goes to 0:00 (7.10).
     ///
+    /// `fileID` is the identifier of the track the file was chosen for, so a pick still being read
+    /// when another song is loaded is never stored on that song's track.
+    ///
     /// Returns false only when the file cannot be stored; then nothing changes. True, doing
-    /// nothing, when no song is loaded, it has no track or its file is on this device.
+    /// nothing, when no song is loaded, it has no track, its track is not the one with `fileID`
+    /// or its file is on this device.
     @discardableResult
-    func chooseFileForLoadedTrack(_ picked: PickedTrack) -> Bool {
-        guard let songID = loadedSongID, let missing = loadedTrack, !trackFiles.hasFile(missing.fileID) else {
+    func chooseFileForLoadedTrack(_ picked: PickedTrack, for fileID: UUID) -> Bool {
+        guard let songID = loadedSongID, let missing = loadedTrack, missing.fileID == fileID,
+              !trackFiles.hasFile(missing.fileID)
+        else {
             return true
         }
         guard let track = storePicked(picked, forMissing: missing) else { return false }

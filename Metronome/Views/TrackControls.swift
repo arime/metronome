@@ -99,7 +99,8 @@ struct PlayerCard: View {
 }
 
 /// A pill at the end of the player card's file-name row: fully rounded on surface raised, as
-/// tall as the row, with a touch area 44 pt tall.
+/// tall as the row, with a touch area 44 pt tall. The touch area reaches 12 pt up into the
+/// card's top padding and 2 pt down, so it stays clear of the progress bar's knob.
 private struct CardPill: View {
     let title: String
     let sidePadding: CGFloat
@@ -115,7 +116,7 @@ private struct CardPill: View {
                 .padding(.horizontal, sidePadding)
                 .frame(height: 30)
                 .background(Theme.surfaceRaised, in: Capsule())
-                .contentShape(Rectangle().inset(by: -7))
+                .contentShape(Rectangle().inset(by: -7).offset(y: -5))
         }
         .buttonStyle(.plain)
     }
@@ -127,13 +128,26 @@ private struct CardPill: View {
 private struct ChooseFilePill: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isPickerShown = false
-    /// The file being copied and read.
+    /// The track the pill was tapped for, taken before the picker opens.
+    @State private var chosenFor: UUID?
+    /// The file being copied and read, for `chosenFor`.
     @State private var pickToRead: URL?
     @State private var isUnplayableShown = false
     @State private var isTrackNotStoredShown = false
 
+    /// The read, tied to the track it is for: another song loaded meanwhile changes it.
+    private struct Read: Equatable {
+        let url: URL
+        let fileID: UUID
+    }
+
+    private var read: Read? {
+        guard let url = pickToRead, let fileID = chosenFor, model.loadedTrack?.fileID == fileID else { return nil }
+        return Read(url: url, fileID: fileID)
+    }
+
     var body: some View {
-        CardPill(title: "Choose file", sidePadding: 12) { isPickerShown = true }
+        CardPill(title: "Choose file", sidePadding: 12, action: openPicker)
             .disabled(pickToRead != nil)
             .fileImporter(isPresented: $isPickerShown, allowedContentTypes: [.audio]) { result in
                 switch result {
@@ -144,13 +158,17 @@ private struct ChooseFilePill: View {
                     if (error as? CocoaError)?.code != .userCancelled { isUnplayableShown = true }
                 }
             }
-            // The pill going away cancels the read; a copy that arrives then is deleted.
-            .task(id: pickToRead) {
-                guard let url = pickToRead,
-                      let result = await PickedFileReader.readInBackground(url) else { return }
+            // The pill going away, or another track loaded, cancels the read; a copy that
+            // arrives then is deleted.
+            .task(id: read) {
+                guard let read else {
+                    pickToRead = nil
+                    return
+                }
+                guard let result = await PickedFileReader.readInBackground(read.url) else { return }
                 switch result {
                 case .success(let picked):
-                    if !model.chooseFileForLoadedTrack(picked) { isTrackNotStoredShown = true }
+                    if !model.chooseFileForLoadedTrack(picked, for: read.fileID) { isTrackNotStoredShown = true }
                     // The model keeps its own copy when it stores the file; nothing is kept for
                     // a retry when it cannot, as the pick is made again from the pill.
                     PickedFileReader.discard(picked)
@@ -165,6 +183,12 @@ private struct ChooseFilePill: View {
             .alert("The track couldn't be saved", isPresented: $isTrackNotStoredShown) {
                 Button("OK", role: .cancel) {}
             }
+    }
+
+    private func openPicker() {
+        guard let fileID = model.loadedTrack?.fileID else { return }
+        chosenFor = fileID
+        isPickerShown = true
     }
 }
 
