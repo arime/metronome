@@ -742,18 +742,21 @@ private struct SongListView: View {
                     )
                     .sheetRow()
                     // The swipe is a shortcut to items of the row's menu: Delete and Edit on the
-                    // Songs tab, Remove from setlist in a setlist (8.3). Select mode has none.
+                    // Songs tab, Remove from setlist and Edit in a setlist (8.3). Remove is
+                    // amber, so it is not taken for Delete. Select mode has none.
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if selection == nil {
                             if let setlist {
+                                // The system draws the title white; a foreground style on
+                                // the label is ignored on iOS 18 and 26.
                                 Button("Remove") { remove(song, from: setlist) }
-                                    .tint(Theme.surfaceSelected)
+                                    .tint(Theme.amber)
                             } else {
                                 Button("Delete") { deleting = song }
                                     .tint(Theme.red)
-                                Button("Edit") { editingSong = song }
-                                    .tint(Theme.surfaceSelected)
                             }
+                            Button("Edit") { editingSong = song }
+                                .tint(Theme.surfaceSelected)
                         }
                     }
                 }
