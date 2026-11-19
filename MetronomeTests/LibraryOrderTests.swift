@@ -117,6 +117,12 @@ struct LibraryOrderTests {
 
     @Test func theOrdersHaveTheirTitles() {
         #expect(SongOrder.allCases.map(\.title) == ["Name", "Recently added", "Recently played"])
-        #expect(SetlistOrder.allCases.map(\.title) == ["Recently used", "Name"])
+        #expect(SetlistOrder.allCases.map(\.title) == ["Name", "Recently used"])
+    }
+
+    @Test func aStoredSetlistOrderKeepsItsMeaning() throws {
+        let decoder = JSONDecoder()
+        #expect(try decoder.decode(SetlistOrder.self, from: Data(#""recentlyUsed""#.utf8)) == .recentlyUsed)
+        #expect(try decoder.decode(SetlistOrder.self, from: Data(#""name""#.utf8)) == .name)
     }
 }

@@ -14,13 +14,16 @@ enum SongOrder: String, Codable, CaseIterable, Sendable {
 }
 
 /// The Setlists tab's order, chosen in its menu and remembered on this device (8.6).
+/// The cases are listed in the menu's order, Name first as on the Songs tab. Name is also
+/// the default, set where the order is stored. The stored value is the case's name, so the
+/// cases' order does not change what a stored choice means.
 enum SetlistOrder: String, Codable, CaseIterable, Sendable {
-    case recentlyUsed, name
+    case name, recentlyUsed
 
     var title: String {
         switch self {
-        case .recentlyUsed: "Recently used"
         case .name: "Name"
+        case .recentlyUsed: "Recently used"
         }
     }
 }

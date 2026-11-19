@@ -921,12 +921,12 @@ struct SongModelTests {
     @Test func theChosenOrdersAreRemembered() {
         let model = makeModel()
         #expect(model.songOrder == .name)
-        #expect(model.setlistOrder == .recentlyUsed)
+        #expect(model.setlistOrder == .name)
         model.songOrder = .recentlyAdded
-        model.setlistOrder = .name
+        model.setlistOrder = .recentlyUsed
         let relaunched = makeModel()
         #expect(relaunched.songOrder == .recentlyAdded)
-        #expect(relaunched.setlistOrder == .name)
+        #expect(relaunched.setlistOrder == .recentlyUsed)
     }
 
     @Test func orderedSongsFollowTheChosenOrder() {
@@ -952,6 +952,9 @@ struct SongModelTests {
         #expect(model.orderedSetlists.map(\.name) == ["Alpha", "beta"])
         clock.advance()
         model.selectFilter(beta)
+        // By name unless another order is chosen, so using beta does not move it.
+        #expect(model.orderedSetlists.map(\.name) == ["Alpha", "beta"])
+        model.setlistOrder = .recentlyUsed
         #expect(model.orderedSetlists.map(\.name) == ["beta", "Alpha"])
         model.setlistOrder = .name
         #expect(model.orderedSetlists.map(\.name) == ["Alpha", "beta"])

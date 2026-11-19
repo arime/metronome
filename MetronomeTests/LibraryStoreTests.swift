@@ -97,7 +97,7 @@ struct LibraryStoreTests {
         state.library.add(song.id, toSetlist: gig.id, now: t(2))
         state.lastPlayed = [song.id: t(3)]
         state.songOrder = .recentlyPlayed
-        state.setlistOrder = .name
+        state.setlistOrder = .recentlyUsed
         var object = try #require(
             try JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any]
         )
@@ -110,7 +110,7 @@ struct LibraryStoreTests {
         #expect(loaded.library.setlist(id: gig.id)?.songIDs == [song.id])
         #expect(loaded.lastPlayed.isEmpty)
         #expect(loaded.songOrder == .name)
-        #expect(loaded.setlistOrder == .recentlyUsed)
+        #expect(loaded.setlistOrder == .name)
     }
 
     @Test func theNewValuesSurviveSavingAndLoading() {
@@ -118,10 +118,11 @@ struct LibraryStoreTests {
         let song = state.library.addSong(name: "One", settings: MetronomeSettings(), now: t(0))!
         state.lastPlayed = [song.id: t(5)]
         state.songOrder = .recentlyPlayed
-        state.setlistOrder = .name
+        state.setlistOrder = .recentlyUsed
         store.save(state)
         let loaded = store.load()
         #expect(loaded == state)
+        #expect(loaded.setlistOrder == .recentlyUsed)
         #expect(loaded.lastPlayed == [song.id: t(5)])
     }
 

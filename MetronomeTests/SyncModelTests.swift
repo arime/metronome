@@ -122,7 +122,7 @@ struct SyncModelTests {
         b.model.loadSong(other.id, from: nil)
         let bLoadedOther = clock.now()
         b.model.songOrder = .recentlyPlayed
-        b.model.setlistOrder = .name
+        b.model.setlistOrder = .recentlyUsed
 
         clock.advance()
         a.model.loadSong(other.id, from: nil)
@@ -132,10 +132,10 @@ struct SyncModelTests {
         #expect(b.model.library.song(id: song.id) == nil)
         #expect(b.model.lastPlayed == [other.id: bLoadedOther])
         #expect(b.model.songOrder == .recentlyPlayed)
-        #expect(b.model.setlistOrder == .name)
+        #expect(b.model.setlistOrder == .recentlyUsed)
         #expect(a.model.lastPlayed == [other.id: clock.now()])
         #expect(a.model.songOrder == .name)
-        #expect(a.model.setlistOrder == .recentlyUsed)
+        #expect(a.model.setlistOrder == .name)
     }
 
     @Test func anArrivedNameShowsInTheHeaderAtOnce() {

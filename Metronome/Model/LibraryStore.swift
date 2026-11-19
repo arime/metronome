@@ -11,7 +11,7 @@ struct LibraryState: Codable, Equatable, Sendable {
     /// When each song last became the loaded song on this device (8.6).
     var lastPlayed: [UUID: Date] = [:]
     var songOrder = SongOrder.name
-    var setlistOrder = SetlistOrder.recentlyUsed
+    var setlistOrder = SetlistOrder.name
 
     /// Drops anything that points at a song or setlist that is no longer there.
     func sanitized() -> LibraryState {
@@ -49,7 +49,7 @@ extension LibraryState {
             selectedSetlistID: try container.decodeIfPresent(UUID.self, forKey: .selectedSetlistID),
             lastPlayed: try container.decodeIfPresent([UUID: Date].self, forKey: .lastPlayed) ?? [:],
             songOrder: try container.decodeIfPresent(SongOrder.self, forKey: .songOrder) ?? .name,
-            setlistOrder: try container.decodeIfPresent(SetlistOrder.self, forKey: .setlistOrder) ?? .recentlyUsed
+            setlistOrder: try container.decodeIfPresent(SetlistOrder.self, forKey: .setlistOrder) ?? .name
         )
     }
 }
