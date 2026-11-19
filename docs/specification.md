@@ -10,6 +10,8 @@ The track screen (6.12), with its dial and the player card's Sync pill, and the 
 
 The header, its badge and the header menu (6.1, 7.6) are drawn on the page *Header menu (draft)* of the same file, on the boards *Header menu — Song loaded*, *— Edited (badge)*, *— Menu, edited* and *— Menu, nothing loaded*. The *v1.0* and *Backing tracks (draft)* boards draw the header without the menu button; for the header this page and this document hold.
 
+The library's top-level header with its menu button, the controls line with the + button, the Setlists tab's search, the tab menus and select mode (8.1, 8.2, 8.6, 8.7, 9.1) are drawn on the page *Library menus (draft)* of the same file, on the boards *Songs — menu button and +*, *Songs — menu open*, *Setlists — search, + and menu button* and *Songs — select mode*. The *v1.0* boards draw the top-level header with New song and New setlist buttons, and a setlist's menu button at 36 pt; for these parts this page and this document hold.
+
 ## 1. Summary
 
 A native iOS metronome with one main screen. The user sets a tempo and a time signature, chooses which beats are accented, and presses Start. Each beat produces a click, a visual effect and a haptic tap on the same instant. Everything can be changed while it plays.
@@ -37,9 +39,9 @@ Not included:
 
 - Bar counter, subdivisions, an overall volume control inside the app (the phone's own volume controls set the overall level; see 7.7).
 - Playback with the screen locked or the app in the background.
-- Search other than by song name on the Songs tab (8.2), folders or tags, notes on songs, per-song sounds, importing or exporting songs, and sharing with other people.
+- Search other than by name on the Songs and Setlists tabs (8.2, 9.1), searching or sorting inside a setlist, folders or tags, notes on songs, per-song sounds, importing or exporting songs, and sharing with other people.
 - For backing tracks: tempo maps and tempos with decimals, so a track whose tempo wanders is not supported; a waveform view; automatic tempo or beat detection.
-- Syncing anything other than songs and setlists: the current settings, the loaded song, the click sound and haptics stay separate on each device, and the audio file of a backing track is never synced.
+- Syncing anything other than songs and setlists: the current settings, the loaded song, the library's sort orders, the songs' last-played times, the click sound and haptics stay separate on each device, and the audio file of a backing track is never synced.
 - iPad layout, landscape, light mode, Apple Watch, widgets.
 
 ## 3. Platform and identity
@@ -65,6 +67,7 @@ Not included:
 - **Backing tracks** is one switch for the whole app, on or off (7.12). A **track is in use** while the switch is on and the loaded song has a backing track, whether its file is on this device or not; such a song gets the track screen (6.12). With the switch off no track is ever in use, and every song is a plain metronome.
 - A song's own tempo, the **song's tempo**, is the plain metronome's tempo. Loading a song sets the **metronome's tempo** to it; on the plain screen the dial, − / +, tap tempo and the tempo sheet change the metronome's tempo, and Save changes in the header menu saves it into the song together with the time signature and the accents (7.6). The song's tempo is what the library, the song sheet and the next-up line show.
 - The **tempo in effect** is the tempo the click plays at: the track's tempo while a track is in use, and the metronome's tempo otherwise. Turning Backing tracks on or off, and loading a song, change which of the two is in effect; neither value is changed by it, so an unsaved change of the metronome's tempo is still there when the track stops being in use. The time signature and the accents are the song's and are shared by the plain metronome and the track.
+- A song's **last played** time is the moment it last became the loaded song on this device (8.6). A song that has never been loaded here has none. It is kept on the device and not synced, so each device has its own.
 - The **library** holds every song. Songs exist only in the library; setlists refer to them.
 - A **setlist** has a name and an ordered list of songs. It acts as a filter on the library and defines the order shown while it is selected.
 - A song can be in any number of setlists, but only once in each.
@@ -86,6 +89,9 @@ Kept between launches:
 | Accents | set of beat numbers, 1…beats per bar | {1} |
 | Songs | each with id, name, tempo, time signature, accents and an optional backing track (section 4) | none |
 | Setlists | each with id, name, ordered song ids, last-used time | none |
+| Song order | the Songs tab's order, Name, Recently added or Recently played, for this device (8.6) | Name |
+| Setlist order | the Setlists tab's order, Recently used or Name, for this device (8.6) | Recently used |
+| Last played | for each song loaded on this device, the time it was last loaded (section 4, 8.6); not synced. A time for a song that no longer exists is dropped | none |
 | Loaded song | the song in the metronome, if any | none |
 | Loaded-from setlist | the setlist the song was loaded from, if any | none |
 | Shown setlist | the setlist the library sheet showed last, if any. It only says which setlist a view belongs to; where the sheet opens is decided in section 8 | none |
@@ -104,6 +110,8 @@ Not kept:
 | Current beat | the beat that is sounding | none |
 | Track position | the place in the loaded song's backing track | 0:00, and 0:00 again whenever a song is loaded |
 | Sync mode | whether the track screen shows Sync mode (6.13) | off |
+| Search | the text in the Songs tab's and the Setlists tab's search fields (8.2) | empty |
+| Select mode | whether the Songs tab is in select mode, and which songs are ticked (8.7) | off |
 
 Derived:
 
@@ -126,8 +134,8 @@ Sync is optional and off by default; the switch and what the user sees are in 6.
 
 **What is recorded so copies can be combined.** The device records this at all times, also with sync off, because switching sync off is treated like being offline (7.9).
 
-- A song has four parts, each with the time it last changed: the name; the tempo; the time signature together with the accents, which only make sense as a pair; and the backing track, which is the file's identifier, its name, the track's tempo, the offset, the count-in and the mix together, as they only make sense together. A backing-track part without a tempo, as an earlier build wrote it, gives the track the song's tempo when it is read; the tempo is written into the part the next time the part changes, and filling it in gives the part no new time, so nothing is sent for it. When the song's tempo is changed on this device, the tempo the song had until then is first written into such a part in the same way, with no new time, so the track's tempo stays as it was. A song without a backing track has that part empty. It also has a creation time, which gives the order of creation used in 8.2.
-- A setlist has a name with the time it last changed; for every song that is or was in it, whether it is in or out and since when; its order with the time it last changed; and its last-used time.
+- A song has four parts, each with the time it last changed: the name; the tempo; the time signature together with the accents, which only make sense as a pair; and the backing track, which is the file's identifier, its name, the track's tempo, the offset, the count-in and the mix together, as they only make sense together. A backing-track part without a tempo, as an earlier build wrote it, gives the track the song's tempo when it is read; the tempo is written into the part the next time the part changes, and filling it in gives the part no new time, so nothing is sent for it. When the song's tempo is changed on this device, the tempo the song had until then is first written into such a part in the same way, with no new time, so the track's tempo stays as it was. A song without a backing track has that part empty. It also has a creation time, which gives the order of creation used in 8.2 and 8.6.
+- A setlist has a name with the time it last changed; for every song that is or was in it, whether it is in or out and since when; its order with the time it last changed; and its last-used time, which is set only when the setlist is used while it is not already the most recently used one (9.1).
 - A deleted song or setlist leaves a delete marker with the time of deletion.
 - Times come from the device's clock. A change always gets a time later than the one it replaces, even when the clock is behind.
 - Only a part that really changed gets a new time. Save changes after changing only the tempo leaves the times of the name and the time signature alone. A tempo, offset, count-in or mix set in Sync mode (7.11) gives the backing track a new time and leaves the song's tempo alone; a time signature or accents set there give the time signature a new time and leave the backing track's alone.
@@ -157,7 +165,7 @@ Examples: a song renamed on one device and given a new tempo on another ends up 
 
 - A new property is a new part with its own change time. A part that is missing counts as its default value, never changed, so the first device to set it wins.
 - A version that finds a part it does not know keeps it untouched, on the device and in iCloud, and writes it back unchanged. Combining works per part without knowing what the part means, so the newer of two unknown parts still wins. The same goes for items of a kind it does not know: it leaves them alone, except that the clean-up below removes them with everything else.
-- The data in iCloud carries a format number, now 2. A later version raises it only for a change that older versions would misread or miss. A version that finds a lower number raises it.
+- The data in iCloud carries a format number, which is 2. A later version raises it only for a change that older versions would misread or miss. A version that finds a lower number raises it.
 - Format 1 kept songs under other item names, from when they were called presets. A device that finds a song under such a name combines it in like any other copy, writes it under the current name and then removes the old item, also when iCloud is full, as the move does not add an item. An old item that cannot be read is left alone. Raising the number stops devices still on format 1 from syncing, so they do not keep writing under the old names. A format number that cannot be read counts as higher than the app knows. A version that finds a higher number than it knows stops sending and receiving, keeps its library on the device, and says so in the status line (6.10). It does not take part in the clean-up below.
 
 **Delete markers** are kept for one year and then removed from the device and from iCloud. A device that has been away longer than that can bring a deleted item back.
@@ -307,9 +315,9 @@ The track screen (6.12) is not fitted on its own: it takes the dial, the tile he
 | Token | Value | Use |
 |---|---|---|
 | ink | `#0B0B0C` | background; text on amber and white |
-| surface | `#17171A` | rows, round buttons, idle tiles, sheets, the player card, the track screen's dial disc |
-| surface raised | `#222226` | picker options, fields, rows and idle tiles inside sheets; Rewind, Fast-forward, the Sync pill and `Choose file` on the player card; Sync mode's stepper pills, count-in options and playback card |
-| surface selected | `#3A3A3F` | the selected segment of a switch-like control, and buttons that sit on surface raised: the library's selected tab, the Backing tracks switch when on, the selected count-in option, and in Sync mode the steppers' − and +, Rewind and Fast-forward on the playback card and the unplayed part of its progress line, and the Add song screen's empty selection ring, for a song not in the setlist |
+| surface | `#17171A` | rows, round buttons, idle tiles, sheets, the player card, the track screen's dial disc, select mode's action bar |
+| surface raised | `#222226` | picker options, fields, rows and idle tiles inside sheets; the library's ⋯ buttons and select mode's action pills; Rewind, Fast-forward, the Sync pill and `Choose file` on the player card; Sync mode's stepper pills, count-in options and playback card |
+| surface selected | `#3A3A3F` | the selected segment of a switch-like control, and buttons that sit on surface raised: the library's selected tab, the Backing tracks switch when on, the selected count-in option, and in Sync mode the steppers' − and +, Rewind and Fast-forward on the playback card and the unplayed part of its progress line, and the empty selection ring on the Add song screen, for a song not in the setlist, and in select mode, for a song not ticked |
 | line | `#2A2A2E` | outlines, dividers, the line of the player card's progress bar and the mix slider |
 | tick | `#606066` | unlit ticks on the dial; the centre mark of the mix slider |
 | dial white | `#F3EEE6` | primary text; sounding unaccented tile |
@@ -490,8 +498,9 @@ All four ways of setting the tempo work when stopped and when playing. They are 
 - When playing, it keeps playing: the next beat is beat 1 of a new bar with the new settings. With Backing tracks on, when the song being left or the song being loaded has a playable backing track, playback stops instead (7.10).
 - Loading a song never changes the Backing tracks switch (7.12).
 - The loaded song's backing track, if it has one, is at 0:00.
+- The song's last-played time is set (8.6).
 - Where the song is tapped decides its loaded-from setlist. Tapped in a setlist's view, it is loaded from that setlist, so the header shows the setlist and the position, and Previous / Next and the next-up line are shown (8.3). Tapped on the Songs tab, it is loaded on its own, whatever setlist was being stepped through, even one that holds it: the header shows the name alone, and Previous / Next and the next-up line go (8.2). Previous and Next load from their setlist (below).
-- Tapping the loaded song's own row in the library is not a load. Nothing on the metronome changes, playing or stopped: playback carries on without a new bar, the track keeps its position, the tempo, time signature and accents stay as they are, and unsaved edits are kept; Revert is how they are dropped. Only the loaded-from setlist follows the tap, by the same rule as a load: tapped on the Songs tab, a song loaded from a setlist is then loaded on its own, and tapped in a setlist's view, it is then loaded from that setlist (8.2, 8.3).
+- Tapping the loaded song's own row in the library is not a load. Nothing on the metronome changes, playing or stopped: playback carries on without a new bar, the track keeps its position, the tempo, time signature and accents stay as they are, and unsaved edits are kept; Revert is how they are dropped. The last-played time stays as it is. Only the loaded-from setlist follows the tap, by the same rule as a load: tapped on the Songs tab, a song loaded from a setlist is then loaded on its own, and tapped in a setlist's view, it is then loaded from that setlist (8.2, 8.3).
 
 **Tapping the title** always opens the library sheet (section 8), edited or not. Unsaved edits are kept while the library is open.
 
@@ -589,7 +598,7 @@ The switch works when stopped and when playing, applies to this device only and 
   - A track that only took a new name, from a file picked for it on another device (5.1), keeps its file here and playback carries on; the player card and Sync mode show the new name at once. A track whose file is missing here stays missing, under the new name.
   - The Backing tracks switch itself never changes.
 - If the loaded song, the loaded-from setlist or the setlist the library is showing was deleted, the rules in section 5 apply. A deleted loaded song also ends Sync mode.
-- An open library sheet, setlist or setlist editor updates in place. A setlist view or editor whose setlist was deleted closes and the library shows the Setlists tab.
+- An open library sheet, setlist or setlist editor updates in place. In select mode a ticked song deleted elsewhere drops out of the ticks (8.7). A setlist view or editor whose setlist was deleted closes and the library shows the Setlists tab.
 - Nothing is announced: no alert, banner, sound or haptic.
 
 ### 7.10 Playing a song with a backing track
@@ -682,7 +691,7 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 - Tapping a setlist on the Setlists tab opens that setlist (8.3), one level down. A ‹ takes the user back up to the Setlists tab.
 - Each level slides in like a navigation stack: a deeper one (a setlist, then Add song) comes in from the right over 0.3 s, and going back the level above comes in from the left. Switching tabs does not slide.
 - The content starts 36 pt below the top of the sheet, so the grabber has room above the header.
-- Every list has 20 pt side margins. The 1 pt dividers between rows, in `line`, run from margin to margin, so they end in line with the ⋯ buttons, the header's button and the controls line's divider (8.2), also where a setlist's drag handles stand at the right.
+- Every list has 20 pt side margins. The 1 pt dividers between rows, in `line`, run from margin to margin, so they end in line with the ⋯ buttons, the header's button, the + and the controls line's divider (8.2), also where a setlist's drag handles stand at the right.
 
 **Where it opens.**
 
@@ -693,53 +702,59 @@ A tall sheet over the metronome, with a grabber. Swiping it down closes it and c
 
 ### 8.1 Header
 
-**On the top level** the header is one row: the tab switch at the left and one button at the right. There is no large title; the tabs name what is shown.
+**On the top level** the header is one row: the tab switch at the left and the menu button at the right. There is no large title; the tabs name what is shown.
 
-- **Tab switch:** a surface-raised pill, 40 pt tall, with `Songs` and `Setlists` (15 pt). The selected tab is dial white and bold on surface selected; the other is muted and semibold.
-- **Songs tab:** **New song**, which opens the New song sheet (section 10). While the library is empty it is in the middle of the screen instead (8.2).
-- **Setlists tab:** **New setlist** (9.1), in the middle of the screen instead while there are no setlists.
+- **Tab switch:** a surface-raised pill, 40 pt tall, with `Songs` and `Setlists` (15 pt). It fills the row from the left margin up to 12 pt before the menu button, the two tabs sharing it equally. The selected tab is dial white and bold on surface selected; the other is muted and semibold.
+- **Menu button:** the same button as the header menu button on the metronome screen (6.1), without the badge, and drawn as a row's menu button (8.2): 40 pt round, surface raised, with a dial-white ⋯. It takes touches over 44 pt. It is there on both tabs at all times, also with an empty library or no setlists, and opens the tab's menu (8.6), a standard iOS menu.
+
+Making a song or a setlist is the + in the controls line (8.2, 9.1), or the large button in the middle of an empty tab; the header has no other button.
+
+In select mode (8.7) the tab switch and the menu button give way to a title and Done.
 
 **Inside a setlist** the header has, from the left:
 
 - **‹**, which goes back to the Setlists tab.
 - The setlist's name as the title (26 pt heavy). Tapping it does nothing; it is renamed from the menu (9.2).
-- **Menu button** (⋯, 36 pt round), with **Rename setlist**, **Duplicate setlist** and **Delete setlist** (8.3), a standard iOS menu. While the name is being typed, **Done** takes its place.
+- **Menu button**, 40 pt round like every other menu button in the library, with **Add song**, **Rename setlist**, **Duplicate setlist** and **Delete setlist** (8.3), a standard iOS menu. While the name is being typed, **Done** takes its place.
 
 There is no Edit button and no separate edit mode: everything that changes a setlist is done in its own view (8.3).
 
 ### 8.2 The Songs tab
 
-- **The controls line**, between the header and the list: the search field alone. Below it come 12 pt of space, a 1 pt divider in `line` and then the songs. It stays in place while the songs scroll. It is there whenever the library has songs; an empty library shows only its empty state, and a setlist has no such line.
-- **Search**, a field filling the whole line.
+- **The controls line**, between the header and the list: the search field, then 10 pt, then the + button. Below it come 12 pt of space, a 1 pt divider in `line` and then the songs. It stays in place while the songs scroll. It is there whenever the library has songs; an empty library shows only its empty state, and a setlist has no such line. The Setlists tab has the same line (9.1). In select mode the search field fills the line alone (8.7).
+- **The + button:** 36 pt round, filled amber, with an ink + (16 pt, bold). It takes touches over 44 pt. It opens the New song sheet (section 10). It is the only amber button on the library's top level, apart from Done in select mode (8.7), which has no +.
+- **Search**, a field taking the rest of the line. These rules hold for the Setlists tab's search too, which matches the setlist's name (9.1).
   - It is 36 pt tall and fully rounded, surface raised with no border, 12 pt padding at the sides: a magnifying glass (15 pt semibold, muted) and, 8 pt after it, the text (15 pt regular, dial white, amber cursor), with the placeholder `Search` in muted.
   - While it has text, a muted ⓧ at its right end empties it. Its touch area is 44 pt.
-  - The list shows only the songs whose name contains the text, ignoring case, accents (`a` finds `ä`) and spaces at the ends of the text, in the usual order. Empty text, or only spaces, shows every song.
+  - The list shows only the songs whose name contains the text, ignoring case, accents (`a` finds `ä`) and spaces at the ends of the text, in the chosen order (8.6). Empty text, or only spaces, shows every song.
   - When no song matches, the list's place shows `No matches`, centred (17 pt, semibold, dial white), with nothing else.
   - The keyboard does not come up by itself; tapping the field brings it up. It has a Search key, which puts the keyboard away, and scrolling the list puts it away too. There is no autocorrection or automatic capital letter.
-  - The text starts empty each time the library opens and is not remembered. Going to the Setlists tab and back empties it too.
+  - The text starts empty each time the library opens and is not remembered. Switching tabs empties it too. Opening a setlist from the Setlists tab and coming back with ‹ keeps it, and so do entering and leaving select mode.
   - Rows found by a search work as everywhere else: tapping one loads it, its menu and swipe are the same, and the marked row (below) is still marked.
   - VoiceOver calls the field `Search songs` and the ⓧ `Clear search`.
-- Then every song (or every song the search finds), sorted by name A–Z, ignoring case and following the phone's language rules. Songs with the same name keep their order of creation.
+- Then every song (or every song the search finds), in the order chosen in the tab's menu (8.6), by name A–Z unless another is chosen.
 - Each row shows the name (17 pt), and below it the song's tempo and time signature, for example `120 BPM · 4/4`; a backing track's own tempo is not shown. A song with a backing track has a mark, a 13 pt music-note in muted, 5 pt after its time signature on the same line, whether or not the file is on this device; on a marked row `· loaded` follows the mark; the mark is the same in a setlist (8.3) and on the Add song screen (9.3). At the right is the **menu button**: a 40 pt round surface-raised button with a dial-white ⋯ (8.4).
 - The loaded song's row is marked, with an amber name and `· loaded` after its details, only when the song was loaded on its own. When it was loaded from a setlist no row here is marked, so it is plain that tapping the song here would load it on its own.
 - **Tapping a row** loads the song and closes the sheet. It does not start the metronome; Start is under the thumb when the sheet has closed. If the metronome is already playing, it keeps playing with the new song, unless Backing tracks is on and either song has a playable backing track (7.10). The loaded song's own row closes the sheet and changes nothing on the metronome, playing or stopped, unsaved edits included; when the song was loaded from a setlist, it is then loaded on its own (7.6).
 - A song loaded from this view is loaded on its own: it has no loaded-from setlist, whatever setlist was being stepped through and whether or not the song is in it. The header shows the name alone, and Previous / Next and the next-up line are hidden.
-- **Swiping a row left** reveals **Edit** and **Delete**, as a shortcut to the same items in the row's menu.
-- Empty library: centred, `No songs yet` (17 pt, semibold, dial white) and a large amber **New song** button (48 pt tall). While the library is empty the header has no New song button; it is in the middle instead.
+- **Swiping a row left** reveals **Edit** and **Delete**, as a shortcut to the same items in the row's menu. Not in select mode (8.7).
+- Empty library: centred, `No songs yet` (17 pt, semibold, dial white) and a large amber **New song** button (48 pt tall). The controls line is hidden then, and the tab's menu holds New song only (8.6).
 
 There is no button on a row that loads and starts in one tap. A button that looked like a preview but replaced the loaded song and closed the sheet was easy to misread, and its place is better used for the menu.
 
 ### 8.3 A setlist
 
-- Only the setlist's songs, in the setlist's order, each with its position number at the left.
+- Only the setlist's songs, in the setlist's order, each with its position number at the left. There is no controls line: no search and no sorting, and the Songs tab's order does not apply here.
 - Above the list: the count, such as `8 SONGS`. An empty setlist shows no count.
 - Rows, tapping and the menu button work as in 8.2, except that the loaded song's row is marked only when the song was loaded from this setlist, and its position number is then amber too. A song loaded from this view has this setlist as its loaded-from setlist, so the header shows the position and Previous / Next. Tapping the loaded song's row here while it is loaded on its own or from another setlist changes nothing on the metronome and makes this setlist its loaded-from setlist (7.6).
 - **Reordering:** every row has a drag handle (≡) at its right end, after the menu button, always shown. Dragging the handle moves the row at once; the new order is the setlist's order, and the numbers follow.
 - **Removing:** **Remove from setlist** in the row's menu (8.4), with Undo (8.5). Rows cannot be swiped here: a list that shows drag handles does not take swipes.
-- **Adding:** **Add song**, an amber row after the last song, opens 9.3. New songs go to the end, where the row is.
+- **Adding:** **Add song**, an amber row after the last song, opens 9.3, and so does Add song in the setlist's menu. New songs go to the end, where the row is.
 - **Renaming:** with Rename setlist in the header menu (9.2).
 - Empty setlist: centred, `No songs in this setlist` and a large amber **Add song** button (48 pt tall), which opens 9.3. It is the only thing to do there, so it is filled.
-- **The setlist's menu** (⋯ in the header) holds what is done to the setlist as a whole:
+- **The setlist's menu** (⋯ in the header) holds what is done to the setlist as a whole, in this order:
+  - **Add song:** opens 9.3, as the row after the last song does.
+  - **Rename setlist:** puts the cursor in the name (9.2).
   - **Duplicate setlist:** creates a setlist named `<name> copy` with the same songs in the same order, and shows the copy. The songs are shared, not copied.
   - **Delete setlist**, in red: asks for confirmation, deletes the setlist and goes back to the Setlists tab. The songs stay in the library.
 
@@ -748,7 +763,7 @@ There is no button on a row that loads and starts in one tap. A button that look
 The ⋯ button at the end of every song row, on the Songs tab and in a setlist, opens the system menu with everything that can be done with that song, in this order:
 
 - **Add to setlist**, which opens a second level:
-  - Every setlist, most recently used first, with a tick when the song is in it. Tapping one adds the song to the end of that setlist, or takes it out (8.5).
+  - Every setlist, most recently used first whatever the Setlists tab's order (8.6), with a tick when the song is in it. Tapping one adds the song to the end of that setlist, or takes it out (8.5).
   - **New setlist**, after a divider: creates a setlist that starts with this song and opens it for naming (9.2).
 - **Edit:** opens the Edit song sheet (10.2), with the name, tempo, time signature and accents. There is no separate Rename, as the sheet holds the name.
 - **Remove from setlist:** only in a setlist view. Takes the song out of the setlist shown (8.5).
@@ -767,16 +782,65 @@ A song can be taken out of a setlist from the row menu, in the setlist's view or
 
 Only the last removal can be undone. Deleting a song or a setlist is confirmed beforehand and has no Undo.
 
+### 8.6 The tab menus and sorting
+
+The menu button in the top-level header (8.1) opens the shown tab's menu.
+
+**The Songs tab's menu**, from the top:
+
+- **Select**, which enters select mode (8.7).
+- **New song**, which opens the New song sheet, as the + does.
+- After a divider, a group headed `Sort by`: **Name**, **Recently added** and **Recently played**, with a tick on the current one.
+
+With an empty library the menu holds New song only.
+
+**The Setlists tab's menu**, from the top:
+
+- **New setlist**, which does what the + does (9.1).
+- After a divider, a group headed `Sort by`: **Recently used** and **Name**, with a tick on the current one.
+
+With no setlists the menu holds New setlist only.
+
+**Sorting.** Choosing an order re-sorts the list at once and closes the menu. The chosen order is remembered on this device, one for each tab, and is not synced (section 5). A new install starts with Name for songs and Recently used for setlists.
+
+- **Name:** A–Z, ignoring case and following the phone's language rules. Songs with the same name keep their order of creation (5.1); setlists with the same name keep the most recently used first.
+- **Recently added:** the song created last first, by creation time (5.1).
+- **Recently played:** the song with the latest last-played time first. Songs never loaded on this device come after them, by name as above.
+- **Recently used:** as in 9.1, the setlist opened or loaded from last first.
+
+A song's last-played time is set whenever it becomes the loaded song: tapped in the library, on the Songs tab or in a setlist; by Previous and Next; by Save as new song (7.6); and by naming the current settings (10.1). Tapping the loaded song's own row is not a load and does not set it (7.6), and neither does restoring the loaded song when the app opens. The time is kept on this device and not synced (section 5), so each device has its own Recently played order, and on a new install every song starts as never played. A time for a song that no longer exists is dropped.
+
+Search and sorting go together: the songs or setlists a search finds are listed in the chosen order. A setlist's own view always keeps the setlist's order (8.3), and the Add song screen stays A–Z (9.3).
+
+The order is worked out when the list appears and when an order is chosen. Under Recently played a song whose last-played time changes while the list is shown keeps its place until the list next appears. Loading a song from the list closes the sheet, so the list never moves under the finger.
+
+### 8.7 Select mode
+
+Select mode acts on several songs at once. It is on the Songs tab only. **Select** in the tab's menu enters it with nothing ticked. It ends with **Done**, after an action in the action bar, or when the sheet is closed, and every tick goes with it; the library always opens with it off.
+
+- **Header:** in place of the tab switch a title, `Select songs` while nothing is ticked and `3 selected` otherwise (26 pt heavy, as a setlist's title). At the right, **Done** in place of the menu button: the same pill as Done while a setlist is renamed (9.2), 36 pt tall, 14 pt bold, filled amber with ink text.
+- **Controls line:** the search field alone, filling the line; there is no +. The search works as in 8.2.
+- **Rows** look as in 8.2, the loaded song's mark included, except that the menu button gives way to a round tick at the right end, drawn as on the Add song screen (9.3): filled amber when ticked, an empty grey ring when not. Tapping a row ticks or unticks it and loads nothing. Rows are not swiped.
+- A ticked song stays ticked while a search hides it, and it is counted in the title and acted on. A ticked song deleted on another device drops out of the ticks, and when the library becomes empty select mode ends.
+- **Action bar**, at the bottom of the sheet, above the home indicator, over the list: a surface bar with a 1 pt line in `line` along its top. In it two equal pills, 48 pt tall, surface raised, 12 pt apart, with 20 pt side margins and 12 pt above and below them: **Add to setlist** (16 pt bold, dial white) and **Delete** (16 pt bold, red). With nothing ticked both are dimmed and do nothing.
+- **Add to setlist** opens a menu, a standard iOS menu, with every setlist, most recently used first, and **New setlist** after a divider, as in the row menu's second level (8.4) but without ticks. With no setlists it holds New setlist only.
+  - Choosing a setlist adds the ticked songs that are not in it yet to its end, in the order the Songs tab lists them with the search left aside, and ends select mode. The library stays on the Songs tab. Adding songs does not count as using the setlist (9.1).
+  - **New setlist** makes a setlist holding the ticked songs in that order, ends select mode and opens the setlist for naming (9.2).
+- **Delete** asks for confirmation once, as Delete in the row menu does (8.4): `Delete 3 songs?`, then `They will also be removed from 2 setlists.`, counting each setlist that holds any of them once, and `Delete` and `Cancel`. When none of them is in a setlist there is no such line, only the title and the buttons. With one song ticked the confirmation is the row menu's. Delete deletes the ticked songs and ends select mode. Deleting the loaded song follows section 5. There is no Undo.
+- Neither action shows the Undo bar (8.5), and entering select mode takes away an Undo bar that is shown.
+
 ## 9. Setlists
 
 ### 9.1 The Setlists tab
 
-- Every setlist with its song count and a ›, most recently used first. A setlist counts as used when it is opened here or a song is loaded from it.
+- **The controls line**, as on the Songs tab (8.2): the search field, 10 pt, and the + button, with the same space and divider below it. It is there whenever there are setlists.
+- **Search** works exactly as on the Songs tab (8.2), on the setlist's name: the same field, matching, `No matches`, keyboard and emptying of the text. VoiceOver calls the field `Search setlists`. Rows found by a search work as everywhere else, and the amber setlist (below) is still amber.
+- **The + button** does what New setlist does: creates a setlist and opens it for naming (9.2).
+- Every setlist (or every setlist the search finds) with its song count and a ›, in the order chosen in the tab's menu (8.6), most recently used first unless another is chosen. A setlist counts as used when it is opened here or a song is loaded from it, Previous and Next included. Its last-used time is then set to the moment, but only when it is not already the most recently used setlist on this device, that is, when another setlist's last-used time is the same as its own or later. Otherwise nothing about it changes and nothing is sent to iCloud, so stepping through a setlist with Next writes nothing.
 - The setlist the loaded song was loaded from is amber, so the user sees where they are.
 - Tapping a setlist opens it (8.3). It loads nothing into the metronome.
 - **Swiping a row left** reveals **Delete**, in red, a shortcut to Delete setlist in the setlist's menu. It asks for confirmation in the same way; the songs stay in the library.
-- **New setlist** button at the top right (in the middle while there are no setlists): creates a setlist and opens it for naming (9.2).
-- While there are no setlists: centred, `No setlists yet` (17 pt, semibold, dial white) and a large amber **New setlist** button (48 pt tall). While there are no setlists the header has no New setlist button; it is in the middle instead.
+- While there are no setlists: centred, `No setlists yet` (17 pt, semibold, dial white) and a large amber **New setlist** button (48 pt tall). The controls line is hidden then, and the tab's menu holds New setlist only (8.6).
 - The list scrolls; there is no limit on the number of setlists.
 
 ### 9.2 Creating and renaming a setlist
@@ -785,9 +849,9 @@ A setlist is changed in its own view (8.3); there is no separate editing screen.
 
 **Renaming:** the name stands in the place and size of a title. **Rename setlist** in the header menu puts the cursor in the name, and **Done** takes the menu button's place. The name takes no taps otherwise, so the title is not edited by surprise. A new setlist starts with the cursor already in its name. Done, Return on the keyboard, or leaving the view ends typing, and only then is the name saved; there is no cancel. An empty name is not accepted: the setlist keeps its previous name, which comes back when typing ends. So a name typed and then erased leaves the setlist as it was.
 
-**Creating**, after New setlist on the Setlists tab or in a song's row menu (8.4):
+**Creating**, after the + or New setlist on the Setlists tab (9.1, 8.6), New setlist in a song's row menu (8.4) or New setlist in select mode (8.7):
 
-- The setlist is made at once, named `Untitled`, and its own view opens with the name field empty and ready for typing, showing `Untitled` as its placeholder. A setlist made from a row menu already holds that song.
+- The setlist is made at once, named `Untitled`, and its own view opens with the name field empty and ready for typing, showing `Untitled` as its placeholder. A setlist made from a row menu already holds that song, and one made in select mode the ticked songs.
 - Until it is named, the title stays the grey `Untitled` placeholder, also after Done, so that the setlist does not look named.
 - There is no Cancel. Leaving the new setlist, with ‹ or by closing the library, drops it if it still has no name and no songs, since nothing was done with it. Once it has a name or a song it is kept. Only the setlist just made is ever dropped this way: an Untitled setlist opened later is kept.
 
@@ -795,10 +859,10 @@ Duplicating and deleting are in the setlist's menu (8.3).
 
 ### 9.3 Adding songs to a setlist
 
-Opened with Add song in a setlist's view, from the row after the last song or from the button of an empty setlist.
+Opened with Add song in a setlist's view, from the row after the last song, from the setlist's menu or from the button of an empty setlist.
 
 - **Header:** `ADD TO` in small capitals above the setlist's name as the title, and **Done** at the right, which goes back to the setlist.
-- Every song in the library, A–Z, each with a round tick at the right end: filled amber when it is in the setlist, an empty grey ring when it is not.
+- Every song in the library, A–Z whatever the Songs tab's order (8.6), each with a round tick at the right end: filled amber when it is in the setlist, an empty grey ring when it is not.
 - Last row: **New song**, in amber, which opens the New song sheet (section 10) with "Add to <setlist>" switched on. It sits at the end like Add song in the setlist's view, with the + 8 pt from its text.
 - Tapping a row adds the song to the end of the setlist, or takes it out. Changes take effect at once. Taking a song out here shows no Undo bar: the user is picking, and ticking it again puts it back (at the end).
 - **Empty library:** centred, `No songs in library yet` (17 pt, semibold, dial white), below it `Create one here, and it goes straight into <setlist>.` (15 pt, muted), and a large amber **New song** button that opens the New song sheet with "Add to <setlist>" switched on. Done is grey here (surface raised, dial-white text), so that New song is the one amber button.
@@ -821,12 +885,13 @@ Changing values in the sheet does not affect the metronome, playing or stopped, 
 
 ### 10.1 New song
 
-Titled `New song`, with `Save song`. Opened with New song in the library (8.1, 9.3) or with Save as new song in the header menu (7.6). The name field is ready for typing. All three settings start from the metronome's current values, so the quickest way to make a song is to set the metronome first. The song starts without a backing track. `Save song` is ready once a name is typed; spaces alone do not count.
+Titled `New song`, with `Save song`. Opened in the library with the + or New song in the Songs tab's menu, with the New song button of an empty library (8.2, 8.6), or with New song on the Add song screen (9.3), or with Save as new song in the header menu (7.6). The name field is ready for typing. All three settings start from the metronome's current values, so the quickest way to make a song is to set the metronome first. The song starts without a backing track. `Save song` is ready once a name is typed; spaces alone do not count.
 
 Saving a new song from the library does not load it, with one exception: **naming the current settings.** When no song is loaded and the song is saved with the same tempo, time signature and accents as the metronome has, the new song becomes the loaded one, so the header shows its name at once and later changes bring up the badge.
 
 - The metronome is not touched: it keeps playing or stays stopped, and no new bar starts. When the new song has a playable backing track and Backing tracks is on (7.10), playback stops if it is playing. The track is at 0:00.
 - If the song was added to a setlist (9.3, with "Add to <setlist>" on), it counts as loaded from that setlist, so the header shows its position and Previous / Next appear. Otherwise it is loaded on its own.
+- Its last-played time is set, as when any song becomes the loaded one (8.6).
 - In every other case the song is only created: when a song is already loaded, or when the values were changed in the sheet.
 
 **Save as new song** in the header menu always makes the new song the loaded one, whatever was loaded before, and stops playback as 7.6 says. With Add to <setlist> on, the song is added to the end of the loaded-from setlist and loaded from it; otherwise it is loaded on its own.
@@ -942,7 +1007,9 @@ The Haptics switch in settings (7.8) turns all of these off.
   - The sync switch reads as "Sync songs and setlists, on" or "Sync songs and setlists, off". The status line reads as its text and detail, for example "Up to date, last synced 14:32"; the dot is not read.
   - The header title reads the song name and its second line, and says that it opens the library. While the song is edited it says "edited" after the name, for example "Seven Bridges, edited, Friday gig · 3 of 8", because the badge appearing cannot be heard.
   - A song row reads as its name, tempo and time signature, for example "Harbour Lights, 120 beats per minute, 4/4", with "backing track" after it when the song has one, and "loaded" when the row is marked (8.2, 8.3). Its menu button reads "More for Harbour Lights".
-  - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist", and its first item "Rename setlist". The tabs read "Songs" and "Setlists", with "selected" for the one shown.
+  - The Undo bar's button reads "Undo"; the back button in a setlist reads "Back to setlists"; the menu button in a setlist reads "More for this setlist", and its items as written. The tabs read "Songs" and "Setlists", with "selected" for the one shown.
+  - The top-level header's menu button reads "More for songs" on the Songs tab and "More for setlists" on the Setlists tab; its items read as written, the current order with "selected". The + reads "New song" on the Songs tab and "New setlist" on the Setlists tab. The Setlists tab's search field reads "Search setlists", and its ⓧ "Clear search".
+  - In select mode the title is a heading and reads as shown, "Select songs" or "3 selected", and Done reads "Done". A row reads as everywhere else, with "selected" when it is ticked, and tapping it ticks or unticks it. The action bar's buttons read "Add to setlist" and "Delete", as dimmed while nothing is ticked.
   - In a setlist's view, rows can be moved up and down with VoiceOver actions as well as by dragging.
   - The Add song screen's title reads "Add to <setlist>", and each row says whether the song is in the setlist.
   - Beat changes during playback are not announced.
@@ -977,9 +1044,9 @@ Metronome:
 
 Songs and setlists:
 
-- [x] A song can be created, loaded, edited and deleted; the library is sorted A–Z.
+- [x] A song can be created, loaded, edited and deleted; sorted by Name, the library is A–Z.
 - [x] Unload in the header menu unloads the loaded song and keeps the settings and playback; it is in the menu only while a song is loaded. *(Unloading is unit tested, and the menu's items in nothingLoadedOffersOnlySaveAsNewSongAndSettings and aLoadedSongOffersEverythingButSaving. In the simulator on an iPhone 17 Pro, Unload from the menu showed Library / No song loaded with the tempo still 172, and the menu then held only Save as new song and Settings. Unload while playing was not seen on screen.)*
-- [x] Search on the Songs tab fills the controls line, narrows the list by name, ignoring case, accents and the spaces at the ends, and shows `No matches` when nothing matches. *(Matching is unit tested, accents included. In the simulator the field filled the whole line with a song loaded (on an iPhone 17 Pro, with no Unload) and with nothing loaded, did not take focus when the library opened, filtered the list as text was typed (the loaded song staying amber), showed `No matches`, and ⓧ emptied it; a song tapped in a filtered list was the one loaded. The simulator had a hardware keyboard, so the on-screen keyboard, its Search key and scrolling it away were not seen, and nor were VoiceOver or the row menu in a filtered list.)*
+- [x] Search on the Songs tab narrows the list by name, ignoring case, accents and the spaces at the ends, and shows `No matches` when nothing matches. *(Matching is unit tested, accents included. In the simulator, with a song loaded (on an iPhone 17 Pro, with no Unload) and with nothing loaded, the field did not take focus when the library opened, filtered the list as text was typed (the loaded song staying amber), showed `No matches`, and ⓧ emptied it; a song tapped in a filtered list was the one loaded. The simulator had a hardware keyboard, so the on-screen keyboard, its Search key and scrolling it away were not seen, and nor were VoiceOver or the row menu in a filtered list.)*
 - [x] Tapping a row loads without starting, and keeps playing when the metronome is running. *(Unit tested.)*
 - [x] The row menu offers Add to setlist, Edit, Remove from setlist and Delete in every list, and the swipe on the Songs tab gives the shortcuts of 8.2. *(Adding to a setlist, New setlist, Delete and Remove were tried in the simulator before Edit replaced Rename. Edit from the menu and the Edit swipe on the Songs tab were tried after it; Edit in a setlist view was not.)*
 - [x] Edit song changes a song's name, tempo, time signature and accents as 10.2 says. *(The rules for the loaded and the unloaded song are unit tested. Changing a tempo by typing it and saving was tried in the simulator.)*
@@ -1013,6 +1080,21 @@ Songs and setlists:
 - [x] Swiping a setlist left on the Setlists tab offers Delete, with confirmation. *(Tried in the simulator.)*
 - [x] The Add song screen ticks songs at the right end and explains an empty library with a New song button. *(Both seen in the simulator.)*
 - [x] Songs, setlists, the loaded song, and its position in the setlist survive quitting and reopening the app.
+- [ ] The library's top-level header is the tab switch and a 40 pt menu button on both tabs, there also with an empty library and with no setlists, and has no New song or New setlist button; VoiceOver reads the button as in section 13. *(Not built.)*
+- [ ] On both tabs the controls line is the search field, 10 pt and the 36 pt amber +; the + opens New song on the Songs tab and makes a setlist for naming on the Setlists tab; the line is hidden on an empty tab, where the large button in the middle stays. *(Not built.)*
+- [ ] The Songs tab's menu holds Select, New song and, after a divider, Sort by with Name, Recently added and Recently played, the current one ticked; with an empty library New song only. The Setlists tab's menu holds New setlist and, after a divider, Sort by with Recently used and Name; with no setlists New setlist only. *(Not built.)*
+- [ ] Each sort order lists as in 8.6: Name A–Z with equal names in order of creation, or for setlists the most recently used first; Recently added newest first; Recently played the latest loaded first and never-loaded songs after them by name; Recently used as in 9.1. A search lists what it finds in the chosen order, a setlist's view keeps its own order and the Add song screen stays A–Z. *(Not built.)*
+- [ ] The chosen orders are kept per tab on the device, survive quitting and reopening the app, are not synced, and a fresh install starts with Name and Recently used. *(Not built.)*
+- [ ] A song's last-played time is set when it is tapped in the library, by Previous and Next, by Save as new song and by naming the current settings, and not by tapping the loaded song's own row or by restoring the loaded song at launch; it is kept on the device, survives quitting and reopening the app, is not synced, and is dropped with its song; under Recently played the list keeps its order while it is shown. *(Not built.)*
+- [ ] Search on the Setlists tab narrows the list by name by the rules of 8.2, shows `No matches`, is emptied when the library opens and when the tab is switched, and reads "Search setlists" with VoiceOver. *(Not built.)*
+- [ ] Select in the Songs tab's menu enters select mode: the title reads `Select songs`, then the count, Done takes the menu button's place, the search fills the controls line, and every row ends in a tick ring in place of its menu button. *(Not built.)*
+- [ ] In select mode a tap ticks or unticks a row and loads nothing, rows are not swiped, the loaded song keeps its usual mark, and a ticked song hidden by a search stays ticked and counted. *(Not built.)*
+- [ ] The action bar shows Add to setlist and Delete, dimmed and doing nothing while nothing is ticked. *(Not built.)*
+- [ ] Add to setlist in select mode lists the setlists most recently used first and New setlist; a setlist gets the ticked songs not yet in it at its end, in the Songs tab's order; New setlist makes a setlist of the ticked songs and opens it for naming; both end select mode without an Undo bar. *(Not built.)*
+- [ ] Delete in select mode asks once, naming the count and the setlists, deletes the ticked songs, follows section 5 for the loaded song, and ends select mode with no Undo. *(Not built.)*
+- [ ] Select mode ends with Done, after an action and when the sheet is closed, taking every tick away, and the library opens with it off. *(Not built.)*
+- [ ] Opening a setlist or loading a song from it, Previous and Next included, sets its last-used time only when another setlist's time is the same or later; when it is already the most recently used one nothing changes and nothing is sent to iCloud. *(Not built.)*
+- [ ] A setlist's menu button is 40 pt, and its menu holds Add song, which opens the Add song screen, before Rename setlist, Duplicate setlist and Delete setlist. *(Not built.)*
 
 Settings and click sounds:
 
@@ -1093,7 +1175,16 @@ Backing tracks:
 
 ## 15. Not built yet
 
-A part that is specified before it is built is listed here until it is. Every part specified above is built.
+A part that is specified before it is built is listed here until it is.
+
+- **Library menus.** The top-level header's menu button on both tabs, and the + in the controls line in place of the header's New song and New setlist buttons (8.1, 8.2, 9.1).
+- **Sorting.** The tab menus with their Sort by groups, the chosen orders kept per tab on the device, and the orders of 8.6.
+- **Last played.** The songs' last-played times, set on every load and kept on the device (section 5, 8.6).
+- **Setlist last-used time.** Set only when the setlist is not already the most recently used one (9.1).
+- **Setlist search.** The Setlists tab's controls line and search (9.1).
+- **Select mode.** Select in the Songs tab's menu, the ticks, the action bar, and Add to setlist, New setlist and Delete for the ticked songs (8.7).
+- **A setlist's menu.** Add song as its first item, and its button at 40 pt (8.1, 8.3).
+- **VoiceOver** for all of the above (section 13).
 
 ## 16. Ideas for later
 
