@@ -15,12 +15,14 @@ struct SongRow<MenuContent: View>: View {
     let menu: MenuContent?
 
     var body: some View {
-        if isTicked == nil, let menu {
-            content
-                .contextMenu { menu }
-        } else {
-            content
-        }
+        // Always attached, so the row keeps one identity when select mode starts or ends;
+        // with no items a long press shows nothing.
+        content
+            .contextMenu {
+                if isTicked == nil, let menu {
+                    menu
+                }
+            }
     }
 
     private var content: some View {
