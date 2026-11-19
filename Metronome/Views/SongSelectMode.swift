@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Select mode's header (8.7): the title in the tab switch's place and Done in the menu
-/// button's.
+/// Select mode's header (8.7, 8.8): the title in the place of the tab switch, or of a
+/// setlist's ‹ and name, and Done in the menu button's.
 struct SelectHeader: View {
     /// `Select songs`, or the count such as `3 selected`.
     let title: String
@@ -40,15 +40,23 @@ struct SelectionTick: View {
     }
 }
 
-/// The bar at the bottom of the sheet in select mode (8.7): Add to setlist and Delete for the
-/// ticked songs, both dimmed while nothing is ticked.
+/// The bar at the bottom of the sheet in select mode (8.7, 8.8): Add to setlist and a second
+/// action for the ticked songs, Delete on the Songs tab and Remove in a setlist, both dimmed
+/// while nothing is ticked.
 struct SelectActionBar: View {
+    /// The pill beside Add to setlist.
+    struct SecondAction {
+        let title: String
+        let color: Color
+        let action: () -> Void
+    }
+
     let isEnabled: Bool
-    /// Every setlist, most recently used first.
+    /// The setlists Add to setlist offers, most recently used first.
     let setlists: [Setlist]
     let add: (UUID) -> Void
     let newSetlist: () -> Void
-    let delete: () -> Void
+    let second: SecondAction
 
     var body: some View {
         HStack(spacing: 12) {
@@ -66,8 +74,8 @@ struct SelectActionBar: View {
             // The menu opens upwards from the bar, where the system would turn it upside
             // down; the setlists stay first and New setlist last.
             .menuOrder(.fixed)
-            Button(action: delete) {
-                pill("Delete", color: Theme.red)
+            Button(action: second.action) {
+                pill(second.title, color: second.color)
             }
             .buttonStyle(.plain)
         }

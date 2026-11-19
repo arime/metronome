@@ -133,6 +133,8 @@ struct SetlistHeader: View {
     /// stays empty and shows the grey placeholder, so the setlist does not look named.
     let isNew: Bool
     let back: () -> Void
+    /// Enters select mode (8.8); nil in an empty setlist, whose menu has no Select.
+    let select: (() -> Void)?
     /// Opens the Add song screen.
     let addSongs: () -> Void
     let duplicate: () -> Void
@@ -153,6 +155,11 @@ struct SetlistHeader: View {
                 PillButton(text: "Done") { isNameFocused = false }
             } else {
                 Menu {
+                    if let select {
+                        Button(action: select) {
+                            Label("Select", systemImage: "checkmark.circle")
+                        }
+                    }
                     Button(action: addSongs) {
                         Label("Add song", systemImage: "plus")
                     }

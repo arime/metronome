@@ -18,6 +18,10 @@ enum ScreenshotScene: String, CaseIterable {
     /// The library sheet of `setlist` with `li` typed in the setlist's search. Not an App
     /// Store screenshot; for checking the search in the simulator.
     case setlistSearch
+    /// The library sheet of `setlist` in select mode, with Copper Sky, Waltz for June and Slow
+    /// Burn ticked. Not an App Store screenshot; for checking a setlist's select mode in the
+    /// simulator.
+    case setlistSelect
     /// The library sheet with no songs and no setlists. Not an App Store screenshot; for
     /// checking the empty tabs in the simulator.
     case emptyLibrary
@@ -131,7 +135,8 @@ enum ScreenshotScene: String, CaseIterable {
                 // that shows all songs has the song loaded on its own.
                 loadedFromSetlistID: self == .library || self == .librarySelect || self == .trackSolo
                     ? nil : sample.setlistID,
-                selectedSetlistID: self == .setlist || self == .setlistSearch ? sample.setlistID : nil
+                selectedSetlistID: self == .setlist || self == .setlistSearch || self == .setlistSelect
+                    ? sample.setlistID : nil
             ))
         }
         settingsStore.save(sample.loadedSettings)

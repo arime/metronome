@@ -1,7 +1,7 @@
 import Foundation
 
-/// The songs ticked in the Songs tab's select mode (8.7). A ticked song stays ticked while a
-/// search hides it; one that no longer exists drops out.
+/// The songs ticked in select mode, on the Songs tab (8.7) or in a setlist (8.8). A ticked
+/// song stays ticked while a search hides it; one that leaves the list drops out.
 struct SongSelection: Equatable {
     private(set) var ids: Set<UUID> = []
 
@@ -20,7 +20,7 @@ struct SongSelection: Equatable {
         count == 0 ? "Select songs" : "\(count) selected"
     }
 
-    /// Drops the ticks of songs that are no longer in the library.
+    /// Drops the ticks of songs that are no longer in the list: the library, or the setlist.
     mutating func keep(only existing: Set<UUID>) {
         ids.formIntersection(existing)
     }

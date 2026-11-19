@@ -145,7 +145,12 @@ struct LibrarySheet: View {
             newSetlist: { songIDs in startCreating(with: songIDs) },
             removed: { removal = $0 },
             orderChanged: { removal = nil },
-            selectStarted: { removal = nil },
+            selectStarted: {
+                removal = nil
+                // A new setlist's name has been asked for by then; the header coming back
+                // after select mode does not ask again.
+                namingID = nil
+            },
             close: { dismiss() }
         )
         // A duplicate takes the setlist's place, with its own rows.
@@ -452,7 +457,8 @@ private struct SongListView: View {
     /// The Songs tab's order as it was when the list appeared or an order was chosen, so
     /// that a song played meanwhile keeps its place (8.6). Nil until then.
     @State private var keptOrder: [UUID]?
-    /// The ticked songs while the Songs tab is in select mode (8.7); nil when it is not.
+    /// The ticked songs while the Songs tab or the setlist is in select mode (8.7, 8.8); nil
+    /// when it is not.
     @State private var selection: SongSelection?
     /// True while the confirmation for deleting several ticked songs is shown.
     @State private var isDeletingSelection = false
@@ -468,8 +474,9 @@ private struct SongListView: View {
     #if DEBUG
     /// True once the librarySelect screenshot scene has ticked its songs.
     private static var hasTickedSceneSongs = false
-    /// True once the setlistSearch screenshot scene has typed its search.
-    private static var hasTypedSceneSearch = false
+    /// True once the setlistSearch scene has typed its search or the setlistSelect scene has
+    /// ticked its songs.
+    private static var hasSetUpSetlistScene = false
     #endif
 
     private var setlist: Setlist? {
@@ -490,6 +497,12 @@ private struct SongListView: View {
         return songs.filter { $0.matches(search: query) }.map { (nil, $0) }
     }
 
+    /// The songs select mode can tick: every song in the library on the Songs tab, the
+    /// setlist's songs in a setlist.
+    private var memberIDs: [UUID] {
+        setlist?.songIDs ?? model.library.songs.map(\.id)
+    }
+
     /// True while the search field has text other than spaces.
     private var isSearching: Bool {
         !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -497,21 +510,23 @@ private struct SongListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let setlist {
+            if let selection {
+                // In a setlist it takes the place of the ‹, the name and the menu button.
+                SelectHeader(title: selection.title) { self.selection = nil }
+            } else if let setlist {
                 // Inside a setlist everything is done in place: renaming in the header,
-                // reordering with the handles, removing with the row's menu, and adding with
-                // the + in the controls line.
+                // reordering with the handles, removing with the row's menu or in select mode,
+                // and adding with the + in the controls line.
                 SetlistHeader(
                     setlistID: setlist.id,
                     focusesName: focusesName,
                     isNew: isNew,
                     back: showSetlists,
+                    select: setlistSelect,
                     addSongs: addSongs,
                     duplicate: { model.duplicateSetlist(setlist.id) },
                     delete: { isDeleteSetlistShown = true }
                 )
-            } else if let selection {
-                SelectHeader(title: selection.title) { self.selection = nil }
             } else {
                 // The top level: the tabs take the title's place.
                 LibraryTabHeader(selected: .songs) { tab in
@@ -519,10 +534,7 @@ private struct SongListView: View {
                 } menu: {
                     SongsTabMenu(
                         isEmpty: songs.isEmpty,
-                        select: {
-                            selection = SongSelection()
-                            selectStarted()
-                        },
+                        select: startSelecting,
                         newSong: { isNewSongShown = true }
                     )
                 }
@@ -543,19 +555,21 @@ private struct SongListView: View {
             if let selection {
                 SelectActionBar(
                     isEnabled: selection.count > 0,
-                    setlists: model.library.setlistsByRecency,
+                    // A setlist's own name is not offered for its songs.
+                    setlists: model.library.setlistsByRecency.filter { $0.id != setlist?.id },
                     add: { addSelection(toSetlist: $0) },
                     newSetlist: newSetlistFromSelection,
-                    delete: deleteSelection
+                    second: secondAction
                 )
             }
         }
         // The Songs tab's order is taken as the list appears and when another is chosen.
         .onAppear(perform: keepOrder)
         .onChange(of: model.songOrder) { keepOrder() }
-        // A ticked song deleted elsewhere drops out of the ticks; with no songs left select
-        // mode ends.
-        .onChange(of: model.library.songs.map(\.id)) { _, ids in
+        // A ticked song that leaves the list elsewhere drops out of the ticks: one deleted
+        // from the library on the Songs tab, one taken out of the setlist in a setlist. With
+        // no songs left select mode ends.
+        .onChange(of: memberIDs) { _, ids in
             guard selection != nil else { return }
             if ids.isEmpty {
                 selection = nil
@@ -628,16 +642,52 @@ private struct SongListView: View {
         }
     }
 
-    /// Adds the ticked songs not yet in the setlist to its end, in the Songs tab's order with
-    /// the search left aside, and ends select mode. The library stays on the Songs tab.
+    /// The action bar's pill beside Add to setlist: Delete on the Songs tab, Remove in a
+    /// setlist (8.8).
+    private var secondAction: SelectActionBar.SecondAction {
+        if setlist == nil {
+            SelectActionBar.SecondAction(title: "Delete", color: Theme.red, action: deleteSelection)
+        } else {
+            SelectActionBar.SecondAction(title: "Remove", color: Theme.dialWhite, action: removeSelection)
+        }
+    }
+
+    /// Select in the setlist's menu; an empty setlist has none (8.3).
+    private var setlistSelect: (() -> Void)? {
+        songs.isEmpty ? nil : { startSelecting() }
+    }
+
+    /// Select mode begins with nothing ticked, on the Songs tab or in a setlist.
+    private func startSelecting() {
+        selection = SongSelection()
+        selectStarted()
+    }
+
+    /// Adds the ticked songs not yet in the setlist to its end, in the order of the list shown
+    /// (the Songs tab's or this setlist's) with the search left aside, and ends select mode.
+    /// The library stays where it is.
     private func addSelection(toSetlist setlistID: UUID) {
         guard let selection else { return }
         model.addSongs(selection.ordered(in: songs), toSetlist: setlistID)
         self.selection = nil
     }
 
-    /// Makes a setlist of the ticked songs, in the Songs tab's order, ends select mode and
-    /// opens the setlist for naming.
+    /// Takes the ticked songs out of this setlist, ends select mode and offers Undo for them
+    /// all (8.8).
+    private func removeSelection() {
+        guard let selection, let setlist else { return }
+        let ids = selection.ordered(in: songs)
+        let setlistID = setlist.id
+        self.selection = nil
+        // The mode ends first and the rows go a moment later: with both in one change, the
+        // list left some of the remaining rows without their drag handles.
+        Task { @MainActor in
+            if let removal = model.removeSongs(ids, fromSetlist: setlistID) { removed(removal) }
+        }
+    }
+
+    /// Makes a setlist of the ticked songs, in the order of the list shown, ends select mode
+    /// and opens the setlist for naming.
     private func newSetlistFromSelection() {
         guard let selection else { return }
         let ids = selection.ordered(in: songs)
@@ -669,7 +719,7 @@ private struct SongListView: View {
     @ViewBuilder
     private var controls: some View {
         if setlist != nil {
-            SetlistControlsLine(query: $query, showsAdd: true, add: addSongs)
+            SetlistControlsLine(query: $query, showsAdd: selection == nil, add: addSongs)
         } else {
             ControlsLine(query: $query, searchName: "Search songs") {
                 if selection == nil {
@@ -717,8 +767,8 @@ private struct SongListView: View {
                 .onMove(perform: moveAction)
             }
             .sheetList()
-            // A setlist's rows show their drag handles whenever its search is empty; there is
-            // no separate edit mode.
+            // A setlist's rows show their drag handles whenever its search is empty, outside
+            // select mode; there is no separate edit mode.
             .environment(\.editMode, editMode)
             .scrollDismissesKeyboard(.immediately)
             // The library opens where the user is: with the marked row in view. Without an
@@ -728,8 +778,9 @@ private struct SongListView: View {
                 guard !hasScrolledToLoaded else { return }
                 hasScrolledToLoaded = true
                 #if DEBUG
-                // In place of the scroll, which would go to a row the search then hides.
-                if typesSceneSearch() { return }
+                // In place of the scroll, which would go to a row that the search then hides,
+                // or while select mode takes the handles away.
+                if setsUpSetlistScene() { return }
                 #endif
                 if let marked = rows.first(where: { model.marksLoaded($0.song.id, inSetlist: setlist?.id) }) {
                     proxy.scrollTo(marked.song.id)
@@ -739,13 +790,24 @@ private struct SongListView: View {
     }
 
     #if DEBUG
-    /// Types `li` in the setlist's search for the setlistSearch screenshot scene, once per
-    /// launch, so that the setlist opens with an empty field after that. True when it did.
-    private func typesSceneSearch() -> Bool {
-        guard ScreenshotScene.current == .setlistSearch, setlist != nil, !Self.hasTypedSceneSearch
-        else { return false }
-        Self.hasTypedSceneSearch = true
-        query = "li"
+    /// Types `li` in the setlist's search for the setlistSearch screenshot scene, or ticks
+    /// Copper Sky, Waltz for June and Slow Burn for the setlistSelect scene. Once per launch,
+    /// so that the setlist opens with an empty field and select mode off after that. True
+    /// when it did.
+    private func setsUpSetlistScene() -> Bool {
+        guard setlist != nil, !Self.hasSetUpSetlistScene else { return false }
+        switch ScreenshotScene.current {
+        case .setlistSearch?:
+            query = "li"
+        case .setlistSelect?:
+            var ticked = SongSelection()
+            songs.filter { ["Copper Sky", "Waltz for June", "Slow Burn"].contains($0.name) }
+                .forEach { ticked.toggle($0.id) }
+            selection = ticked
+        default:
+            return false
+        }
+        Self.hasSetUpSetlistScene = true
         return true
     }
     #endif
@@ -805,9 +867,9 @@ private struct SongListView: View {
     }
 
     /// Only a setlist's whole list can be reordered: while the search has text it shows part
-    /// of it, and has no handles.
+    /// of it, and has no handles. Nor has select mode, whose rows end in their ticks.
     private var isReorderable: Bool {
-        setlist != nil && !isSearching
+        setlist != nil && !isSearching && selection == nil
     }
 
     private var editMode: Binding<EditMode> {

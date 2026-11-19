@@ -981,6 +981,28 @@ struct SongModelTests {
         #expect(model.library.setlistsByRecency.first?.id == newer)
     }
 
+    @Test func addingSongsThatAreAllThereChangesNothing() {
+        let (model, songs, _) = modelWithSetlist()
+        let other = model.createSetlist()
+        model.renameSetlist(other, to: "Other")
+        model.addSongs([songs[1].id, songs[2].id], toSetlist: other)
+        let before = model.library
+        clock.advance()
+        model.addSongs([songs[1].id, songs[2].id], toSetlist: other)
+        #expect(model.library == before)
+    }
+
+    @Test func addingFromASetlistKeepsThatSetlistsOrder() {
+        let (model, songs, setlist) = modelWithSetlist()
+        let other = model.createSetlist()
+        model.setSong(songs[1].id, inSetlist: other, included: true)
+        var selection = SongSelection()
+        selection.toggle(songs[2].id)
+        selection.toggle(songs[0].id)
+        model.addSongs(selection.ordered(in: model.library.songs(inSetlist: setlist)), toSetlist: other)
+        #expect(model.library.songs(inSetlist: other).map(\.name) == ["Mid", "Slow", "Fast"])
+    }
+
     @Test func deletingSeveralSongsRemovesThemEverywhere() {
         let (model, songs, setlist) = modelWithSetlist()
         let other = model.createSetlist()

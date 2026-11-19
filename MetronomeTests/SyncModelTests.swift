@@ -187,6 +187,30 @@ struct SyncModelTests {
         #expect(b.model.loadedSongID == song.id)
     }
 
+    @Test func aTickedSongTakenOutElsewhereLeavesTheSelection() throws {
+        let a = makeDevice(), b = makeDevice()
+        clock.advance()
+        let songs = try ["S1", "S2", "S3"].map {
+            try #require(a.model.createSong(name: $0, settings: settings(100), addingTo: nil))
+        }
+        let setlist = a.model.createSetlist()
+        a.model.addSongs(songs.map(\.id), toSetlist: setlist)
+        cloud.send(.changed, toDevice: 1)
+        var ticks = SongSelection()
+        ticks.toggle(songs[0].id)
+        ticks.toggle(songs[1].id)
+
+        clock.advance()
+        a.model.removeSongs([songs[1].id], fromSetlist: setlist)
+        cloud.send(.changed, toDevice: 1)
+
+        let members = try #require(b.model.library.setlist(id: setlist)).songIDs
+        ticks.keep(only: Set(members))
+        #expect(ticks.ids == [songs[0].id])
+        #expect(ticks.title == "1 selected")
+        #expect(b.model.library.song(id: songs[1].id) != nil)
+    }
+
     @Test func steppingThroughASetlistWritesNothingToICloud() throws {
         let device = makeDevice()
         clock.advance()
