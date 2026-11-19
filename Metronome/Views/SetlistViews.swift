@@ -103,8 +103,6 @@ struct ActionRow: View {
     let symbol: String
     let action: () -> Void
 
-    static let height: CGFloat = 56
-
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
@@ -115,7 +113,7 @@ struct ActionRow: View {
                 Spacer(minLength: 0)
             }
             .foregroundStyle(Theme.amber)
-            .frame(height: Self.height)
+            .frame(height: 56)
             .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
@@ -321,18 +319,32 @@ struct AddSongsView: View {
             }
             // At the end of the list, also when a search narrows it or finds nothing.
             ActionRow(text: "New song", symbol: "plus", action: showNewSong)
+                .anchorPreference(key: NewSongRowBounds.self, value: .bounds) { $0 }
                 .sheetRow()
         }
         .sheetList()
         .scrollDismissesKeyboard(.immediately)
         // With nothing found, the New song row keeps its place at the top and the message
-        // stands centred in the space below it.
-        .overlay {
-            if shown.isEmpty {
-                EmptyListMessage(title: "No matches", text: nil) { EmptyView() }
-                    .padding(.top, ActionRow.height)
-                    .allowsHitTesting(false)
+        // stands centred in the space below it, measured from the row itself.
+        .overlayPreferenceValue(NewSongRowBounds.self) { anchor in
+            if shown.isEmpty, let anchor {
+                GeometryReader { proxy in
+                    let rowBottom = proxy[anchor].maxY
+                    EmptyListMessage(title: "No matches", text: nil) { EmptyView() }
+                        .frame(height: max(proxy.size.height - rowBottom, 0))
+                        .offset(y: rowBottom)
+                }
+                .allowsHitTesting(false)
             }
         }
+    }
+}
+
+/// Where the New song row is, so No matches can stand below it.
+private struct NewSongRowBounds: PreferenceKey {
+    static let defaultValue: Anchor<CGRect>? = nil
+
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = value ?? nextValue()
     }
 }

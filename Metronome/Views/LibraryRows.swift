@@ -105,7 +105,7 @@ extension EnvironmentValues {
 }
 
 /// See sheetRow().
-struct SheetRow: ViewModifier {
+private struct SheetRow: ViewModifier {
     @Environment(\.sheetListWidth) private var listWidth
 
     func body(content: Content) -> some View {
@@ -127,7 +127,7 @@ struct SheetRow: ViewModifier {
 }
 
 /// See sheetList().
-struct SheetList: ViewModifier {
+private struct SheetList: ViewModifier {
     @State private var width: CGFloat = 0
 
     func body(content: Content) -> some View {
