@@ -125,8 +125,7 @@ extension View {
     /// A library row's own action, on a tap alone. A Button in a list row also fires when a
     /// drag or a swipe that no list gesture takes ends on it, so a held row that cannot be
     /// moved, or a swipe on a row with no swipe buttons on that side, would load, tick or
-    /// open what the row shows. To
-    /// VoiceOver the row stays one button that does the same.
+    /// open what the row shows. To VoiceOver the row stays one button that does the same.
     func rowTap(_ action: @escaping () -> Void) -> some View {
         onTapGesture(perform: action)
             .accessibilityElement(children: .ignore)
@@ -139,7 +138,7 @@ extension View {
         modifier(SheetRow())
     }
 
-    /// A plain list on the sheet's own background. It passes its width to its rows' separators.
+    /// A plain list on the sheet's own background.
     func sheetList() -> some View {
         modifier(SheetList())
     }
