@@ -451,6 +451,15 @@ private struct SongListView: View {
     @State private var selection: SongSelection?
     /// True while the confirmation for deleting several ticked songs is shown.
     @State private var isDeletingSelection = false
+    /// The ticked songs and the number of setlists holding them, taken when Delete was
+    /// tapped. The confirmation reads these, not the live state, which its own Delete
+    /// changes while it is still fading out.
+    @State private var selectionDeletion = SelectionDeletion()
+
+    private struct SelectionDeletion {
+        var ids: Set<UUID> = []
+        var setlistCount = 0
+    }
     #if DEBUG
     /// True once the librarySelect screenshot scene has ticked its songs.
     private static var hasTickedSceneSongs = false
@@ -578,16 +587,15 @@ private struct SongListView: View {
         } message: { song in
             Text(deleteMessage(for: song))
         }
-        .alert(SongsDeletion.title(count: selection?.count ?? 0), isPresented: $isDeletingSelection) {
+        .alert(SongsDeletion.title(count: selectionDeletion.ids.count), isPresented: $isDeletingSelection) {
             Button("Delete", role: .destructive) {
-                if let selection { model.deleteSongs(selection.ids) }
+                // A song deleted meanwhile on another device is skipped by deleteSongs.
+                model.deleteSongs(selectionDeletion.ids)
                 selection = nil
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            if let message = SongsDeletion.message(
-                setlistCount: model.library.setlistCount(containingAnyOf: selection?.ids ?? [])
-            ) {
+            if let message = SongsDeletion.message(setlistCount: selectionDeletion.setlistCount) {
                 Text(message)
             }
         }
@@ -633,6 +641,10 @@ private struct SongListView: View {
         if selection.count == 1, let id = selection.ids.first {
             deleting = model.library.song(id: id)
         } else {
+            selectionDeletion = SelectionDeletion(
+                ids: selection.ids,
+                setlistCount: model.library.setlistCount(containingAnyOf: selection.ids)
+            )
             isDeletingSelection = true
         }
     }

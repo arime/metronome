@@ -918,6 +918,17 @@ struct SongModelTests {
         #expect(model.lastPlayed[songs[2].id] == nil)
     }
 
+    @Test func deletingSongsThatAreAlreadyGoneIsHarmless() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[1].id, from: setlist)
+        model.deleteSong(songs[0].id)
+        model.deleteSongs([songs[0].id, songs[2].id, UUID()])
+        #expect(model.library.songs.map(\.id) == [songs[1].id])
+        #expect(model.library.songs(inSetlist: setlist).map(\.id) == [songs[1].id])
+        #expect(model.loadedSong?.id == songs[1].id)
+        #expect(model.loadedFromSetlistID == setlist)
+    }
+
     @Test func theSetlistCountCountsEachSetlistOnce() {
         let (model, songs, _) = modelWithSetlist()
         #expect(model.library.setlistCount(containingAnyOf: [songs[0].id, songs[1].id]) == 1)
