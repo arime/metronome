@@ -56,7 +56,7 @@ struct LibrarySheet: View {
                         model.selectFilter(id)
                         go(to: .setlist)
                     },
-                    newSetlist: { startCreating(with: nil) }
+                    newSetlist: { startCreating(with: []) }
                 )
                 .transition(slide)
             case .setlist:
@@ -138,19 +138,20 @@ struct LibrarySheet: View {
                 namingID = nil
                 go(to: .adding)
             },
-            newSetlist: { songID in startCreating(with: songID) },
+            newSetlist: { songIDs in startCreating(with: songIDs) },
             removed: { removal = $0 },
             orderChanged: { removal = nil },
+            selectStarted: { removal = nil },
             close: { dismiss() }
         )
         // A duplicate takes the setlist's place, with its own rows.
         .id(setlistID)
     }
 
-    /// Makes a setlist, optionally starting with one song, and opens it for naming.
-    private func startCreating(with songID: UUID?) {
+    /// Makes a setlist holding the given songs, in that order, and opens it for naming.
+    private func startCreating(with songIDs: [UUID]) {
         let id = model.createSetlist()
-        if let songID { model.setSong(songID, inSetlist: id, included: true) }
+        if !songIDs.isEmpty { model.addSongs(songIDs, toSetlist: id) }
         namingID = id
         creatingID = id
         go(to: .setlist)
@@ -424,11 +425,13 @@ private struct SongListView: View {
     /// Goes to the Setlists tab: from the Songs tab, or back up from a setlist.
     let showSetlists: () -> Void
     let addSongs: () -> Void
-    /// Makes a setlist that starts with the given song and opens it for naming.
-    let newSetlist: (UUID) -> Void
+    /// Makes a setlist that starts with the given songs and opens it for naming.
+    let newSetlist: ([UUID]) -> Void
     let removed: (MetronomeModel.SetlistRemoval) -> Void
     /// The setlist's order changed, so an earlier removal can no longer be put back in place.
     let orderChanged: () -> Void
+    /// Select mode began; it takes away an Undo bar that is shown (8.7).
+    let selectStarted: () -> Void
     let close: () -> Void
 
     @State private var isNewSongShown = false
@@ -444,8 +447,14 @@ private struct SongListView: View {
     /// The Songs tab's order as it was when the list appeared or an order was chosen, so
     /// that a song played meanwhile keeps its place (8.6). Nil until then.
     @State private var keptOrder: [UUID]?
-    /// Select mode on the Songs tab (8.7).
-    @State private var isSelecting = false
+    /// The ticked songs while the Songs tab is in select mode (8.7); nil when it is not.
+    @State private var selection: SongSelection?
+    /// True while the confirmation for deleting several ticked songs is shown.
+    @State private var isDeletingSelection = false
+    #if DEBUG
+    /// True once the librarySelect screenshot scene has ticked its songs.
+    private static var hasTickedSceneSongs = false
+    #endif
 
     private var setlist: Setlist? {
         setlistID.flatMap(model.library.setlist(id:))
@@ -477,6 +486,8 @@ private struct SongListView: View {
                     duplicate: { model.duplicateSetlist(setlist.id) },
                     delete: { isDeleteSetlistShown = true }
                 )
+            } else if let selection {
+                SelectHeader(title: selection.title) { self.selection = nil }
             } else {
                 // The top level: the tabs take the title's place.
                 LibraryTabHeader(selected: .songs) { tab in
@@ -484,7 +495,10 @@ private struct SongListView: View {
                 } menu: {
                     SongsTabMenu(
                         isEmpty: songs.isEmpty,
-                        select: { isSelecting = true },
+                        select: {
+                            selection = SongSelection()
+                            selectStarted()
+                        },
                         newSong: { isNewSongShown = true }
                     )
                 }
@@ -507,9 +521,45 @@ private struct SongListView: View {
                 }
             }
         }
+        // Over the list, which scrolls its last row clear of the bar.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let selection {
+                SelectActionBar(
+                    isEnabled: selection.count > 0,
+                    setlists: model.library.setlistsByRecency,
+                    add: { addSelection(toSetlist: $0) },
+                    newSetlist: newSetlistFromSelection,
+                    delete: deleteSelection
+                )
+            }
+        }
         // The Songs tab's order is taken as the list appears and when another is chosen.
         .onAppear(perform: keepOrder)
         .onChange(of: model.songOrder) { keepOrder() }
+        // A ticked song deleted elsewhere drops out of the ticks; with no songs left select
+        // mode ends.
+        .onChange(of: model.library.songs.map(\.id)) { _, ids in
+            guard selection != nil else { return }
+            if ids.isEmpty {
+                selection = nil
+            } else {
+                selection?.keep(only: Set(ids))
+            }
+        }
+        // The ticks never outlive the list: the library always opens with select mode off.
+        .onDisappear { selection = nil }
+        #if DEBUG
+        .onAppear {
+            // Once per launch, so that the library opens with select mode off after that.
+            guard ScreenshotScene.current == .librarySelect, setlist == nil,
+                  !Self.hasTickedSceneSongs
+            else { return }
+            Self.hasTickedSceneSongs = true
+            var ticked = SongSelection()
+            songs.prefix(3).forEach { ticked.toggle($0.id) }
+            selection = ticked
+        }
+        #endif
         .sheet(isPresented: $isNewSongShown) {
             SongSheet(purpose: .library(setlistID: setlist?.id))
                 .environment(model)
@@ -519,10 +569,27 @@ private struct SongListView: View {
                 .environment(model)
         }
         .alert("Delete “\(deleting?.name ?? "")”?", isPresented: isPresented($deleting), presenting: deleting) { song in
-            Button("Delete", role: .destructive) { model.deleteSong(song.id) }
+            Button("Delete", role: .destructive) {
+                model.deleteSong(song.id)
+                // Asked from select mode with one song ticked, the delete ends it.
+                selection = nil
+            }
             Button("Cancel", role: .cancel) {}
         } message: { song in
             Text(deleteMessage(for: song))
+        }
+        .alert(SongsDeletion.title(count: selection?.count ?? 0), isPresented: $isDeletingSelection) {
+            Button("Delete", role: .destructive) {
+                if let selection { model.deleteSongs(selection.ids) }
+                selection = nil
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let message = SongsDeletion.message(
+                setlistCount: model.library.setlistCount(containingAnyOf: selection?.ids ?? [])
+            ) {
+                Text(message)
+            }
         }
         .alert("Delete “\(setlist?.name ?? "")”?", isPresented: $isDeleteSetlistShown) {
             Button("Delete", role: .destructive) {
@@ -543,18 +610,47 @@ private struct SongListView: View {
         }
     }
 
+    /// Adds the ticked songs not yet in the setlist to its end, in the Songs tab's order with
+    /// the search left aside, and ends select mode. The library stays on the Songs tab.
+    private func addSelection(toSetlist setlistID: UUID) {
+        guard let selection else { return }
+        model.addSongs(selection.ordered(in: songs), toSetlist: setlistID)
+        self.selection = nil
+    }
+
+    /// Makes a setlist of the ticked songs, in the Songs tab's order, ends select mode and
+    /// opens the setlist for naming.
+    private func newSetlistFromSelection() {
+        guard let selection else { return }
+        let ids = selection.ordered(in: songs)
+        self.selection = nil
+        newSetlist(ids)
+    }
+
+    /// With one song ticked the confirmation is the row menu's own (8.7).
+    private func deleteSelection() {
+        guard let selection else { return }
+        if selection.count == 1, let id = selection.ids.first {
+            deleting = model.library.song(id: id)
+        } else {
+            isDeletingSelection = true
+        }
+    }
+
     private func keepOrder() {
         guard setlist == nil else { return }
         keptOrder = model.orderedSongs.map(\.id)
     }
 
-    /// The line between the Songs tab's header and its list: the search field and the +.
-    /// A setlist has no such line.
+    /// The line between the Songs tab's header and its list: the search field and the +, or
+    /// in select mode the search field alone. A setlist has no such line.
     @ViewBuilder
     private var controls: some View {
         if setlist == nil {
             ControlsLine(query: $query, searchName: "Search songs") {
-                AddButton(accessibilityName: "New song") { isNewSongShown = true }
+                if selection == nil {
+                    AddButton(accessibilityName: "New song") { isNewSongShown = true }
+                }
             }
         }
     }
@@ -569,18 +665,23 @@ private struct SongListView: View {
                         song: song,
                         number: setlist == nil ? nil : index + 1,
                         isLoaded: model.marksLoaded(song.id, inSetlist: setlist?.id),
-                        load: {
-                            model.loadSong(song.id, from: setlist?.id)
-                            close()
+                        isTicked: selection?.contains(song.id),
+                        tap: {
+                            if selection != nil {
+                                selection?.toggle(song.id)
+                            } else {
+                                model.loadSong(song.id, from: setlist?.id)
+                                close()
+                            }
                         },
                         menu: { rowMenu(for: song) }
                     )
                     .sheetRow()
                     // On the Songs tab the swipe is a shortcut to the two most common items of
                     // the row's menu. A setlist has none: its list is in edit mode, so that the
-                    // handles drag at once, and such a list takes no swipes.
+                    // handles drag at once, and such a list takes no swipes. Nor does select mode.
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        if setlist == nil {
+                        if setlist == nil, selection == nil {
                             Button("Delete") { deleting = song }
                                 .tint(Theme.red)
                             Button("Edit") { editingSong = song }
@@ -635,7 +736,7 @@ private struct SongListView: View {
             }
             Divider()
             Button {
-                newSetlist(song.id)
+                newSetlist([song.id])
             } label: {
                 Label("New setlist", systemImage: "plus")
             }
@@ -708,17 +809,21 @@ private struct SongListView: View {
 }
 
 /// One song: name, tempo and time signature. Tapping it loads it; the ⋯ button at the
-/// end opens the row's menu.
+/// end opens the row's menu. In select mode a tick takes the button's place, and tapping
+/// the row ticks or unticks it.
 private struct SongRow<MenuContent: View>: View {
     let song: Song
     let number: Int?
     let isLoaded: Bool
-    let load: () -> Void
+    /// Whether the row is ticked in select mode; nil outside it.
+    let isTicked: Bool?
+    /// Loads the song, or in select mode ticks or unticks it.
+    let tap: () -> Void
     @ViewBuilder let menu: MenuContent
 
     var body: some View {
         HStack(spacing: 12) {
-            Button(action: load) {
+            Button(action: tap) {
                 HStack(spacing: 12) {
                     if let number {
                         Text("\(number)")
@@ -734,6 +839,10 @@ private struct SongRow<MenuContent: View>: View {
                         SongDetailLine(song: song, isLoaded: isLoaded)
                     }
                     Spacer(minLength: 0)
+                    // Inside the button, so that the whole row takes the tap.
+                    if let isTicked {
+                        SelectionTick(isOn: isTicked)
+                    }
                 }
                 .frame(maxHeight: .infinity)
                 .contentShape(Rectangle())
@@ -741,14 +850,16 @@ private struct SongRow<MenuContent: View>: View {
             .buttonStyle(.borderless)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(song.spokenDescription + (isLoaded ? ", loaded" : ""))
-            .accessibilityAddTraits(.isButton)
-            Menu {
-                menu
-            } label: {
-                MoreButtonLabel()
+            .accessibilityAddTraits(isTicked == true ? [.isButton, .isSelected] : .isButton)
+            if isTicked == nil {
+                Menu {
+                    menu
+                } label: {
+                    MoreButtonLabel()
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("More for \(song.name)")
             }
-            .buttonStyle(.borderless)
-            .accessibilityLabel("More for \(song.name)")
         }
         .frame(height: 62)
     }

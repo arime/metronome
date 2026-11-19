@@ -1027,6 +1027,18 @@ final class MetronomeModel {
     /// The metronome keeps its settings if the deleted song was the loaded one; playing with
     /// its track, it stops. The song's file is deleted with it.
     func deleteSong(_ id: UUID) {
+        deleteWithoutSaving(id)
+        persistLibrary()
+    }
+
+    /// Deletes each song as `deleteSong` does, and saves once (8.7).
+    func deleteSongs(_ ids: Set<UUID>) {
+        ids.forEach(deleteWithoutSaving)
+        persistLibrary()
+    }
+
+    /// `deleteSong` without the save.
+    private func deleteWithoutSaving(_ id: UUID) {
         let isLoaded = loadedSongID == id
         if isLoaded, isPlayingTrack { stop() }
         let old = loadedTrack
@@ -1037,7 +1049,6 @@ final class MetronomeModel {
             loadedFromSetlistID = nil
             loadedTrackReplaced(replacing: old)
         }
-        persistLibrary()
     }
 
     // MARK: - Setlists
@@ -1090,6 +1101,14 @@ final class MetronomeModel {
                 loadedFromSetlistID = nil
             }
         }
+        persistLibrary()
+    }
+
+    /// Adds the songs not yet in the setlist to its end, in the given order, and saves once.
+    /// It does not count as using the setlist (8.7, 9.1).
+    func addSongs(_ ids: [UUID], toSetlist setlistID: UUID) {
+        let moment = now()
+        for id in ids { library.add(id, toSetlist: setlistID, now: moment) }
         persistLibrary()
     }
 

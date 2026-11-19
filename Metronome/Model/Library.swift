@@ -151,6 +151,11 @@ struct Library: Codable, Equatable, Sendable {
         setlists.filter { $0.songIDs.contains(songID) }.count
     }
 
+    /// The setlists that hold any of the songs, each counted once.
+    func setlistCount(containingAnyOf songIDs: Set<UUID>) -> Int {
+        setlists.filter { !songIDs.isDisjoint(with: $0.songIDs) }.count
+    }
+
     var setlistsByRecency: [Setlist] {
         setlists.sorted { $0.lastUsed > $1.lastUsed }
     }

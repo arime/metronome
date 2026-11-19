@@ -18,6 +18,9 @@ enum ScreenshotScene: String, CaseIterable {
     /// The library sheet with no songs and no setlists. Not an App Store screenshot; for
     /// checking the empty tabs in the simulator.
     case emptyLibrary
+    /// The library sheet of `library` in select mode, with the first three songs ticked. Not
+    /// an App Store screenshot; for checking select mode in the simulator.
+    case librarySelect
     /// The time signature picker over the metronome.
     case timeSignature
     /// The settings sheet.
@@ -123,7 +126,8 @@ enum ScreenshotScene: String, CaseIterable {
                 loadedSongID: sample.loadedSongID,
                 // The library opens on the setlist its loaded song came from, so the scene
                 // that shows all songs has the song loaded on its own.
-                loadedFromSetlistID: self == .library || self == .trackSolo ? nil : sample.setlistID,
+                loadedFromSetlistID: self == .library || self == .librarySelect || self == .trackSolo
+                    ? nil : sample.setlistID,
                 selectedSetlistID: self == .setlist ? sample.setlistID : nil
             ))
         }

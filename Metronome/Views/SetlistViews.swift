@@ -281,10 +281,7 @@ struct AddSongsView: View {
                             SongDetailLine(song: song)
                         }
                         Spacer(minLength: 0)
-                        Image(systemName: isIncluded ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 26))
-                            .foregroundStyle(isIncluded ? Theme.amber : Theme.surfaceSelected)
-                            .frame(width: 28)
+                        SelectionTick(isOn: isIncluded)
                     }
                     .frame(height: 62)
                     .contentShape(Rectangle())

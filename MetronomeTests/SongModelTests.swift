@@ -870,4 +870,61 @@ struct SongModelTests {
         model.setlistOrder = .name
         #expect(model.orderedSetlists.map(\.name) == ["Alpha", "beta"])
     }
+
+    // MARK: - Several songs at once
+
+    @Test func addingSeveralSongsAppendsTheNewOnesInOrder() {
+        let model = makeModel()
+        let songs = ["S0", "S1", "S2"].map { model.createSong(name: $0, settings: settings(100), addingTo: nil)! }
+        let setlist = model.createSetlist()
+        model.setSong(songs[0].id, inSetlist: setlist, included: true)
+        model.addSongs([songs[2].id, songs[0].id, songs[1].id], toSetlist: setlist)
+        #expect(model.library.songs(inSetlist: setlist).map(\.id) == [songs[0].id, songs[2].id, songs[1].id])
+        #expect(makeModel().library == model.library)
+    }
+
+    @Test func addingSongsDoesNotCountAsUsingTheSetlist() throws {
+        let (model, songs, older) = modelWithSetlist()
+        let extra = model.createSong(name: "Extra", settings: settings(90), addingTo: nil)!
+        clock.advance()
+        let newer = model.createSetlist()
+        let usedAt = try #require(model.library.setlist(id: older)?.lastUsed)
+        clock.advance()
+        model.addSongs([extra.id, songs[0].id], toSetlist: older)
+        #expect(model.library.setlist(id: older)?.lastUsed == usedAt)
+        #expect(model.library.setlistsByRecency.first?.id == newer)
+    }
+
+    @Test func deletingSeveralSongsRemovesThemEverywhere() {
+        let (model, songs, setlist) = modelWithSetlist()
+        let other = model.createSetlist()
+        model.setSong(songs[2].id, inSetlist: other, included: true)
+        model.setSong(songs[1].id, inSetlist: other, included: true)
+        model.deleteSongs([songs[0].id, songs[2].id])
+        #expect(model.library.songs.map(\.id) == [songs[1].id])
+        #expect(model.library.songs(inSetlist: setlist).map(\.id) == [songs[1].id])
+        #expect(model.library.songs(inSetlist: other).map(\.id) == [songs[1].id])
+        #expect(makeModel().library == model.library)
+    }
+
+    @Test func deletingSeveralSongsUnloadsTheLoadedOne() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[2].id, from: setlist)
+        model.deleteSongs([songs[0].id, songs[2].id])
+        #expect(model.loadedSong == nil)
+        #expect(model.loadedFromSetlistID == nil)
+        #expect(model.settings.bpm == 180)
+        #expect(model.headerTitle == "Library")
+        #expect(model.lastPlayed[songs[2].id] == nil)
+    }
+
+    @Test func theSetlistCountCountsEachSetlistOnce() {
+        let (model, songs, _) = modelWithSetlist()
+        #expect(model.library.setlistCount(containingAnyOf: [songs[0].id, songs[1].id]) == 1)
+        let other = model.createSetlist()
+        model.setSong(songs[1].id, inSetlist: other, included: true)
+        #expect(model.library.setlistCount(containingAnyOf: [songs[0].id, songs[1].id]) == 2)
+        #expect(model.library.setlistCount(containingAnyOf: [songs[0].id]) == 1)
+        #expect(model.library.setlistCount(containingAnyOf: []) == 0)
+    }
 }
