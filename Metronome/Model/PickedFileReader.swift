@@ -3,8 +3,9 @@ import Foundation
 /// Turns a file chosen in the Files picker into a `PickedTrack`: a copy in a new folder of its
 /// own, under the file's own name, checked as audio and with its first sound found.
 ///
-/// Every copy lives under one folder of the temporary directory. The song sheet discards its copy
-/// once it is saved or dropped, and the folder is emptied at launch for any copy a crash left behind.
+/// Every copy lives under one folder of the temporary directory. The song sheet and the player
+/// card's `Choose file` discard their copy once it is saved or dropped, and the folder is emptied
+/// at launch for any copy a crash left behind.
 enum PickedFileReader {
     static let defaultFolder = FileManager.default.temporaryDirectory
         .appending(path: "PickedTracks", directoryHint: .isDirectory)
@@ -32,6 +33,20 @@ enum PickedFileReader {
             try? manager.removeItem(at: folder)
             throw error
         }
+    }
+
+    /// Copies and reads a picked file away from the main actor, as a long, mostly silent file is
+    /// read to its end. Nil when the calling task was cancelled meanwhile; a copy that arrives
+    /// then is deleted.
+    static func readInBackground(_ url: URL) async -> Result<PickedTrack, Error>? {
+        let result = await Task.detached(priority: .userInitiated) {
+            Result { try read(url) }
+        }.value
+        if Task.isCancelled {
+            if case .success(let picked) = result { discard(picked) }
+            return nil
+        }
+        return result
     }
 
     /// Deletes a pick's copy and its folder.

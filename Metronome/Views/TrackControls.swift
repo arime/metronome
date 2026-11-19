@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The track screen's card at the bottom (6.12), in place of the Start row and the next-up
 /// line: the file's name, the progress bar, the transport row and, for a setlist song, the
@@ -33,31 +34,33 @@ struct PlayerCard: View {
         .accessibilityElement(children: .contain)
     }
 
-    /// The music note and, 8 pt after it, the file's name or `Track missing`, which takes the
-    /// rest of the row.
+    /// The music note, 8 pt after it the file's name, which takes the space left, and 8 pt
+    /// after that one pill: `Sync`, or `Choose file` while the file is missing. The amber name
+    /// and the pill say the file is missing, so the card does not.
     private var fileNameRow: some View {
         let isMissing = model.isTrackMissing
+        let fileName = model.loadedTrack?.fileName ?? ""
         return HStack(spacing: 8) {
-            Image(systemName: "music.note")
-                .font(.system(size: 16))
-                .foregroundStyle(Theme.muted)
-            if isMissing {
-                Text("Track missing")
+            HStack(spacing: 8) {
+                Image(systemName: "music.note")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Theme.muted)
+                Text(fileName)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Theme.amber)
-                    .lineLimit(1)
-            } else {
-                Text(model.loadedTrack?.fileName ?? "")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Theme.dialWhite)
+                    .foregroundStyle(isMissing ? Theme.amber : Theme.dialWhite)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(isMissing ? "Track missing, \(fileName)" : "Backing track, \(fileName)")
+            if isMissing {
+                ChooseFilePill()
+            } else {
+                CardPill(title: "Sync", sidePadding: 14) { model.enterSyncMode() }
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 30)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(isMissing ? "Track missing" : "Backing track, \(model.loadedTrack?.fileName ?? "")")
     }
 
     /// Five places spread evenly, the outer two at the edges. Outside a setlist the outer two
@@ -92,6 +95,76 @@ struct PlayerCard: View {
 
     private var emptyPlace: some View {
         Color.clear.frame(width: SongStepButton.size, height: SongStepButton.size)
+    }
+}
+
+/// A pill at the end of the player card's file-name row: fully rounded on surface raised, as
+/// tall as the row, with a touch area 44 pt tall.
+private struct CardPill: View {
+    let title: String
+    let sidePadding: CGFloat
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.dialWhite)
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, sidePadding)
+                .frame(height: 30)
+                .background(Theme.surfaceRaised, in: Capsule())
+                .contentShape(Rectangle().inset(by: -7))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// `Choose file` while the track's file is missing: the Files picker for audio, and the picked
+/// file stored at once for the missing track (6.12). While the pick is read the pill does
+/// nothing but keeps its look.
+private struct ChooseFilePill: View {
+    @Environment(MetronomeModel.self) private var model
+    @State private var isPickerShown = false
+    /// The file being copied and read.
+    @State private var pickToRead: URL?
+    @State private var isUnplayableShown = false
+    @State private var isTrackNotStoredShown = false
+
+    var body: some View {
+        CardPill(title: "Choose file", sidePadding: 12) { isPickerShown = true }
+            .disabled(pickToRead != nil)
+            .fileImporter(isPresented: $isPickerShown, allowedContentTypes: [.audio]) { result in
+                switch result {
+                case .success(let url):
+                    pickToRead = url
+                case .failure(let error):
+                    // Closing the picker is not a failure to read a file.
+                    if (error as? CocoaError)?.code != .userCancelled { isUnplayableShown = true }
+                }
+            }
+            // The pill going away cancels the read; a copy that arrives then is deleted.
+            .task(id: pickToRead) {
+                guard let url = pickToRead,
+                      let result = await PickedFileReader.readInBackground(url) else { return }
+                switch result {
+                case .success(let picked):
+                    if !model.chooseFileForLoadedTrack(picked) { isTrackNotStoredShown = true }
+                    // The model keeps its own copy when it stores the file; nothing is kept for
+                    // a retry when it cannot, as the pick is made again from the pill.
+                    PickedFileReader.discard(picked)
+                case .failure:
+                    isUnplayableShown = true
+                }
+                pickToRead = nil
+            }
+            .alert("This file can't be played", isPresented: $isUnplayableShown) {
+                Button("OK", role: .cancel) {}
+            }
+            .alert("The track couldn't be saved", isPresented: $isTrackNotStoredShown) {
+                Button("OK", role: .cancel) {}
+            }
     }
 }
 
@@ -232,7 +305,7 @@ struct TrackProgressBar: View {
             @unknown default: break
             }
         }
-        // It would read "0 seconds of 0 seconds"; the file name already says `Track missing`.
+        // It would read "0 seconds of 0 seconds"; the file-name row already reads "Track missing".
         .accessibilityHidden(isMissing)
     }
 

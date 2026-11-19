@@ -176,17 +176,10 @@ struct SongSheet: View {
                 if (error as? CocoaError)?.code != .userCancelled { isUnplayableShown = true }
             }
         }
-        // Copies and reads the picked file away from the main actor, as a long, mostly silent file
-        // is read to its end. Closing the sheet cancels this; a copy that arrives then is deleted.
+        // Closing the sheet cancels the read; a copy that arrives then is deleted.
         .task(id: pickToRead) {
-            guard let url = pickToRead else { return }
-            let result = await Task.detached(priority: .userInitiated) {
-                Result { try PickedFileReader.read(url) }
-            }.value
-            if Task.isCancelled {
-                if case .success(let picked) = result { PickedFileReader.discard(picked) }
-                return
-            }
+            guard let url = pickToRead,
+                  let result = await PickedFileReader.readInBackground(url) else { return }
             switch result {
             case .success(let picked): setTrackEdit(.attach(picked))
             case .failure: isUnplayableShown = true
