@@ -80,6 +80,26 @@ struct TrackLayoutTests {
         }
     }
 
+    /// The height left between the accent tiles and the player card, as 6.12 gives it.
+    @Test func theSpareHeightAboveTheCardIsAsSpecified() {
+        let cases: [(width: CGFloat, height: CGFloat, inset: Bool, beats: Int, setlist: Bool, spare: CGFloat)] = [
+            (402, 778, true, 4, false, 84), (402, 778, true, 4, true, 54),
+            (402, 778, true, 9, false, 62), (402, 778, true, 9, true, 40),
+            (375, 647, false, 4, true, 34), (375, 647, false, 4, false, 32),
+            (375, 647, false, 9, true, 34), (375, 647, false, 9, false, 32),
+            (320, 548, false, 4, true, 32), (320, 548, false, 9, true, 32),
+        ]
+        for c in cases {
+            let layout = trackScreen(
+                width: c.width, height: c.height, hasBottomInset: c.inset, beats: c.beats, hasSetlist: c.setlist
+            )
+            let parts = TrackScreenLayout.headerHeight + TrackScreenLayout.dialTopGap + layout.dialDiameter
+                + layout.tilesTopGap + layout.tilesHeight + layout.cardHeight
+            let spare = c.height - layout.bottomPadding - parts
+            #expect(spare == c.spare, "\(c.width) × \(c.height), \(c.beats) beats, setlist \(c.setlist)")
+        }
+    }
+
     @Test func theCardAlwaysHasAtLeast16AboveIt() {
         for width in [CGFloat(320), 375, 402] {
             for height in stride(from: CGFloat(548), through: 900, by: 13) {

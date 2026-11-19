@@ -124,7 +124,7 @@ private struct CardPill: View {
 
 /// `Choose file` while the track's file is missing: the Files picker for audio, and the picked
 /// file stored at once for the missing track (6.12). While the pick is read the pill does
-/// nothing but keeps its look.
+/// nothing and is drawn at 40 % opacity, as the card's other dimmed buttons are.
 private struct ChooseFilePill: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isPickerShown = false
@@ -148,6 +148,7 @@ private struct ChooseFilePill: View {
 
     var body: some View {
         CardPill(title: "Choose file", sidePadding: 12, action: openPicker)
+            .opacity(pickToRead != nil ? 0.4 : 1)
             .disabled(pickToRead != nil)
             .fileImporter(isPresented: $isPickerShown, allowedContentTypes: [.audio]) { result in
                 switch result {
