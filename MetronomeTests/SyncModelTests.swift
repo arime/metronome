@@ -187,6 +187,33 @@ struct SyncModelTests {
         #expect(b.model.loadedSongID == song.id)
     }
 
+    @Test func steppingThroughASetlistWritesNothingToICloud() throws {
+        let device = makeDevice()
+        clock.advance()
+        let setlist = device.model.createSetlist()
+        var songs: [UUID] = []
+        for (index, name) in ["One", "Two", "Three"].enumerated() {
+            let song = try #require(device.model.createSong(name: name, settings: settings(100 + index), addingTo: nil))
+            device.model.setSong(song.id, inSetlist: setlist, included: true)
+            songs.append(song.id)
+        }
+        clock.advance()
+        device.model.loadSong(songs[0], from: setlist)
+        cloud.forgetWrites()
+
+        clock.advance()
+        device.model.goToNext()
+        clock.advance()
+        device.model.goToNext()
+        clock.advance()
+        device.model.goToPrevious()
+        clock.advance()
+        device.model.selectFilter(setlist)
+
+        #expect(device.model.loadedSongID == songs[1])
+        #expect(cloud.writes == 0)
+    }
+
     @Test func arrivalsPlayNoHaptic() {
         let (a, b, song) = twoDevicesSharingASong()
         b.model.loadSong(song.id, from: nil, start: true)

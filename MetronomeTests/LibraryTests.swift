@@ -185,4 +185,49 @@ struct LibraryTests {
         library.touchSetlist(a.id, now: now.addingTimeInterval(5))
         #expect(library.setlistsByRecency.map(\.id) == [a.id, b.id])
     }
+
+    @Test func theMostRecentSetlistKeepsItsTime() {
+        var library = Library()
+        library.addSetlist(name: "A", now: now)
+        let b = library.addSetlist(name: "B", now: now + 1)
+        let before = library
+        library.touchSetlist(b.id, now: now + 2)
+        #expect(library == before)
+    }
+
+    @Test func anOlderSetlistGetsTheNewTime() {
+        var library = Library()
+        let a = library.addSetlist(name: "A", now: now)
+        library.addSetlist(name: "B", now: now + 1)
+        library.touchSetlist(a.id, now: now + 2)
+        #expect(library.setlist(id: a.id)?.lastUsed == now + 2)
+        #expect(library.setlistsByRecency.first?.id == a.id)
+    }
+
+    @Test func aTieStillSetsTheTime() {
+        var library = Library()
+        let a = library.addSetlist(name: "A", now: now)
+        let b = library.addSetlist(name: "B", now: now)
+        library.touchSetlist(a.id, now: now + 1)
+        #expect(library.setlist(id: a.id)?.lastUsed == now + 1)
+        #expect(library.setlistsByRecency.map(\.id) == [a.id, b.id])
+    }
+
+    @Test func theOnlySetlistKeepsItsTime() {
+        var library = Library()
+        let a = library.addSetlist(name: "A", now: now)
+        let before = library
+        library.touchSetlist(a.id, now: now + 1)
+        #expect(library == before)
+    }
+
+    @Test func aDeletedSetlistDoesNotCount() {
+        var library = Library()
+        let a = library.addSetlist(name: "A", now: now + 1)
+        let b = library.addSetlist(name: "B", now: now + 2)
+        library.deleteSetlist(b.id, now: now + 3)
+        let before = library
+        library.touchSetlist(a.id, now: now + 4)
+        #expect(library == before)
+    }
 }

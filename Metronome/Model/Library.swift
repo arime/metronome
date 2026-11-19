@@ -258,8 +258,14 @@ struct Library: Codable, Equatable, Sendable {
         setlistRecords[id]?.reorder(to: order, now: now)
     }
 
+    /// Sets the last-used time only when another setlist's is the same or later, so using the
+    /// most recently used setlist changes nothing and sends nothing to iCloud (9.1).
     mutating func touchSetlist(_ id: UUID, now: Date) {
-        guard setlist(id: id) != nil else { return }
+        guard let used = setlist(id: id) else { return }
+        let othersUsedSameOrLater = setlistRecords.values.contains {
+            $0.id != id && $0.deleted == nil && $0.lastUsed >= used.lastUsed
+        }
+        guard othersUsedSameOrLater else { return }
         setlistRecords[id]?.touch(now: now)
     }
 

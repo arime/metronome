@@ -1093,7 +1093,7 @@ Songs and setlists:
 - [ ] Add to setlist in select mode lists the setlists most recently used first and New setlist; a setlist gets the ticked songs not yet in it at its end, in the Songs tab's order; New setlist makes a setlist of the ticked songs and opens it for naming; both end select mode without an Undo bar. *(Not built.)*
 - [ ] Delete in select mode asks once, naming the count and the setlists, deletes the ticked songs, follows section 5 for the loaded song, and ends select mode with no Undo. *(Not built.)*
 - [ ] Select mode ends with Done, after an action and when the sheet is closed, taking every tick away, and the library opens with it off. *(Not built.)*
-- [ ] Opening a setlist or loading a song from it, Previous and Next included, sets its last-used time only when another setlist's time is the same or later; when it is already the most recently used one nothing changes and nothing is sent to iCloud. *(Not built.)*
+- [x] Opening a setlist or loading a song from it, Previous and Next included, sets its last-used time only when another setlist's time is the same or later; when it is already the most recently used one nothing changes and nothing is sent to iCloud. *(Unit tested: theMostRecentSetlistKeepsItsTime, anOlderSetlistGetsTheNewTime, aTieStillSetsTheTime, theOnlySetlistKeepsItsTime and aDeletedSetlistDoesNotCount, and against an in-memory stand-in for iCloud steppingThroughASetlistWritesNothingToICloud, which loads a song from the setlist, steps with Next, Next and Previous and opens the setlist without a write.)*
 - [ ] A setlist's menu button is 40 pt, and its menu holds Add song, which opens the Add song screen, before Rename setlist, Duplicate setlist and Delete setlist. *(Not built.)*
 
 Settings and click sounds:
@@ -1179,7 +1179,6 @@ A part that is specified before it is built is listed here until it is.
 
 - **Library menus.** The top-level header's menu button on both tabs, and the + in the controls line in place of the header's New song and New setlist buttons (8.1, 8.2, 9.1).
 - **Sorting.** The tab menus with their Sort by groups, and the Songs and Setlists tabs listed in the chosen order (8.6).
-- **Setlist last-used time.** Set only when the setlist is not already the most recently used one (9.1).
 - **Setlist search.** The Setlists tab's controls line and search (9.1).
 - **Select mode.** Select in the Songs tab's menu, the ticks, the action bar, and Add to setlist, New setlist and Delete for the ticked songs (8.7).
 - **A setlist's menu.** Add song as its first item, and its button at 40 pt (8.1, 8.3).
