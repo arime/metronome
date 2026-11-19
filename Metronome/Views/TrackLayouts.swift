@@ -1,17 +1,17 @@
 import CoreGraphics
 
-/// The track screen's sizes (6.12), fitted by the plain screen's rule (6.8): the dial takes
-/// the spare height, growing up to 340 pt; on a short screen it shrinks to 240 pt, then the
-/// gaps around the Sync row and single-row tiles give way, then the dial shrinks as far as it
-/// must. Height still left over stays between the tiles and the player card.
+/// The track screen's sizes (6.12), taken from the plain layout (6.8) for the same screen,
+/// time signature and setlist: the side margins, the bottom padding, the dial's diameter, the
+/// single-row tile height, the gap above the tiles and whether the next-up line shows. So the
+/// dial has the same place and size on both screens. The plain layout always leaves room, as
+/// the tiles and the player card need less height than the plain screen's parts below its
+/// dial; height left over stays between the tiles and the card.
 struct TrackScreenLayout {
     let sideMargin: CGFloat
     let bottomPadding: CGFloat
     let dialDiameter: CGFloat
-    /// Between the dial and the Sync row.
-    let rowTopGap: CGFloat
-    /// Between the Sync row and the accent tiles.
-    let rowBottomGap: CGFloat
+    /// Between the dial and the accent tiles.
+    let tilesTopGap: CGFloat
     /// Single-row accent tiles; two rows keep their 44 pt whatever this is.
     let tileHeight: CGFloat
     /// The player card, with the next-up line when it is shown.
@@ -24,71 +24,25 @@ struct TrackScreenLayout {
     /// The header of 6.1: 8 + 40.
     static let headerHeight: CGFloat = 48
     static let dialTopGap: CGFloat = 12
-    /// The Sync row, as tall as the time signature row of 6.4.
-    static let rowHeight: CGFloat = 60
     /// The least space kept between the accent tiles and the player card.
     static let cardTopGap: CGFloat = 16
     /// The player card without the next-up line: 12 + 30 + 12 + 40 + 12 + 68 + 18.
     static let playerCardHeight: CGFloat = 192
     /// The next-up line inside the player card with its gap: 18 + 12.
     static let playerNextLineHeight: CGFloat = 30
-    /// The next-up line is left out when it would push the dial below this size.
-    static let nextLineMinimumDial: CGFloat = 200
-    /// A safety floor only; the smallest supported case, Display Zoom in 9/8, gets 74 pt.
-    static let minimumDial: CGFloat = 60
 
     init(width: CGFloat, height: CGFloat, hasBottomInset: Bool, beats: Int, hasSetlist: Bool) {
-        let sideMargin = width < ScreenLayout.narrowWidth ? ScreenLayout.narrowSideMargin : Theme.sideMargin
-        self.sideMargin = sideMargin
-        // Phones with a home indicator already have the design's bottom margin.
-        let bottomPadding: CGFloat = hasBottomInset ? 0 : 16
-        self.bottomPadding = bottomPadding
-        let available = height - bottomPadding
-        // The dial never grows wider than the space between the side margins.
-        let largestDial = min(ScreenLayout.maximumDial, max(ScreenLayout.fullDial, width - 2 * sideMargin))
-
-        struct Gaps {
-            let rowTopGap, rowBottomGap, tileHeight: CGFloat
-        }
-        let roomyGaps = Gaps(rowTopGap: 26, rowBottomGap: 22, tileHeight: 76)
-        let compactGaps = Gaps(rowTopGap: 16, rowBottomGap: 16, tileHeight: 56)
-
-        struct Fit {
-            let dial: CGFloat
-            let gaps: Gaps
-        }
-
-        func fit(nextLine: Bool) -> Fit {
-            func partsHeight(_ gaps: Gaps) -> CGFloat {
-                let tiles = AccentTiles.height(forBeats: beats, singleRowTileHeight: gaps.tileHeight)
-                let card = Self.playerCardHeight + (nextLine ? Self.playerNextLineHeight : 0)
-                return Self.headerHeight + Self.dialTopGap + gaps.rowTopGap + Self.rowHeight + gaps.rowBottomGap
-                    + tiles + Self.cardTopGap + card
-            }
-
-            let roomy = available - partsHeight(roomyGaps)
-            if roomy >= ScreenLayout.roomyMinimumDial {
-                return Fit(dial: min(largestDial, roomy), gaps: roomyGaps)
-            }
-            let compact = available - partsHeight(compactGaps)
-            return Fit(dial: min(largestDial, max(Self.minimumDial, compact)), gaps: compactGaps)
-        }
-
-        let withLine = hasSetlist ? fit(nextLine: true) : nil
-        let chosen: Fit
-        if let withLine, withLine.dial >= Self.nextLineMinimumDial {
-            chosen = withLine
-            showsNextLine = true
-        } else {
-            chosen = fit(nextLine: false)
-            showsNextLine = false
-        }
-        dialDiameter = chosen.dial
-        rowTopGap = chosen.gaps.rowTopGap
-        rowBottomGap = chosen.gaps.rowBottomGap
-        tileHeight = chosen.gaps.tileHeight
-        tilesHeight = AccentTiles.height(forBeats: beats, singleRowTileHeight: chosen.gaps.tileHeight)
-        cardHeight = Self.playerCardHeight + (showsNextLine ? Self.playerNextLineHeight : 0)
+        let plain = ScreenLayout(
+            width: width, height: height, hasBottomInset: hasBottomInset, beats: beats, hasSetlist: hasSetlist
+        )
+        sideMargin = plain.sideMargin
+        bottomPadding = plain.bottomPadding
+        dialDiameter = plain.dialDiameter
+        tilesTopGap = plain.settingsTopGap
+        tileHeight = plain.tileHeight
+        showsNextLine = plain.showsNextLine
+        tilesHeight = AccentTiles.height(forBeats: beats, singleRowTileHeight: plain.tileHeight)
+        cardHeight = Self.playerCardHeight + (plain.showsNextLine ? Self.playerNextLineHeight : 0)
     }
 }
 
