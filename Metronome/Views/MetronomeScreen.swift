@@ -33,7 +33,7 @@ struct MetronomeScreen: View {
             #if DEBUG
             .onAppear {
                 switch ScreenshotScene.current {
-                case .library?, .librarySelect?, .setlist?, .emptyLibrary?: isLibraryShown = true
+                case .library?, .librarySelect?, .setlist?, .setlistSearch?, .emptyLibrary?: isLibraryShown = true
                 case .settings?: isSettingsShown = true
                 default: break
                 }

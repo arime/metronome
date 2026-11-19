@@ -443,7 +443,8 @@ private struct SongListView: View {
     @State private var editingSong: Song?
     @State private var deleting: Song?
     @State private var isDeleteSetlistShown = false
-    /// What is typed in the Songs tab's search field. It starts empty each time.
+    /// What is typed in the search field, the Songs tab's or the setlist's. It starts empty
+    /// each time the list is shown.
     @State private var query = ""
     /// The list scrolls to the loaded song once, when it first appears, not each time a
     /// search brings it back.
@@ -467,6 +468,8 @@ private struct SongListView: View {
     #if DEBUG
     /// True once the librarySelect screenshot scene has ticked its songs.
     private static var hasTickedSceneSongs = false
+    /// True once the setlistSearch screenshot scene has typed its search.
+    private static var hasTypedSceneSearch = false
     #endif
 
     private var setlist: Setlist? {
@@ -479,17 +482,25 @@ private struct SongListView: View {
         return keptOrder.map { Library.songs(live, keptIn: $0) } ?? live
     }
 
-    /// The songs in the list: on the Songs tab those matching the search, in a setlist all of them.
-    private var shownSongs: [Song] {
-        setlist == nil ? songs.filter { $0.matches(search: query) } : songs
+    /// The songs the search finds, in a setlist each with its number in the whole setlist.
+    private var rows: [(number: Int?, song: Song)] {
+        if setlist != nil {
+            return SetlistSearch.rows(songs, matching: query).map { ($0.number, $0.song) }
+        }
+        return songs.filter { $0.matches(search: query) }.map { (nil, $0) }
+    }
+
+    /// True while the search field has text other than spaces.
+    private var isSearching: Bool {
+        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
         VStack(spacing: 0) {
             if let setlist {
                 // Inside a setlist everything is done in place: renaming in the header,
-                // reordering with the handles, removing with a swipe or the row's menu, and
-                // adding with the row at the end of the list.
+                // reordering with the handles, removing with the row's menu, and adding with
+                // the + in the controls line.
                 SetlistHeader(
                     setlistID: setlist.id,
                     focusesName: focusesName,
@@ -516,18 +527,11 @@ private struct SongListView: View {
                     )
                 }
             }
-            // An empty setlist says so in the middle of the screen; a count of 0 adds nothing.
-            if setlist != nil, !songs.isEmpty {
-                SectionLabel(text: songs.count == 1 ? "1 SONG" : "\(songs.count) SONGS")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
-            }
             if songs.isEmpty {
                 emptyState
             } else {
                 controls
-                if shownSongs.isEmpty {
+                if rows.isEmpty {
                     EmptyListMessage(title: "No matches", text: nil) { EmptyView() }
                 } else {
                     list
@@ -660,11 +664,13 @@ private struct SongListView: View {
         keptOrder = model.orderedSongs.map(\.id)
     }
 
-    /// The line between the Songs tab's header and its list: the search field and the +, or
-    /// in select mode the search field alone. A setlist has no such line.
+    /// The line between the header and the list: the search field and the +, or in select
+    /// mode the search field alone. In a setlist the + opens Add song.
     @ViewBuilder
     private var controls: some View {
-        if setlist == nil {
+        if setlist != nil {
+            SetlistControlsLine(query: $query, showsAdd: true, add: addSongs)
+        } else {
             ControlsLine(query: $query, searchName: "Search songs") {
                 if selection == nil {
                     AddButton(accessibilityName: "New song") { isNewSongShown = true }
@@ -676,12 +682,11 @@ private struct SongListView: View {
     private var list: some View {
         ScrollViewReader { proxy in
             List {
-                // The numbers are a setlist's, which is never filtered, so an index here is
-                // also the song's place in the setlist.
-                ForEach(Array(shownSongs.enumerated()), id: \.element.id) { index, song in
+                ForEach(rows, id: \.song.id) { row in
+                    let song = row.song
                     SongRow(
                         song: song,
-                        number: setlist == nil ? nil : index + 1,
+                        number: row.number,
                         isLoaded: model.marksLoaded(song.id, inSetlist: setlist?.id),
                         isTicked: selection?.contains(song.id),
                         tap: {
@@ -696,8 +701,9 @@ private struct SongListView: View {
                     )
                     .sheetRow()
                     // On the Songs tab the swipe is a shortcut to the two most common items of
-                    // the row's menu. A setlist has none: its list is in edit mode, so that the
-                    // handles drag at once, and such a list takes no swipes. Nor does select mode.
+                    // the row's menu. A setlist has none, with or without its handles (8.3): its
+                    // list is in edit mode, so that the handles drag at once, and such a list
+                    // takes no swipes. Nor does select mode.
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if setlist == nil, selection == nil {
                             Button("Delete") { deleting = song }
@@ -709,14 +715,10 @@ private struct SongListView: View {
                 }
                 // Only a setlist has an order of its own to change.
                 .onMove(perform: moveAction)
-                if setlist != nil {
-                    ActionRow(text: "Add song", symbol: "plus", action: addSongs)
-                        .sheetRow()
-                        .moveDisabled(true)
-                }
             }
             .sheetList()
-            // A setlist's rows always show their drag handles; there is no separate edit mode.
+            // A setlist's rows show their drag handles whenever its search is empty; there is
+            // no separate edit mode.
             .environment(\.editMode, editMode)
             .scrollDismissesKeyboard(.immediately)
             // The library opens where the user is: with the marked row in view. Without an
@@ -725,12 +727,28 @@ private struct SongListView: View {
             .onAppear {
                 guard !hasScrolledToLoaded else { return }
                 hasScrolledToLoaded = true
-                if let marked = shownSongs.first(where: { model.marksLoaded($0.id, inSetlist: setlist?.id) }) {
-                    proxy.scrollTo(marked.id)
+                #if DEBUG
+                // In place of the scroll, which would go to a row the search then hides.
+                if typesSceneSearch() { return }
+                #endif
+                if let marked = rows.first(where: { model.marksLoaded($0.song.id, inSetlist: setlist?.id) }) {
+                    proxy.scrollTo(marked.song.id)
                 }
             }
         }
     }
+
+    #if DEBUG
+    /// Types `li` in the setlist's search for the setlistSearch screenshot scene, once per
+    /// launch, so that the setlist opens with an empty field after that. True when it did.
+    private func typesSceneSearch() -> Bool {
+        guard ScreenshotScene.current == .setlistSearch, setlist != nil, !Self.hasTypedSceneSearch
+        else { return false }
+        Self.hasTypedSceneSearch = true
+        query = "li"
+        return true
+    }
+    #endif
 
     /// Everything that can be done with a song, the same in every list.
     @ViewBuilder
@@ -786,12 +804,19 @@ private struct SongListView: View {
         if let removal = model.removeSong(song.id, fromSetlist: setlist.id) { removed(removal) }
     }
 
-    private var editMode: Binding<EditMode> {
-        .constant(setlist == nil ? .inactive : .active)
+    /// Only a setlist's whole list can be reordered: while the search has text it shows part
+    /// of it, and has no handles.
+    private var isReorderable: Bool {
+        setlist != nil && !isSearching
     }
 
+    private var editMode: Binding<EditMode> {
+        .constant(isReorderable ? .active : .inactive)
+    }
+
+    /// move(from:to:) takes offsets into the whole setlist, so never those of a filtered list.
     private var moveAction: ((IndexSet, Int) -> Void)? {
-        setlist == nil ? nil : { move(from: $0, to: $1) }
+        isReorderable ? { move(from: $0, to: $1) } : nil
     }
 
     private func move(from source: IndexSet, to destination: Int) {
