@@ -18,17 +18,20 @@ struct LibraryTabHeader<MenuButton: View>: View {
     }
 }
 
-/// The line between a tab's header and its list: the search field, 10 pt, and whatever
-/// follows it, then 12 pt of space and a divider (8.2, 9.1).
+/// The line between a tab's header and its list: the search field, 10 pt, and the +, then
+/// 12 pt of space and a divider (8.2, 9.1).
 struct ControlsLine<Trailing: View>: View {
     @Binding var query: String
     /// What VoiceOver calls the field.
     let searchName: String
+    /// The + in its 40 pt slot, or nothing.
     @ViewBuilder let trailing: Trailing
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
+            // 8 pt to the +'s slot, which is 2 pt wider on each side than the +: 10 pt to
+            // the + itself.
+            HStack(spacing: 8) {
                 SearchField(text: $query, accessibilityName: searchName)
                 trailing
             }
@@ -90,7 +93,9 @@ struct SearchField: View {
     }
 }
 
-/// The amber + at the end of the controls line: New song or New setlist.
+/// The amber + at the end of the controls line: New song or New setlist. It is centred in
+/// a 40 pt slot at the margin, so that it stands under the header's ⋯ and on the axis of
+/// the rows' ⋯ buttons, which are 40 pt at the same margin.
 struct AddButton: View {
     /// `New song` or `New setlist`.
     let accessibilityName: String
@@ -108,6 +113,7 @@ struct AddButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityName)
+        .frame(width: 40)
     }
 }
 
