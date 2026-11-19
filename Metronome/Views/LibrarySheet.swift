@@ -503,11 +503,6 @@ private struct SongListView: View {
         setlist?.songIDs ?? model.library.songs.map(\.id)
     }
 
-    /// True while the search field has text other than spaces.
-    private var isSearching: Bool {
-        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             if let selection {
@@ -515,8 +510,8 @@ private struct SongListView: View {
                 SelectHeader(title: selection.title) { self.selection = nil }
             } else if let setlist {
                 // Inside a setlist everything is done in place: renaming in the header,
-                // reordering with the handles, removing with the row's menu or in select mode,
-                // and adding with the + in the controls line.
+                // reordering by dragging a row, removing with the row's swipe, its menu or in
+                // select mode, and adding with the + in the controls line.
                 SetlistHeader(
                     setlistID: setlist.id,
                     focusesName: focusesName,
@@ -679,13 +674,7 @@ private struct SongListView: View {
         let ids = selection.ordered(in: songs)
         let setlistID = setlist.id
         self.selection = nil
-        // The mode ends first and the rows go a moment later. This works around SwiftUI not
-        // refreshing the edit mode's drag handles when select mode ends and rows are deleted
-        // in one change: the last remaining rows then kept their ⋯ but showed no handle until
-        // the list was shown again. Keep the two apart.
-        Task { @MainActor in
-            if let removal = model.removeSongs(ids, fromSetlist: setlistID) { removed(removal) }
-        }
+        if let removal = model.removeSongs(ids, fromSetlist: setlistID) { removed(removal) }
     }
 
     /// Makes a setlist of the ticked songs, in the order of the list shown, ends select mode
@@ -752,26 +741,27 @@ private struct SongListView: View {
                         menu: { rowMenu(for: song) }
                     )
                     .sheetRow()
-                    // On the Songs tab the swipe is a shortcut to the two most common items of
-                    // the row's menu. A setlist has none, with or without its handles (8.3): its
-                    // list is in edit mode, so that the handles drag at once, and such a list
-                    // takes no swipes. Nor does select mode.
+                    // The swipe is a shortcut to items of the row's menu: Delete and Edit on the
+                    // Songs tab, Remove from setlist in a setlist (8.3). Select mode has none.
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        if setlist == nil, selection == nil {
-                            Button("Delete") { deleting = song }
-                                .tint(Theme.red)
-                            Button("Edit") { editingSong = song }
-                                .tint(Theme.surfaceSelected)
+                        if selection == nil {
+                            if let setlist {
+                                Button("Remove") { remove(song, from: setlist) }
+                                    .tint(Theme.surfaceSelected)
+                            } else {
+                                Button("Delete") { deleting = song }
+                                    .tint(Theme.red)
+                                Button("Edit") { editingSong = song }
+                                    .tint(Theme.surfaceSelected)
+                            }
                         }
                     }
                 }
-                // Only a setlist has an order of its own to change.
+                // Only a setlist has an order of its own to change. Its rows are moved by
+                // holding one until it lifts and dragging it.
                 .onMove(perform: moveAction)
             }
             .sheetList()
-            // A setlist's rows show their drag handles whenever its search is empty, outside
-            // select mode; there is no separate edit mode.
-            .environment(\.editMode, editMode)
             .scrollDismissesKeyboard(.immediately)
             // The library opens where the user is: with the marked row in view. Without an
             // anchor the list moves only as far as it must, so a row that is already on
@@ -780,8 +770,7 @@ private struct SongListView: View {
                 guard !hasScrolledToLoaded else { return }
                 hasScrolledToLoaded = true
                 #if DEBUG
-                // In place of the scroll, which would go to a row that the search then hides,
-                // or while select mode takes the handles away.
+                // In place of the scroll, which would go to a row that the search then hides.
                 if setsUpSetlistScene() { return }
                 #endif
                 if let marked = rows.first(where: { model.marksLoaded($0.song.id, inSetlist: setlist?.id) }) {
@@ -869,16 +858,13 @@ private struct SongListView: View {
     }
 
     /// Only a setlist's whole list can be reordered: while the search has text it shows part
-    /// of it, and has no handles. Nor has select mode, whose rows end in their ticks.
+    /// of it. Nor can select mode's.
     private var isReorderable: Bool {
-        setlist != nil && !isSearching && selection == nil
-    }
-
-    private var editMode: Binding<EditMode> {
-        .constant(isReorderable ? .active : .inactive)
+        setlist != nil && SetlistSearch.allowsReorder(query: query, isSelecting: selection != nil)
     }
 
     /// move(from:to:) takes offsets into the whole setlist, so never those of a filtered list.
+    /// Without it the rows do not lift on a long press.
     private var moveAction: ((IndexSet, Int) -> Void)? {
         isReorderable ? { move(from: $0, to: $1) } : nil
     }

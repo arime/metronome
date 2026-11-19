@@ -33,6 +33,13 @@ struct SetlistSearchTests {
         #expect(SetlistSearch.rows(songs(["A", "B", "C"]), matching: "zz").isEmpty)
     }
 
+    @Test func reorderingNeedsTheWholeSetlistOutsideSelectMode() {
+        #expect(SetlistSearch.allowsReorder(query: "", isSelecting: false))
+        #expect(SetlistSearch.allowsReorder(query: "  ", isSelecting: false))
+        #expect(!SetlistSearch.allowsReorder(query: "li", isSelecting: false))
+        #expect(!SetlistSearch.allowsReorder(query: "", isSelecting: true))
+    }
+
     @Test func matchingIgnoresCaseAndAccents() {
         let rows = SetlistSearch.rows(songs(["Häät", "Polka"]), matching: " HAAT ")
         #expect(rows.map(\.number) == [1])

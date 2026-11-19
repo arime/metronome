@@ -99,18 +99,10 @@ extension Song {
 /// The side margin of the sheet's lists, the same as the header's and the controls line's.
 private let sheetRowMargin: CGFloat = 20
 
-extension EnvironmentValues {
-    /// The width of the sheet list a row is in; 0 until it has been measured.
-    @Entry var sheetListWidth: CGFloat = 0
-}
-
 /// See sheetRow().
 private struct SheetRow: ViewModifier {
-    @Environment(\.sheetListWidth) private var listWidth
-
     func body(content: Content) -> some View {
-        let listWidth = listWidth
-        return content
+        content
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: sheetRowMargin, bottom: 0, trailing: sheetRowMargin))
             .listRowSeparatorTint(Theme.line)
@@ -118,28 +110,17 @@ private struct SheetRow: ViewModifier {
             .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             // And end at the margin, in line with the ⋯ buttons and the line above the list.
             // Left to the system they end at the list's own layout margin, which is 16 pt on
-            // narrower phones. The row's own width is no measure: in a setlist the drag handle
-            // stands outside it. The guide counts from the row's leading edge, at the margin.
-            .alignmentGuide(.listRowSeparatorTrailing) { dimensions in
-                listWidth > 0 ? listWidth - 2 * sheetRowMargin : dimensions.width
-            }
+            // narrower phones. The row spans from margin to margin.
+            .alignmentGuide(.listRowSeparatorTrailing) { $0.width }
     }
 }
 
 /// See sheetList().
 private struct SheetList: ViewModifier {
-    @State private var width: CGFloat = 0
-
     func body(content: Content) -> some View {
         content
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .environment(\.sheetListWidth, width)
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.width
-            } action: { newWidth in
-                width = newWidth
-            }
     }
 }
 
