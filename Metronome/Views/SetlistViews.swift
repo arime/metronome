@@ -104,6 +104,8 @@ struct ActionRow: View {
     var color = Theme.amber
     let action: () -> Void
 
+    static let height: CGFloat = 56
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
@@ -114,7 +116,7 @@ struct ActionRow: View {
                 Spacer(minLength: 0)
             }
             .foregroundStyle(color)
-            .frame(height: 56)
+            .frame(height: Self.height)
             .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
@@ -231,6 +233,11 @@ struct AddSongsView: View {
     let done: () -> Void
 
     @State private var isNewSongShown = false
+    /// What is typed in the search field. It starts empty, as the view is made afresh each
+    /// time the screen opens.
+    @State private var query = ""
+    /// The library's songs when New song was opened, so a song made there can be told apart.
+    @State private var songIDsBeforeNewSong: Set<UUID> = []
 
     private var setlistName: String { model.library.setlist(id: setlistID)?.name ?? "setlist" }
     private var members: [UUID] { model.library.setlist(id: setlistID)?.songIDs ?? [] }
@@ -255,21 +262,34 @@ struct AddSongsView: View {
                     title: "No songs in library yet",
                     text: "Create one here, and it goes straight into \(setlistName)."
                 ) {
-                    PillButton(text: "New song", symbol: "plus", size: .large) { isNewSongShown = true }
+                    PillButton(text: "New song", symbol: "plus", size: .large, action: showNewSong)
                 }
             } else {
+                ControlsLine(query: $query, searchName: "Search songs") { EmptyView() }
                 list
             }
         }
-        .sheet(isPresented: $isNewSongShown) {
+        .sheet(isPresented: $isNewSongShown, onDismiss: emptyQueryAfterNewSong) {
             SongSheet(purpose: .library(setlistID: setlistID))
                 .environment(model)
         }
     }
 
+    private func showNewSong() {
+        songIDsBeforeNewSong = Set(songs.map(\.id))
+        isNewSongShown = true
+    }
+
+    /// A song made with New song goes straight into the setlist; the search is emptied so it
+    /// is listed. Cancel leaves the text.
+    private func emptyQueryAfterNewSong() {
+        if members.contains(where: { !songIDsBeforeNewSong.contains($0) }) { query = "" }
+    }
+
     private var list: some View {
-        List {
-            ForEach(songs) { song in
+        let shown = songs.filter { $0.matches(search: query) }
+        return List {
+            ForEach(shown) { song in
                 let isIncluded = members.contains(song.id)
                 Button {
                     if isIncluded {
@@ -300,10 +320,20 @@ struct AddSongsView: View {
                 .accessibilityAddTraits(.isButton)
                 .sheetRow()
             }
-            // At the end, as Add song is in the setlist itself.
-            ActionRow(text: "New song", symbol: "plus") { isNewSongShown = true }
+            // At the end of the list, also when a search narrows it or finds nothing.
+            ActionRow(text: "New song", symbol: "plus", action: showNewSong)
                 .sheetRow()
         }
         .sheetList()
+        .scrollDismissesKeyboard(.immediately)
+        // With nothing found, the New song row keeps its place at the top and the message
+        // stands centred in the space below it.
+        .overlay {
+            if shown.isEmpty {
+                EmptyListMessage(title: "No matches", text: nil) { EmptyView() }
+                    .padding(.top, ActionRow.height)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 }
