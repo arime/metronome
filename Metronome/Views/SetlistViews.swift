@@ -62,32 +62,26 @@ struct SetlistsTab: View {
     private func row(_ setlist: Setlist) -> some View {
         let holdsLoaded = model.loadedSongID != nil && model.loadedFromSetlistID == setlist.id
         let count = setlist.songIDs.count
-        return Button {
-            open(setlist.id)
-        } label: {
-            HStack(spacing: 12) {
-                Text(setlist.name)
-                    .font(.system(size: 17, weight: holdsLoaded ? .bold : .semibold))
-                    .foregroundStyle(holdsLoaded ? Theme.amber : Theme.dialWhite)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                Text("\(count)")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Theme.muted)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Theme.mutedDim)
-            }
-            .frame(height: 56)
-            .contentShape(Rectangle())
+        return HStack(spacing: 12) {
+            Text(setlist.name)
+                .font(.system(size: 17, weight: holdsLoaded ? .bold : .semibold))
+                .foregroundStyle(holdsLoaded ? Theme.amber : Theme.dialWhite)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Text("\(count)")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Theme.muted)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Theme.mutedDim)
         }
-        .buttonStyle(.borderless)
-        .accessibilityElement(children: .ignore)
+        .frame(height: 56)
+        .contentShape(Rectangle())
+        .rowTap { open(setlist.id) }
         .accessibilityLabel(
             "\(setlist.name), \(count == 1 ? "1 song" : "\(count) songs")"
                 + (holdsLoaded ? ", has the loaded song" : "")
         )
-        .accessibilityAddTraits(.isButton)
         .sheetRow()
         // A shortcut to Delete setlist in the setlist's own menu.
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -104,19 +98,18 @@ struct ActionRow: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .bold))
-                Text(text)
-                    .font(.system(size: 17, weight: .semibold))
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(Theme.amber)
-            .frame(height: 56)
-            .contentShape(Rectangle())
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .bold))
+            Text(text)
+                .font(.system(size: 17, weight: .semibold))
+            Spacer(minLength: 0)
         }
-        .buttonStyle(.borderless)
+        .foregroundStyle(Theme.amber)
+        .frame(height: 56)
+        .contentShape(Rectangle())
+        .rowTap(action)
+        .accessibilityLabel(text)
     }
 }
 
@@ -288,33 +281,29 @@ struct AddSongsView: View {
         return List {
             ForEach(shown) { song in
                 let isIncluded = members.contains(song.id)
-                Button {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(song.name)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Theme.dialWhite)
+                            .lineLimit(1)
+                        SongDetailLine(song: song)
+                    }
+                    Spacer(minLength: 0)
+                    SelectionTick(isOn: isIncluded)
+                }
+                .frame(height: 62)
+                .contentShape(Rectangle())
+                .rowTap {
                     if isIncluded {
                         // No Undo here: ticking it again puts it back, at the end.
                         _ = model.removeSong(song.id, fromSetlist: setlistID)
                     } else {
                         model.setSong(song.id, inSetlist: setlistID, included: true)
                     }
-                } label: {
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(song.name)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Theme.dialWhite)
-                                .lineLimit(1)
-                            SongDetailLine(song: song)
-                        }
-                        Spacer(minLength: 0)
-                        SelectionTick(isOn: isIncluded)
-                    }
-                    .frame(height: 62)
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.borderless)
-                .accessibilityElement(children: .ignore)
                 .accessibilityLabel(song.spokenDescription)
                 .accessibilityValue(isIncluded ? "in the setlist" : "not in the setlist")
-                .accessibilityAddTraits(.isButton)
                 .sheetRow()
             }
             // At the end of the list, also when a search narrows it or finds nothing.

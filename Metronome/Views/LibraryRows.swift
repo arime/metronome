@@ -15,34 +15,31 @@ struct SongRow<MenuContent: View>: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Button(action: tap) {
-                HStack(spacing: 12) {
-                    if let number {
-                        Text("\(number)")
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(isLoaded ? Theme.amber : Theme.mutedDim)
-                            .frame(width: 24, alignment: .leading)
-                    }
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(song.name)
-                            .font(.system(size: 17, weight: isLoaded ? .bold : .semibold))
-                            .foregroundStyle(isLoaded ? Theme.amber : Theme.dialWhite)
-                            .lineLimit(1)
-                        SongDetailLine(song: song, isLoaded: isLoaded)
-                    }
-                    Spacer(minLength: 0)
-                    // Inside the button, so that the whole row takes the tap.
-                    if let isTicked {
-                        SelectionTick(isOn: isTicked)
-                    }
+            HStack(spacing: 12) {
+                if let number {
+                    Text("\(number)")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(isLoaded ? Theme.amber : Theme.mutedDim)
+                        .frame(width: 24, alignment: .leading)
                 }
-                .frame(maxHeight: .infinity)
-                .contentShape(Rectangle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(song.name)
+                        .font(.system(size: 17, weight: isLoaded ? .bold : .semibold))
+                        .foregroundStyle(isLoaded ? Theme.amber : Theme.dialWhite)
+                        .lineLimit(1)
+                    SongDetailLine(song: song, isLoaded: isLoaded)
+                }
+                Spacer(minLength: 0)
+                // Inside the tapped area, so that the whole row takes the tap.
+                if let isTicked {
+                    SelectionTick(isOn: isTicked)
+                }
             }
-            .buttonStyle(.borderless)
-            .accessibilityElement(children: .ignore)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .rowTap(tap)
             .accessibilityLabel(song.spokenDescription + (isLoaded ? ", loaded" : ""))
-            .accessibilityAddTraits(isTicked == true ? [.isButton, .isSelected] : .isButton)
+            .accessibilityAddTraits(isTicked == true ? .isSelected : [])
             if isTicked == nil {
                 Menu {
                     menu
@@ -125,6 +122,18 @@ private struct SheetList: ViewModifier {
 }
 
 extension View {
+    /// A library row's own action, on a tap alone. A Button in a list row also fires when a
+    /// drag or a swipe that no list gesture takes ends on it, so a held row that cannot be
+    /// moved, or a swipe on a row with no swipe buttons on that side, would load, tick or
+    /// open what the row shows. To
+    /// VoiceOver the row stays one button that does the same.
+    func rowTap(_ action: @escaping () -> Void) -> some View {
+        onTapGesture(perform: action)
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction(.default) { action() }
+    }
+
     /// A row inside one of the sheet's lists: no system background, the sheet's own margins.
     func sheetRow() -> some View {
         modifier(SheetRow())
