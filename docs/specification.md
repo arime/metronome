@@ -767,7 +767,7 @@ The ⋯ button at the end of every song row, on the Songs tab and in a setlist, 
   - **New setlist**, after a divider: creates a setlist that starts with this song and opens it for naming (9.2).
 - **Edit:** opens the Edit song sheet (10.2), with the name, tempo, time signature and accents. There is no separate Rename, as the sheet holds the name.
 - **Remove from setlist:** only in a setlist view. Takes the song out of the setlist shown (8.5).
-- **Delete**, in red: asks for confirmation and says how many setlists the song is in.
+- **Delete**, in red: asks for confirmation: `Delete “<song name>”?`, then `It will also be removed from 2 setlists.` (`1 setlist` for one), and `Delete` and `Cancel`. When the song is in no setlist there is no such line, only the title and the buttons.
 
 So a song can be put into a setlist, edited or deleted from wherever it is listed, without first changing what the library shows.
 

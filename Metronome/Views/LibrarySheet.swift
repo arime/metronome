@@ -589,7 +589,9 @@ private struct SongListView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: { song in
-            Text(deleteMessage(for: song))
+            if let message = deleteMessage(for: song) {
+                Text(message)
+            }
         }
         .alert(SongsDeletion.title(count: selectionDeletion.ids.count), isPresented: $isDeletingSelection) {
             Button("Delete", role: .destructive) {
@@ -613,10 +615,10 @@ private struct SongListView: View {
         }
     }
 
-    private func deleteMessage(for song: Song) -> String {
+    private func deleteMessage(for song: Song) -> String? {
         let count = model.library.setlistCount(containing: song.id)
         switch count {
-        case 0: return "It is not in any setlist."
+        case 0: return nil
         case 1: return "It will also be removed from 1 setlist."
         default: return "It will also be removed from \(count) setlists."
         }
