@@ -709,10 +709,11 @@ final class MetronomeModel {
         return (index, ids.count)
     }
 
-    /// Whether a list of songs marks this song as the loaded one. All the songs (`setlistID`
-    /// nil) mark it wherever it is; a setlist only when the song was loaded from that setlist.
+    /// Whether a list of songs marks this song as the loaded one: a setlist only when the song
+    /// was loaded from that setlist, and all the songs (`setlistID` nil) only when it was loaded
+    /// on its own. So a row is marked only where tapping it would change nothing.
     func marksLoaded(_ songID: UUID, inSetlist setlistID: UUID?) -> Bool {
-        songID == loadedSongID && (setlistID == nil || setlistID == loadedFromSetlistID)
+        songID == loadedSongID && setlistID == loadedFromSetlistID
     }
 
     var canGoPrevious: Bool {
@@ -758,17 +759,17 @@ final class MetronomeModel {
     /// and the track's position stay as they are, playing or stopped, and only the setlist it
     /// is loaded from follows the rule below.
     /// `start` also starts a stopped metronome.
-    /// Loaded from all songs (`setlistID` nil), a song that is in the setlist being
-    /// stepped through keeps that setlist, so Previous and Next do not vanish.
+    /// Where the song is tapped decides: loaded from a setlist that holds it, it is loaded
+    /// from that setlist; loaded from all songs (`setlistID` nil), it is loaded on its own,
+    /// whatever was being stepped through, and Previous and Next go.
     func loadSong(_ id: UUID, from setlistID: UUID?, start shouldStart: Bool = false) {
         guard let song = library.song(id: id) else { return }
         let isAnotherSong = id != loadedSongID
         if isAnotherSong, isTrackPlayable || isPlayable(song.track) { stop() }
         let old = loadedTrack
         loadedSongID = id
-        let source = setlistID ?? loadedFromSetlistID
-        let members = source.flatMap(library.setlist(id:))?.songIDs ?? []
-        loadedFromSetlistID = members.contains(id) ? source : nil
+        let members = setlistID.flatMap(library.setlist(id:))?.songIDs ?? []
+        loadedFromSetlistID = members.contains(id) ? setlistID : nil
         if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: now()) }
         if isAnotherSong {
             loadedTrackReplaced(replacing: old)

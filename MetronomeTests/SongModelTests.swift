@@ -85,17 +85,17 @@ struct SongModelTests {
         #expect(model.nextSong == nil)
     }
 
-    @Test func loadingFromAllSongsKeepsTheSetlistBeingSteppedThrough() {
+    @Test func aSongTappedOnTheSongsTabIsLoadedOnItsOwn() {
         let (model, songs, setlist) = modelWithSetlist()
-        let other = model.createSong(name: "Other", settings: settings(70), addingTo: nil)!
         model.loadSong(songs[0].id, from: setlist)
-        model.loadSong(songs[2].id, from: nil)
-        #expect(model.loadedFromSetlistID == setlist)
-        #expect(model.position?.index == 2)
-        // A song that is not in the setlist leaves it.
-        model.loadSong(other.id, from: nil)
+        model.loadSong(songs[1].id, from: nil)
+        #expect(model.loadedSong?.id == songs[1].id)
         #expect(model.loadedFromSetlistID == nil)
         #expect(model.position == nil)
+        #expect(model.canGoNext == false)
+        #expect(model.canGoPrevious == false)
+        #expect(model.headerSubtitle == nil)
+        #expect(model.nextSong == nil)
     }
 
     @Test func nothingIsMarkedWhileNoSongIsLoaded() {
@@ -104,13 +104,18 @@ struct SongModelTests {
         #expect(!model.marksLoaded(songs[0].id, inSetlist: setlist))
     }
 
-    @Test func aSongLoadedFromASetlistIsMarkedThereAndInAllSongs() {
+    @Test func theSongsTabMarksTheSongOnlyWhenLoadedOnItsOwn() {
         let (model, songs, setlist) = modelWithSetlist()
         model.loadSong(songs[1].id, from: setlist)
+        #expect(!model.marksLoaded(songs[1].id, inSetlist: nil))
         #expect(model.marksLoaded(songs[1].id, inSetlist: setlist))
-        #expect(model.marksLoaded(songs[1].id, inSetlist: nil))
-        #expect(!model.marksLoaded(songs[0].id, inSetlist: setlist))
         #expect(!model.marksLoaded(songs[0].id, inSetlist: nil))
+        #expect(!model.marksLoaded(songs[0].id, inSetlist: setlist))
+        model.loadSong(songs[1].id, from: nil)
+        #expect(model.marksLoaded(songs[1].id, inSetlist: nil))
+        #expect(!model.marksLoaded(songs[1].id, inSetlist: setlist))
+        #expect(!model.marksLoaded(songs[0].id, inSetlist: nil))
+        #expect(!model.marksLoaded(songs[0].id, inSetlist: setlist))
     }
 
     @Test func aSongLoadedOnItsOwnIsMarkedOnlyInAllSongs() {
@@ -127,15 +132,15 @@ struct SongModelTests {
         model.setSong(songs[1].id, inSetlist: other, included: true)
         model.loadSong(songs[1].id, from: other)
         #expect(model.marksLoaded(songs[1].id, inSetlist: other))
-        #expect(model.marksLoaded(songs[1].id, inSetlist: nil))
+        #expect(!model.marksLoaded(songs[1].id, inSetlist: nil))
         #expect(!model.marksLoaded(songs[1].id, inSetlist: setlist))
     }
 
-    @Test func aSongLoadedFromAllSongsStaysMarkedInTheSetlistBeingSteppedThrough() {
+    @Test func aSongTappedOnTheSongsTabIsNotMarkedInTheSetlistBeingSteppedThrough() {
         let (model, songs, setlist) = modelWithSetlist()
         model.loadSong(songs[0].id, from: setlist)
         model.loadSong(songs[2].id, from: nil)
-        #expect(model.marksLoaded(songs[2].id, inSetlist: setlist))
+        #expect(!model.marksLoaded(songs[2].id, inSetlist: setlist))
         #expect(model.marksLoaded(songs[2].id, inSetlist: nil))
         #expect(!model.marksLoaded(songs[0].id, inSetlist: setlist))
     }
@@ -567,16 +572,15 @@ struct SongModelTests {
         #expect(model.isEdited)
     }
 
-    @Test func selectingTheLoadedSongOnTheSongsTabKeepsItsSetlist() {
+    @Test func selectingTheLoadedSongOnTheSongsTabLoadsItOnItsOwn() {
         let (model, songs, setlist) = modelWithSetlist()
         model.loadSong(songs[2].id, from: setlist)
         model.setBPM(170)
         let edited = model.settings
         model.loadSong(songs[2].id, from: nil)
         #expect(model.loadedSong?.id == songs[2].id)
-        #expect(model.loadedFromSetlistID == setlist)
-        #expect(model.position?.index == 2)
-        #expect(model.position?.count == 3)
+        #expect(model.loadedFromSetlistID == nil)
+        #expect(model.position == nil)
         #expect(model.settings == edited)
         #expect(model.isEdited)
     }
@@ -634,7 +638,7 @@ struct SongModelTests {
         model.loadSong(songs[1].id, from: setlist)
         #expect(model.loadedFromSetlist?.id == setlist)
         model.loadSong(songs[1].id, from: nil)
-        #expect(model.loadedFromSetlist?.id == setlist)
+        #expect(model.loadedFromSetlist == nil)
         model.unloadSong()
         #expect(model.loadedFromSetlist == nil)
     }

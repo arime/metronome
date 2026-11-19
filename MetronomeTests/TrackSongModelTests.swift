@@ -174,6 +174,21 @@ struct TrackSongModelTests {
         #expect(model.trackPosition == 30)
     }
 
+    @Test func detachingTheLoadedSongOnTheSongsTabKeepsTheTrackPlaying() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        #expect(model.backingTracksOn)
+        #expect(model.isTrackPlayable)
+        #expect(model.loadedFromSetlistID == setup.setlist)
+        model.seekTrack(to: 30)
+        model.togglePlayback()
+        model.loadSong(setup.song.id, from: nil)
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+        #expect(model.trackPosition == 30)
+        #expect(model.loadedFromSetlistID == nil)
+    }
+
     @Test func unloadStopsOnlyAPlayingTrack() throws {
         let setup = try makeModel()
         let model = setup.model
