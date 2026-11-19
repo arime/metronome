@@ -45,6 +45,38 @@ struct LibraryOrderTests {
         #expect(library.songs(orderedBy: .recentlyPlayed, lastPlayed: played).map(\.id) == [s1, s2])
     }
 
+    // Section 14: under Recently played the list keeps its order while it is shown.
+    @Test func aSongPlayedWhileTheListIsShownKeepsItsPlace() {
+        let (library, songs) = library(songs: ["A", "B", "C"])
+        var lastPlayed = [songs[0].id: t(100), songs[1].id: t(200)]
+        let kept = library.songs(orderedBy: .recentlyPlayed, lastPlayed: lastPlayed).map(\.id)
+        #expect(kept == [songs[1].id, songs[0].id, songs[2].id])
+        lastPlayed[songs[2].id] = t(300)
+        let live = library.songs(orderedBy: .recentlyPlayed, lastPlayed: lastPlayed)
+        #expect(live.map(\.name) == ["C", "B", "A"])
+        #expect(Library.songs(live, keptIn: kept).map(\.name) == ["B", "A", "C"])
+    }
+
+    @Test func theKeptOrderShowsEditsAndDropsDeletedSongs() {
+        var (library, songs) = library(songs: ["A", "B", "C"])
+        let kept = songs.reversed().map(\.id)
+        library.renameSong(songs[0].id, to: "Z", now: t(10))
+        library.deleteSong(songs[1].id, now: t(11))
+        let shown = Library.songs(library.sortedSongs, keptIn: kept)
+        #expect(shown.map(\.name) == ["C", "Z"])
+    }
+
+    @Test func aSongNotInTheKeptOrderGoesInAtItsLivePlace() {
+        let (library, songs) = library(songs: ["B", "D"])
+        let kept = songs.map(\.id)
+        var grown = library
+        grown.addSong(name: "A", settings: MetronomeSettings(), now: t(10))
+        grown.addSong(name: "C", settings: MetronomeSettings(), now: t(11))
+        #expect(Library.songs(grown.sortedSongs, keptIn: kept).map(\.name) == ["A", "B", "C", "D"])
+        let newestFirst = grown.songs(orderedBy: .recentlyAdded, lastPlayed: [:])
+        #expect(Library.songs(newestFirst, keptIn: kept).map(\.name) == ["C", "A", "B", "D"])
+    }
+
     @Test func setlistsByNameIgnoreCase() {
         var library = Library()
         library.addSetlist(name: "beta", now: t(0))

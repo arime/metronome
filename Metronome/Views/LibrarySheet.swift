@@ -35,6 +35,9 @@ struct LibrarySheet: View {
     /// True once the setlist asked for with newSetlistWith has been made, so it is made only
     /// once: the library appears again when a sheet over it closes.
     @State private var madeNewSetlist = false
+    /// What is typed in the Setlists tab's search field. It is kept here, so that it stays
+    /// while a setlist is open, and is emptied when the tab is switched.
+    @State private var setlistQuery = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,7 +47,11 @@ struct LibrarySheet: View {
                     .transition(slide)
             case .setlists:
                 SetlistsTab(
-                    showSongs: { switchTab(to: .songs) },
+                    query: $setlistQuery,
+                    showSongs: {
+                        setlistQuery = ""
+                        switchTab(to: .songs)
+                    },
                     open: { id in
                         model.selectFilter(id)
                         go(to: .setlist)
@@ -307,16 +314,14 @@ private struct UndoBar: View {
     }
 }
 
-/// The round ⋯ button at the end of a row or in a header; it opens a menu.
+/// The round ⋯ button at the end of a row or in a header; it opens a menu. Drawn 40 pt, it
+/// takes touches over 44 pt.
 struct MoreButtonLabel: View {
-    /// 40 pt at the end of a row; 36 pt beside a pill button in a header.
-    var size: CGFloat = 40
-
     var body: some View {
         Image(systemName: "ellipsis")
             .font(.system(size: 15, weight: .bold))
             .foregroundStyle(Theme.dialWhite)
-            .frame(width: size, height: size)
+            .frame(width: 40, height: 40)
             .background(Theme.surfaceRaised, in: Circle())
             .contentShape(Circle().inset(by: -2))
     }
@@ -360,9 +365,9 @@ struct SheetTitle: View {
     }
 }
 
-/// A pill button: filled amber, outlined amber, or grey for a quieter second button.
+/// A pill button: filled amber, or grey for a quieter second button.
 struct PillButton: View {
-    enum Look { case filled, outlined, neutral }
+    enum Look { case filled, neutral }
     /// Regular in headers; large in the middle of an empty screen.
     enum Size { case regular, large }
 
@@ -370,18 +375,11 @@ struct PillButton: View {
     var symbol: String?
     var look = Look.filled
     var size = Size.regular
-    /// At least this wide, with the text centred; nil for the text's own width.
-    var minWidth: CGFloat?
     let action: () -> Void
-
-    /// The tab headers' New song and New setlist share this width, so the tab switch beside
-    /// them stays the same width on both tabs.
-    static let tabHeaderWidth: CGFloat = 124
 
     private var foreground: Color {
         switch look {
         case .filled: Theme.ink
-        case .outlined: Theme.amber
         case .neutral: Theme.dialWhite
         }
     }
@@ -389,7 +387,6 @@ struct PillButton: View {
     private var fill: Color {
         switch look {
         case .filled: Theme.amber
-        case .outlined: .clear
         case .neutral: Theme.surfaceRaised
         }
     }
@@ -404,10 +401,8 @@ struct PillButton: View {
             }
             .foregroundStyle(foreground)
             .padding(.horizontal, size == .large ? 22 : 14)
-            .frame(minWidth: minWidth)
             .frame(height: size == .large ? 48 : 36)
             .background(fill, in: Capsule())
-            .overlay(Capsule().strokeBorder(Theme.amber, lineWidth: 1).opacity(look == .outlined ? 1 : 0))
             // A regular pill is drawn 36 pt tall; the touch area is 44 pt.
             .contentShape(Capsule().inset(by: size == .large ? 0 : -4))
         }
@@ -415,7 +410,8 @@ struct PillButton: View {
     }
 }
 
-/// The list of songs: all of them A–Z on the Songs tab, or one setlist's in its own order.
+/// The list of songs: all of them in the chosen order on the Songs tab, or one setlist's in
+/// its own order.
 private struct SongListView: View {
     @Environment(MetronomeModel.self) private var model
     /// The setlist to show; nil for all the songs.
@@ -445,13 +441,20 @@ private struct SongListView: View {
     /// The list scrolls to the loaded song once, when it first appears, not each time a
     /// search brings it back.
     @State private var hasScrolledToLoaded = false
+    /// The Songs tab's order as it was when the list appeared or an order was chosen, so
+    /// that a song played meanwhile keeps its place (8.6). Nil until then.
+    @State private var keptOrder: [UUID]?
+    /// Select mode on the Songs tab (8.7).
+    @State private var isSelecting = false
 
     private var setlist: Setlist? {
         setlistID.flatMap(model.library.setlist(id:))
     }
 
     private var songs: [Song] {
-        setlist.map { model.library.songs(inSetlist: $0.id) } ?? model.library.sortedSongs
+        if let setlist { return model.library.songs(inSetlist: setlist.id) }
+        let live = model.orderedSongs
+        return keptOrder.map { Library.songs(live, keptIn: $0) } ?? live
     }
 
     /// The songs in the list: on the Songs tab those matching the search, in a setlist all of them.
@@ -470,22 +473,20 @@ private struct SongListView: View {
                     focusesName: focusesName,
                     isNew: isNew,
                     back: showSetlists,
+                    addSongs: addSongs,
                     duplicate: { model.duplicateSetlist(setlist.id) },
                     delete: { isDeleteSetlistShown = true }
                 )
             } else {
                 // The top level: the tabs take the title's place.
-                SheetHeader {
-                    LibraryTabs(selected: .songs) { tab in
-                        if tab == .setlists { showSetlists() }
-                    }
-                } trailing: {
-                    // While the library is empty the button is in the middle instead. Its
-                    // place stays, so the tabs keep their width.
-                    PillButton(text: "New song", symbol: "plus", minWidth: PillButton.tabHeaderWidth) {
-                        isNewSongShown = true
-                    }
-                    .hiddenInPlace(songs.isEmpty)
+                LibraryTabHeader(selected: .songs) { tab in
+                    if tab == .setlists { showSetlists() }
+                } menu: {
+                    SongsTabMenu(
+                        isEmpty: songs.isEmpty,
+                        select: { isSelecting = true },
+                        newSong: { isNewSongShown = true }
+                    )
                 }
             }
             // An empty setlist says so in the middle of the screen; a count of 0 adds nothing.
@@ -506,6 +507,9 @@ private struct SongListView: View {
                 }
             }
         }
+        // The Songs tab's order is taken as the list appears and when another is chosen.
+        .onAppear(perform: keepOrder)
+        .onChange(of: model.songOrder) { keepOrder() }
         .sheet(isPresented: $isNewSongShown) {
             SongSheet(purpose: .library(setlistID: setlist?.id))
                 .environment(model)
@@ -539,19 +543,18 @@ private struct SongListView: View {
         }
     }
 
-    /// The line between the Songs tab's header and its list: the search field. A setlist has
-    /// no such line.
+    private func keepOrder() {
+        guard setlist == nil else { return }
+        keptOrder = model.orderedSongs.map(\.id)
+    }
+
+    /// The line between the Songs tab's header and its list: the search field and the +.
+    /// A setlist has no such line.
     @ViewBuilder
     private var controls: some View {
         if setlist == nil {
-            VStack(spacing: 0) {
-                SearchField(text: $query)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 12)
-                Rectangle()
-                    .fill(Theme.line)
-                    .frame(height: 1)
-                    .padding(.horizontal, 20)
+            ControlsLine(query: $query, searchName: "Search songs") {
+                AddButton(accessibilityName: "New song") { isNewSongShown = true }
             }
         }
     }
@@ -683,7 +686,8 @@ private struct SongListView: View {
     private var emptyState: some View {
         Group {
             if setlist == nil {
-                // Making one is the only thing to do, so the button is here, not in the header.
+                // Making one is the only thing to do, so the large button stands here, and
+                // there is no controls line.
                 EmptyListMessage(
                     title: "No songs yet",
                     text: nil
@@ -776,52 +780,6 @@ struct SongDetailLine: View {
     }
 }
 
-/// The Songs tab's search, filling the line above the list. Typing narrows the list to the
-/// songs whose names contain the text.
-private struct SearchField: View {
-    @Binding var text: String
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Theme.muted)
-                .accessibilityHidden(true)
-            TextField("Search songs", text: $text, prompt: Text("Search").foregroundStyle(Theme.muted))
-                .font(.system(size: 15))
-                .foregroundStyle(Theme.dialWhite)
-                .tint(Theme.amber)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-                .submitLabel(.search)
-                .focused($isFocused)
-                .onSubmit { isFocused = false }
-                .accessibilityLabel("Search songs")
-            if !text.isEmpty {
-                Button {
-                    text = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Theme.muted)
-                        .frame(width: 36, height: 36)
-                        // Drawn in a 36 pt square; the touch area is 44 pt.
-                        .contentShape(Rectangle().inset(by: -4))
-                }
-                .buttonStyle(.plain)
-                // The symbol sits at the field's end, where the padding would push it in.
-                .padding(.trailing, -10)
-                .accessibilityLabel("Clear search")
-            }
-        }
-        .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity)
-        .frame(height: 36)
-        .background(Theme.surfaceRaised, in: Capsule())
-    }
-}
-
 extension Song {
     /// For example "120 BPM · 4/4".
     var detail: String {
@@ -886,13 +844,6 @@ extension View {
     /// A row inside one of the sheet's lists: no system background, the sheet's own margins.
     func sheetRow() -> some View {
         modifier(SheetRow())
-    }
-
-    /// Invisible and out of reach, but still taking its space.
-    func hiddenInPlace(_ isHidden: Bool) -> some View {
-        opacity(isHidden ? 0 : 1)
-            .allowsHitTesting(!isHidden)
-            .accessibilityHidden(isHidden)
     }
 
     /// A plain list on the sheet's own background. It passes its width to its rows' separators.

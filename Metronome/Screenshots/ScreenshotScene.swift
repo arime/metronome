@@ -15,6 +15,9 @@ enum ScreenshotScene: String, CaseIterable {
     case library
     /// The library sheet showing a setlist in its order.
     case setlist
+    /// The library sheet with no songs and no setlists. Not an App Store screenshot; for
+    /// checking the empty tabs in the simulator.
+    case emptyLibrary
     /// The time signature picker over the metronome.
     case timeSignature
     /// The settings sheet.
@@ -112,14 +115,18 @@ enum ScreenshotScene: String, CaseIterable {
             if self == .trackOtherTempo { track.bpm = 168 }
             sample.attachTrack(track, now: Self.date)
         }
-        libraryStore.save(LibraryState(
-            library: sample.library,
-            loadedSongID: sample.loadedSongID,
-            // The library opens on the setlist its loaded song came from, so the scene
-            // that shows all songs has the song loaded on its own.
-            loadedFromSetlistID: self == .library || self == .trackSolo ? nil : sample.setlistID,
-            selectedSetlistID: self == .setlist ? sample.setlistID : nil
-        ))
+        if self == .emptyLibrary {
+            libraryStore.save(LibraryState())
+        } else {
+            libraryStore.save(LibraryState(
+                library: sample.library,
+                loadedSongID: sample.loadedSongID,
+                // The library opens on the setlist its loaded song came from, so the scene
+                // that shows all songs has the song loaded on its own.
+                loadedFromSetlistID: self == .library || self == .trackSolo ? nil : sample.setlistID,
+                selectedSetlistID: self == .setlist ? sample.setlistID : nil
+            ))
+        }
         settingsStore.save(sample.loadedSettings)
         settingsStore.saveClickSound(.woodblock)
 

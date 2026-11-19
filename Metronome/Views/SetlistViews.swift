@@ -1,8 +1,11 @@
 import SwiftUI
 
-/// The Setlists tab: every setlist, most recently used first. Tapping one opens it.
+/// The Setlists tab: every setlist, or those a search finds, in the chosen order. Tapping
+/// one opens it.
 struct SetlistsTab: View {
     @Environment(MetronomeModel.self) private var model
+    /// What is typed in the search field; the library keeps it while a setlist is open.
+    @Binding var query: String
     let showSongs: () -> Void
     let open: (UUID) -> Void
     let newSetlist: () -> Void
@@ -10,22 +13,18 @@ struct SetlistsTab: View {
     /// The setlist a swipe asked to delete, while the confirmation is shown.
     @State private var deleting: Setlist?
 
+    private var isEmpty: Bool { model.library.setlists.isEmpty }
+
     var body: some View {
         VStack(spacing: 0) {
-            SheetHeader {
-                LibraryTabs(selected: .setlists) { tab in
-                    if tab == .songs { showSongs() }
-                }
-            } trailing: {
-                // While there are no setlists the button is in the middle instead. Its place
-                // stays, so the tabs keep their width.
-                PillButton(
-                    text: "New setlist", symbol: "plus", look: .outlined,
-                    minWidth: PillButton.tabHeaderWidth, action: newSetlist
-                )
-                    .hiddenInPlace(model.library.setlists.isEmpty)
+            LibraryTabHeader(selected: .setlists) { tab in
+                if tab == .songs { showSongs() }
+            } menu: {
+                SetlistsTabMenu(isEmpty: isEmpty, newSetlist: newSetlist)
             }
-            if model.library.setlists.isEmpty {
+            if isEmpty {
+                // Making one is the only thing to do, so the large button stands here, and
+                // there is no controls line.
                 EmptyListMessage(
                     title: "No setlists yet",
                     text: nil
@@ -33,12 +32,21 @@ struct SetlistsTab: View {
                     PillButton(text: "New setlist", symbol: "plus", size: .large, action: newSetlist)
                 }
             } else {
-                List {
-                    ForEach(model.library.setlistsByRecency) { setlist in
-                        row(setlist)
-                    }
+                ControlsLine(query: $query, searchName: "Search setlists") {
+                    AddButton(accessibilityName: "New setlist", action: newSetlist)
                 }
-                .sheetList()
+                let shown = model.orderedSetlists.filter { $0.matches(search: query) }
+                if shown.isEmpty {
+                    EmptyListMessage(title: "No matches", text: nil) { EmptyView() }
+                } else {
+                    List {
+                        ForEach(shown) { setlist in
+                            row(setlist)
+                        }
+                    }
+                    .sheetList()
+                    .scrollDismissesKeyboard(.immediately)
+                }
             }
         }
         // As with Delete setlist in a setlist's menu, deleting is confirmed first.
@@ -125,6 +133,8 @@ struct SetlistHeader: View {
     /// stays empty and shows the grey placeholder, so the setlist does not look named.
     let isNew: Bool
     let back: () -> Void
+    /// Opens the Add song screen.
+    let addSongs: () -> Void
     let duplicate: () -> Void
     let delete: () -> Void
 
@@ -143,6 +153,9 @@ struct SetlistHeader: View {
                 PillButton(text: "Done") { isNameFocused = false }
             } else {
                 Menu {
+                    Button(action: addSongs) {
+                        Label("Add song", systemImage: "plus")
+                    }
                     Button {
                         isNameFocused = true
                     } label: {
@@ -155,7 +168,7 @@ struct SetlistHeader: View {
                         Label("Delete setlist", systemImage: "trash")
                     }
                 } label: {
-                    MoreButtonLabel(size: 36)
+                    MoreButtonLabel()
                 }
                 .accessibilityLabel("More for this setlist")
             }

@@ -44,6 +44,20 @@ extension Library {
         }
     }
 
+    /// The songs as a list shows them while it stays on screen: in `kept`, the order taken
+    /// when it appeared or an order was chosen (8.6), so that a song played meanwhile keeps its
+    /// place. The songs come from `live`, the library's songs in the chosen order now, so
+    /// edits show and deleted songs go; a song not in `kept` is put in at its place in `live`.
+    static func songs(_ live: [Song], keptIn kept: [UUID]) -> [Song] {
+        let byID = Dictionary(uniqueKeysWithValues: live.map { ($0.id, $0) })
+        var shown = kept.compactMap { byID[$0] }
+        let known = Set(kept)
+        for (index, song) in live.enumerated() where !known.contains(song.id) {
+            shown.insert(song, at: min(index, shown.count))
+        }
+        return shown
+    }
+
     /// Every setlist in the order. Under `name` setlists with the same name are most
     /// recently used first.
     func setlists(orderedBy order: SetlistOrder) -> [Setlist] {
