@@ -679,8 +679,10 @@ private struct SongListView: View {
         let ids = selection.ordered(in: songs)
         let setlistID = setlist.id
         self.selection = nil
-        // The mode ends first and the rows go a moment later: with both in one change, the
-        // list left some of the remaining rows without their drag handles.
+        // The mode ends first and the rows go a moment later. This works around SwiftUI not
+        // refreshing the edit mode's drag handles when select mode ends and rows are deleted
+        // in one change: the last remaining rows then kept their ⋯ but showed no handle until
+        // the list was shown again. Keep the two apart.
         Task { @MainActor in
             if let removal = model.removeSongs(ids, fromSetlist: setlistID) { removed(removal) }
         }
