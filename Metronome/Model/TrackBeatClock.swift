@@ -54,7 +54,9 @@ struct TrackBeatClock: Sendable {
             let sampleTime = sampleTime(forFileTime: time)
             guard sampleTime < horizon, time < endTime else { break }
             let beat = grid.barBeat(ofBeat: index)
-            result.append(ScheduledBeat(beat: beat, isAccented: accents.contains(beat), sampleTime: sampleTime))
+            result.append(
+                ScheduledBeat(beat: beat, isAccented: accents.contains(beat), sampleTime: sampleTime, isCountIn: index < 0)
+            )
             lastSampleTime = sampleTime
         }
         return result

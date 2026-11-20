@@ -22,6 +22,15 @@ struct TrackBeatClockTests {
         #expect(beats.last?.sampleTime == offset)
     }
 
+    @Test func aBeatBeforeTheOffsetIsACountInBeat() {
+        let grid = TrackGrid(offset: 0.48, bpm: 120, beatsPerBar: 4)
+        var clock = clock(startTime: grid.startTime(countIn: .twoBars), firstClickIndex: -8)
+        let beats = clock.beats(
+            before: clock.sampleTime(forFileTime: 0.48) + 1, notBefore: start, endTime: 100, grid: grid, accents: [1]
+        )
+        #expect(beats.map(\.isCountIn) == Array(repeating: true, count: 8) + [false])
+    }
+
     @Test func noClickBeforeTheOffsetWithoutACountIn() {
         let grid = TrackGrid(offset: 2.0, bpm: 120, beatsPerBar: 4)
         var clock = clock()

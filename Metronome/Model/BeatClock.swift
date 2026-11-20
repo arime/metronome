@@ -4,6 +4,15 @@ struct ScheduledBeat: Equatable, Sendable {
     let beat: Int
     let isAccented: Bool
     let sampleTime: Int64
+    /// A count-in beat, before the track's offset (7.10); the play count skips it (7.13).
+    let isCountIn: Bool
+
+    init(beat: Int, isAccented: Bool, sampleTime: Int64, isCountIn: Bool = false) {
+        self.beat = beat
+        self.isAccented = isAccented
+        self.sampleTime = sampleTime
+        self.isCountIn = isCountIn
+    }
 }
 
 /// Works out when each beat falls, in audio sample time.
