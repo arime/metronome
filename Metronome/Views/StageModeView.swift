@@ -4,14 +4,33 @@ import SwiftUI
 struct StageModeView: View {
     @Environment(MetronomeModel.self) private var model
 
+    private static let tileGap: CGFloat = 10
+
     var body: some View {
-        VStack(spacing: 0) {
-            titleRow
-                .frame(height: 48)
-                .padding(.top, 6)
-            Spacer()
+        GeometryReader { proxy in
+            let sideMargin = proxy.size.width < ScreenLayout.narrowWidth
+                ? ScreenLayout.narrowSideMargin : Theme.sideMargin
+            VStack(spacing: 0) {
+                titleRow
+                    .frame(height: 48)
+                    .padding(.top, 6)
+                    .padding(.horizontal, sideMargin)
+                // The margins are inside the scroll view, so the playing tile's glow is not cut.
+                ScrollView {
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: Self.tileGap), count: 2),
+                        spacing: Self.tileGap
+                    ) {
+                        ForEach(model.stageTiles) { tile in
+                            StageTileView(tile: tile) { model.tapStageTile(tile.id) }
+                        }
+                    }
+                    .padding(.top, 20)
+                    .padding(.bottom, 16)
+                    .padding(.horizontal, sideMargin)
+                }
+            }
         }
-        .padding(.horizontal, Theme.sideMargin)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.ink.ignoresSafeArea())
         .preferredColorScheme(.dark)
@@ -26,13 +45,16 @@ struct StageModeView: View {
                     .font(.system(size: 20, weight: .heavy))
                     .foregroundStyle(Theme.dialWhite)
                     .lineLimit(1)
-                    .accessibilityAddTraits(.isHeader)
+                    .truncationMode(.tail)
                 Text("Stage mode")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            // One heading: the setlist's name, then "Stage mode".
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
             Button { model.leaveStageMode() } label: {
                 Text("Done")
                     .font(.system(size: 17, weight: .semibold))

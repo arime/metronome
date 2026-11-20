@@ -67,13 +67,20 @@ enum ScreenshotScene: String, CaseIterable {
     /// the two tempos differ. Not an App Store screenshot; for checking that the track screen's
     /// dial shows the track's tempo. The demo file still ticks at 120, so it plays out of sync.
     case trackOtherTempo
+    /// Stage mode for the sample setlist, stopped, with the loaded song marked next. Not an App
+    /// Store screenshot; for checking stage mode in the simulator.
+    case stage
+    /// Stage mode with the track song's tile playing from launch, on an engine that plays nothing,
+    /// as `trackSyncTimer`'s, so the beat dots and the track's time run where the simulator's audio
+    /// does not. Not an App Store screenshot.
+    case stagePlaying
 
     /// The scenes with a backing track. They write their own audio file at launch, except
     /// the scene whose file is missing.
     var hasTrack: Bool {
         switch self {
         case .trackScreen, .trackPlaying, .trackSync, .trackSyncWide, .trackSyncNine, .trackSyncTimer, .trackSolo,
-             .trackMissing, .trackFirst, .trackLast, .trackOtherTempo: true
+             .trackMissing, .trackFirst, .trackLast, .trackOtherTempo, .stagePlaying: true
         default: false
         }
     }
@@ -154,7 +161,7 @@ enum ScreenshotScene: String, CaseIterable {
             model.togglePlayback()
             return model
         }
-        if self == .trackSyncTimer {
+        if self == .trackSyncTimer || self == .stagePlaying {
             let model = MetronomeModel(
                 engine: ScreenshotEngine(soundingBeat: 1, repeats: true, clocksTrack: true),
                 store: settingsStore,
@@ -163,7 +170,13 @@ enum ScreenshotScene: String, CaseIterable {
                 now: { Self.date },
                 trackFiles: trackFiles
             )
-            model.enterSyncMode()
+            if self == .trackSyncTimer {
+                model.enterSyncMode()
+            } else if let trackSongID = sample.loadedSongID {
+                // The track song is the loaded one.
+                model.enterStageMode(setlistID: sample.setlistID)
+                model.tapStageTile(trackSongID)
+            }
             return model
         }
         if hasTrack {
@@ -188,6 +201,7 @@ enum ScreenshotScene: String, CaseIterable {
         )
         if self == .playing { model.togglePlayback() }
         if self == .edited { model.nudgeBPM(by: 4) }
+        if self == .stage { model.enterStageMode(setlistID: sample.setlistID) }
         return model
     }
 }

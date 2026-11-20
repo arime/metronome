@@ -51,6 +51,8 @@ struct MetronomeScreen: View {
                 case .library?, .librarySelect?, .setlist?, .setlistSearch?, .setlistSelect?, .emptyLibrary?:
                     isLibraryShown = true
                 case .settings?: isSettingsShown = true
+                // Stage mode was entered before the screen was there to follow it.
+                case .stage?, .stagePlaying?: isStageShown = model.stageMode != nil
                 default: break
                 }
             }
