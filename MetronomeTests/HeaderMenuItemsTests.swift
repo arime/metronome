@@ -20,6 +20,22 @@ import Testing
         #expect(HeaderMenuItems(hasSong: false, isEdited: true).groups == [[.saveAsNewSong], [.settings]])
     }
 
+    @Test func aSetlistSongOffersStageModeBeforeSettings() {
+        #expect(HeaderMenuItems(hasSong: true, isEdited: false, hasSetlist: true).groups
+            == [[.editSong, .saveAsNewSong, .addToSetlist], [.unload], [.stageMode], [.settings]])
+    }
+
+    @Test func anEditedSetlistSongKeepsSaveFirst() {
+        #expect(HeaderMenuItems(hasSong: true, isEdited: true, hasSetlist: true).groups
+            == [[.saveChanges, .revert], [.editSong, .saveAsNewSong, .addToSetlist], [.unload], [.stageMode],
+                [.settings]])
+    }
+
+    @Test func nothingLoadedNeverOffersStageMode() {
+        #expect(HeaderMenuItems(hasSong: false, isEdited: false, hasSetlist: true).groups
+            == [[.saveAsNewSong], [.settings]])
+    }
+
     @Test func theButtonSaysWhenThereAreUnsavedChanges() {
         #expect(HeaderMenuItems.accessibilityLabel(hasBadge: false) == "More")
         #expect(HeaderMenuItems.accessibilityLabel(hasBadge: true) == "More, unsaved changes")

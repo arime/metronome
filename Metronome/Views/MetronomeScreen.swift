@@ -8,13 +8,15 @@ struct MetronomeScreen: View {
     /// The song that the library, when opened from the header menu's New setlist, makes a
     /// new setlist with.
     @State private var newSetlistSongID: UUID?
+    /// Follows the model's stage mode, but is set only once no sheet is in the way.
+    @State private var isStageShown = false
 
     var body: some View {
         screen
             .background(Theme.ink.ignoresSafeArea())
             // Captured here, so that the body reads the ID and the sheet gets the one set
             // together with isLibraryShown rather than an earlier one.
-            .sheet(isPresented: $isLibraryShown, onDismiss: { newSetlistSongID = nil }) { [newSetlistSongID] in
+            .sheet(isPresented: $isLibraryShown, onDismiss: libraryClosed) { [newSetlistSongID] in
                 LibrarySheet(newSetlistWith: newSetlistSongID)
                     .environment(model)
             }
@@ -28,6 +30,19 @@ struct MetronomeScreen: View {
                 SyncModeView()
                     .environment(model)
             }
+            .fullScreenCover(isPresented: $isStageShown) {
+                StageModeView()
+                    .environment(model)
+            }
+            // From the header menu stage mode opens at once. From a setlist's menu the library
+            // is still closing, and a cover presented then is dropped, so libraryClosed opens it.
+            .onChange(of: model.stageMode != nil) { _, isOn in
+                if !isOn {
+                    isStageShown = false
+                } else if !isLibraryShown {
+                    isStageShown = true
+                }
+            }
             // Labels follow Dynamic Type up to the largest size that still fits the layout.
             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             #if DEBUG
@@ -40,6 +55,11 @@ struct MetronomeScreen: View {
                 }
             }
             #endif
+    }
+
+    private func libraryClosed() {
+        newSetlistSongID = nil
+        if model.stageMode != nil { isStageShown = true }
     }
 
     private var syncModeShown: Binding<Bool> {

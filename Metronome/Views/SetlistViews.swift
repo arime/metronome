@@ -125,6 +125,10 @@ struct SetlistHeader: View {
     /// stays empty and shows the grey placeholder, so the setlist does not look named.
     let isNew: Bool
     let back: () -> Void
+    /// Opens stage mode for this setlist and closes the library (9.4).
+    let stageMode: () -> Void
+    /// False in an empty setlist and while playing: Stage mode is then dimmed.
+    let canEnterStageMode: Bool
     /// Enters select mode (8.8); nil in an empty setlist, whose menu has no Select.
     let select: (() -> Void)?
     /// Opens the Add song screen.
@@ -147,6 +151,11 @@ struct SetlistHeader: View {
                 PillButton(text: "Done") { isNameFocused = false }
             } else {
                 Menu {
+                    Button(action: stageMode) {
+                        Label("Stage mode", systemImage: "music.mic")
+                    }
+                    .disabled(!canEnterStageMode)
+                    Divider()
                     if let select {
                         Button(action: select) {
                             Label("Select", systemImage: "checkmark.circle")

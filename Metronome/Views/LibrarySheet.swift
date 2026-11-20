@@ -517,6 +517,11 @@ private struct SongListView: View {
                     focusesName: focusesName,
                     isNew: isNew,
                     back: showSetlists,
+                    stageMode: {
+                        model.enterStageMode(setlistID: setlist.id)
+                        close()
+                    },
+                    canEnterStageMode: model.canEnterStageMode(setlistID: setlist.id),
                     select: setlistSelect,
                     addSongs: addSongs,
                     duplicate: { model.duplicateSetlist(setlist.id) },

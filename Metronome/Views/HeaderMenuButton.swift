@@ -16,7 +16,8 @@ struct HeaderMenuButton: View {
 
     var body: some View {
         Menu {
-            let items = HeaderMenuItems(hasSong: model.loadedSong != nil, isEdited: model.isEdited)
+            let items = HeaderMenuItems(
+                hasSong: model.loadedSong != nil, isEdited: model.isEdited, hasSetlist: model.position != nil)
             ForEach(items.groups.indices, id: \.self) { index in
                 Section {
                     ForEach(items.groups[index], id: \.self) { item($0) }
@@ -80,6 +81,15 @@ struct HeaderMenuButton: View {
                 model.unloadSong()
             } label: {
                 Label("Unload", systemImage: "eject")
+            }
+        case .stageMode:
+            if let setlistID = model.loadedFromSetlistID {
+                Button {
+                    model.enterStageMode(setlistID: setlistID)
+                } label: {
+                    Label("Stage mode", systemImage: "music.mic")
+                }
+                .disabled(model.isPlaying)
             }
         case .settings:
             Button(action: openSettings) {
