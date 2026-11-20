@@ -40,7 +40,7 @@ final class MetronomeModel {
     /// When true the screen stays on while the app is open, even when stopped. Remembered on this device.
     private(set) var keepScreenAwake: Bool
     /// Whether the screen should be kept from dimming and locking right now.
-    var screenStaysAwake: Bool { isPlaying || keepScreenAwake }
+    var screenStaysAwake: Bool { isPlaying || keepScreenAwake || stageMode != nil }
 
     private(set) var library: Library
     private(set) var loadedSongID: UUID?
@@ -187,7 +187,13 @@ final class MetronomeModel {
         }
     }
 
+    /// Every way playback ends passes through here, so stage mode's next mark moves on to the
+    /// following song however it stopped. A start that failed was never playing and moves nothing.
     private func becomeStopped() {
+        if isPlaying, let stageMode, let id = loadedSongID,
+           let songIDs = library.setlist(id: stageMode.setlistID)?.songIDs, songIDs.contains(id) {
+            self.stageMode?.nextSongID = StageMode.following(id, in: songIDs)
+        }
         isPlaying = false
         isPlayingTrack = false
         startedBeforeFile = false
@@ -779,7 +785,14 @@ final class MetronomeModel {
     /// from that setlist; loaded from all songs (`setlistID` nil), it is loaded on its own,
     /// whatever was being stepped through, and Previous and Next go.
     func loadSong(_ id: UUID, from setlistID: UUID?, start shouldStart: Bool = false) {
-        guard let song = library.song(id: id) else { return }
+        guard load(id, from: setlistID) else { return }
+        haptics?.selection()
+        if shouldStart, !isPlaying { start() }
+    }
+
+    /// `loadSong` without its tick and without starting; false when there is no such song.
+    private func load(_ id: UUID, from setlistID: UUID?) -> Bool {
+        guard let song = library.song(id: id) else { return false }
         let isAnotherSong = id != loadedSongID
         if isAnotherSong, isTrackPlayable || isPlayable(song.track) { stop() }
         let old = loadedTrack
@@ -793,8 +806,7 @@ final class MetronomeModel {
             markPlayed(id)
         }
         persistLibrary()
-        haptics?.selection()
-        if shouldStart, !isPlaying { start() }
+        return true
     }
 
     func goToPrevious() {
@@ -889,6 +901,69 @@ final class MetronomeModel {
     /// For a song that has just become the loaded one. Not for restoring or combining a state.
     private func markPlayed(_ id: UUID) {
         lastPlayed[id] = now()
+    }
+
+    // MARK: - Stage mode
+
+    /// Whether stage mode is shown (9.4), for which setlist, and which song is marked next.
+    /// Not saved, so off at launch.
+    private(set) var stageMode: StageMode?
+
+    /// Only for a setlist with songs, and only while stopped.
+    func canEnterStageMode(setlistID: UUID) -> Bool {
+        guard let setlist = library.setlist(id: setlistID) else { return false }
+        return StageMode.canEnter(songCount: setlist.songIDs.count, isPlaying: isPlaying)
+    }
+
+    /// Changes nothing on the metronome; only marks the song to play next.
+    func enterStageMode(setlistID: UUID) {
+        guard canEnterStageMode(setlistID: setlistID), let setlist = library.setlist(id: setlistID) else { return }
+        stageMode = .entering(setlist, loadedSongID: loadedSongID, loadedFromSetlistID: loadedFromSetlistID)
+    }
+
+    /// The playing tile's song: the loaded song while it plays, loaded from stage mode's setlist
+    /// and still in it. nil when no tile plays.
+    var stagePlayingSongID: UUID? {
+        guard isPlaying, let stageMode, loadedFromSetlistID == stageMode.setlistID, let id = loadedSongID,
+              library.setlist(id: stageMode.setlistID)?.songIDs.contains(id) == true
+        else { return nil }
+        return id
+    }
+
+    var stageTiles: [StageTile] {
+        guard let stageMode else { return [] }
+        return stageMode.tiles(
+            for: library.songs(inSetlist: stageMode.setlistID), playingSongID: stagePlayingSongID,
+            isPlaying: isPlaying)
+    }
+
+    var canLeaveStageMode: Bool {
+        StageMode.canLeave(playingSongID: stagePlayingSongID)
+    }
+
+    /// Stopped, loads the tile's song from the setlist, as its row there does, and starts it from
+    /// the top. The playing tile stops; the other tiles do nothing while one plays.
+    func tapStageTile(_ songID: UUID) {
+        guard let stageMode else { return }
+        switch StageMode.tap(on: songID, playingSongID: stagePlayingSongID, isPlaying: isPlaying) {
+        case .start(let id):
+            haptics?.transport()
+            guard load(id, from: stageMode.setlistID) else { return }
+            trackPosition = 0
+            self.stageMode?.nextSongID = id
+            start()
+        case .stop:
+            haptics?.transport()
+            stop()
+        case .nothing:
+            break
+        }
+    }
+
+    /// `Done`: not while a tile plays.
+    func leaveStageMode() {
+        guard canLeaveStageMode else { return }
+        stageMode = nil
     }
 
     // MARK: - The library
