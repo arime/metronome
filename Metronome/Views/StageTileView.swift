@@ -79,11 +79,10 @@ struct StageTileView: View {
         }
     }
 
-    /// The library rows' music note, in muted, for a song with a backing track, whether or not its
-    /// file is here.
+    /// The library rows' music note, in muted, while the song's backing track will be used.
     @ViewBuilder
     private var trackMark: some View {
-        if tile.song.track != nil {
+        if tile.showsTrackMark {
             Image(systemName: "music.note")
                 .font(.system(size: 16))
                 .foregroundStyle(Theme.muted)

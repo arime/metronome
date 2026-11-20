@@ -932,7 +932,7 @@ final class MetronomeModel {
         guard let stageMode else { return [] }
         return StageMode.tiles(
             for: library.songs(inSetlist: stageMode.setlistID), activeSongID: stageActiveSongID,
-            isPlaying: isPlaying)
+            isPlaying: isPlaying, backingTracksOn: backingTracksOn)
     }
 
     var canLeaveStageMode: Bool {

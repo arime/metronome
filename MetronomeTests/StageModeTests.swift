@@ -59,7 +59,7 @@ import Testing
     @Test func aSongPlayingWithoutATileLeavesDoneWorking() {
         #expect(StageMode.tap(on: a, playingSongID: nil, isPlaying: true) == .nothing)
         #expect(StageMode.canLeave(playingSongID: nil))
-        let tiles = StageMode.tiles(for: songs, activeSongID: nil, isPlaying: true)
+        let tiles = StageMode.tiles(for: songs, activeSongID: nil, isPlaying: true, backingTracksOn: true)
         #expect(tiles.map(\.isDimmed) == [true, true, true])
         #expect(tiles.map(\.mark) == [.none, .none, .none])
     }
@@ -71,25 +71,25 @@ import Testing
     // MARK: Tiles
 
     @Test func tilesAreNumberedInTheSetlistsOrder() {
-        let tiles = StageMode.tiles(for: songs, activeSongID: nil, isPlaying: false)
+        let tiles = StageMode.tiles(for: songs, activeSongID: nil, isPlaying: false, backingTracksOn: true)
         #expect(tiles.map(\.number) == [1, 2, 3])
         #expect(tiles.map(\.id) == [a, b, c])
     }
 
     @Test func stoppedTheActiveTileIsMarked() {
-        let tiles = StageMode.tiles(for: songs, activeSongID: b, isPlaying: false)
+        let tiles = StageMode.tiles(for: songs, activeSongID: b, isPlaying: false, backingTracksOn: true)
         #expect(tiles.map(\.mark) == [.none, .active, .none])
         #expect(tiles.map(\.isDimmed) == [false, false, false])
     }
 
     @Test func playingOnlyThePlayingTileIsUndimmed() {
-        let tiles = StageMode.tiles(for: songs, activeSongID: c, isPlaying: true)
+        let tiles = StageMode.tiles(for: songs, activeSongID: c, isPlaying: true, backingTracksOn: true)
         #expect(tiles.map(\.mark) == [.none, .none, .playing])
         #expect(tiles.map(\.isDimmed) == [true, true, false])
     }
 
     @Test func noActiveSongMarksNothing() {
-        let tiles = StageMode.tiles(for: songs, activeSongID: nil, isPlaying: false)
+        let tiles = StageMode.tiles(for: songs, activeSongID: nil, isPlaying: false, backingTracksOn: true)
         #expect(tiles.map(\.mark) == [.none, .none, .none])
     }
 
@@ -100,13 +100,36 @@ import Testing
             song(b, "Copper Sky", bpm: 120),
             song(c, "Seven Bridges", bpm: 168, .sevenEight, track: track),
         ]
-        let stopped = StageMode.tiles(for: songs, activeSongID: b, isPlaying: false)
+        let stopped = StageMode.tiles(for: songs, activeSongID: b, isPlaying: false, backingTracksOn: true)
         #expect(stopped[0].accessibilityLabel == "1, Harbour Lights, 96 beats per minute, 4/4")
         #expect(stopped[1].accessibilityLabel == "2, Copper Sky, 120 beats per minute, 4/4, loaded")
-        let playing = StageMode.tiles(for: songs, activeSongID: c, isPlaying: true)
+        let playing = StageMode.tiles(for: songs, activeSongID: c, isPlaying: true, backingTracksOn: true)
         #expect(
             playing[2].accessibilityLabel
                 == "3, Seven Bridges, 168 beats per minute, 7/8, backing track, playing")
+    }
+
+    private var trackSongs: [Song] {
+        let track = BackingTrack(fileID: UUID(), fileName: "Bridges.m4a", offset: 0, bpm: 168)
+        return [song(a, "Harbour Lights"), song(b, "Seven Bridges", bpm: 168, .sevenEight, track: track)]
+    }
+
+    @Test func aTileWithATrackShowsTheMarkOnlyWithBackingTracksOn() {
+        for (activeSongID, isPlaying) in [(nil, false), (b, false), (b, true)] as [(UUID?, Bool)] {
+            let on = StageMode.tiles(
+                for: trackSongs, activeSongID: activeSongID, isPlaying: isPlaying, backingTracksOn: true)
+            #expect(on.map(\.showsTrackMark) == [false, true])
+            let off = StageMode.tiles(
+                for: trackSongs, activeSongID: activeSongID, isPlaying: isPlaying, backingTracksOn: false)
+            #expect(off.map(\.showsTrackMark) == [false, false])
+        }
+    }
+
+    @Test func withBackingTracksOffATileDoesNotReadBackingTrack() {
+        let off = StageMode.tiles(for: trackSongs, activeSongID: b, isPlaying: true, backingTracksOn: false)
+        #expect(off[1].accessibilityLabel == "2, Seven Bridges, 168 beats per minute, 7/8, playing")
+        let on = StageMode.tiles(for: trackSongs, activeSongID: nil, isPlaying: false, backingTracksOn: true)
+        #expect(on[1].accessibilityLabel == "2, Seven Bridges, 168 beats per minute, 7/8, backing track")
     }
 
     @Test func theTrackTimeReadsPlaceAndLength() {

@@ -267,6 +267,21 @@ struct StageModeModelTests {
         #expect(model.stageTiles.map(\.mark) == [.active, .none])
     }
 
+    @Test func theTrackMarksFollowTheBackingTracksSwitch() throws {
+        let bench = try TrackTestBench()
+        let (model, _) = try trackModelInStageMode(bench)
+        #expect(model.backingTracksOn)
+        #expect(model.stageTiles.map(\.showsTrackMark) == [true, false])
+        model.toggleBackingTracks()
+        #expect(model.stageTiles.map(\.showsTrackMark) == [false, false])
+    }
+
+    @Test func aTrackWhoseFileIsMissingStillShowsTheMark() throws {
+        let bench = try TrackTestBench()
+        let (model, _) = try trackModelInStageMode(bench, missing: true)
+        #expect(model.stageTiles.map(\.showsTrackMark) == [true, false])
+    }
+
     @Test func aMissingFilePlaysTheClickAlone() throws {
         let bench = try TrackTestBench()
         let (model, song) = try trackModelInStageMode(bench, missing: true)

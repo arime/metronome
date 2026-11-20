@@ -37,12 +37,17 @@ struct StageMode: Equatable {
     }
 
     /// The setlist's songs as tiles, in the given order. The active song's tile is the playing
-    /// tile while the metronome plays, and marked while it is stopped.
-    static func tiles(for songs: [Song], activeSongID: UUID?, isPlaying: Bool) -> [StageTile] {
+    /// tile while the metronome plays, and marked while it is stopped. A song with a backing track
+    /// shows the track mark only while backing tracks are on, whether or not its file is here.
+    static func tiles(
+        for songs: [Song], activeSongID: UUID?, isPlaying: Bool, backingTracksOn: Bool
+    ) -> [StageTile] {
         songs.enumerated().map { index, song in
             let isActive = song.id == activeSongID
             let mark: StageTile.Mark = isActive ? (isPlaying ? .playing : .active) : .none
-            return StageTile(number: index + 1, song: song, mark: mark, isDimmed: isPlaying && !isActive)
+            return StageTile(
+                number: index + 1, song: song, mark: mark, isDimmed: isPlaying && !isActive,
+                showsTrackMark: backingTracksOn && song.track != nil)
         }
     }
 }
@@ -59,10 +64,13 @@ struct StageTile: Equatable, Identifiable {
     let mark: Mark
     /// Drawn at 40 % while the metronome plays another song.
     let isDimmed: Bool
+    /// The music note: the song's backing track will be used.
+    let showsTrackMark: Bool
 
     var id: UUID { song.id }
 
-    /// For example "3, Seven Bridges, 168 beats per minute, 7/8, backing track, playing".
+    /// For example "3, Seven Bridges, 168 beats per minute, 7/8, backing track, playing";
+    /// "backing track" only with the track mark.
     var accessibilityLabel: String {
         let state =
             switch mark {
@@ -70,7 +78,9 @@ struct StageTile: Equatable, Identifiable {
             case .active: ", loaded"
             case .playing: ", playing"
             }
-        return "\(number), " + song.spokenDescription + state
+        let settings = song.settings
+        return "\(number), \(song.name), \(settings.bpm) beats per minute, \(settings.timeSignature.rawValue)"
+            + (showsTrackMark ? ", backing track" : "") + state
     }
 
     /// For example "0:31 / 3:42".
