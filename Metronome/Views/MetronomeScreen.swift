@@ -40,6 +40,7 @@ struct MetronomeScreen: View {
                 if !isOn {
                     isStageShown = false
                 } else if !isLibraryShown {
+                    // Only the header menu, closed by now, and a setlist's menu in the library enter it.
                     isStageShown = true
                 }
             }

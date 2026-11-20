@@ -147,6 +147,22 @@ import Testing
         #expect(layout.gap == 3)
     }
 
+    @Test func nineDotsUseTheSmallSizes() {
+        let layout = StageBeatDots.layout(beatsPerBar: 9, accents: [1, 4, 7], availableWidth: 134)
+        #expect(layout.diameters == [8, 5, 5, 8, 5, 5, 8, 5, 5])
+        #expect(layout.gap == 3)
+    }
+
+    @Test func noWidthOrNoBeatsGiveNoNegativeOrNaNSizes() {
+        for (beats, width) in [(4, -10), (4, 0), (12, -1), (0, 134), (0, 0), (-3, 134)] as [(Int, CGFloat)] {
+            let layout = StageBeatDots.layout(beatsPerBar: beats, accents: [1], availableWidth: width)
+            let values = layout.diameters + [layout.gap, layout.width]
+            #expect(values.allSatisfy { !$0.isNaN && $0 >= 0 }, "\(beats) beats in \(width) pt")
+        }
+        #expect(StageBeatDots.layout(beatsPerBar: 0, accents: [], availableWidth: 134).diameters.isEmpty)
+        #expect(StageBeatDots.layout(beatsPerBar: 0, accents: [], availableWidth: 134).width == 0)
+    }
+
     @Test func twelveAccentedDotsFitANarrowTile() {
         let layout = StageBeatDots.layout(beatsPerBar: 12, accents: Set(1...12), availableWidth: 107)
         #expect(layout.width <= 107)

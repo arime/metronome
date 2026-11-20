@@ -378,6 +378,60 @@ struct SyncModelTests {
         #expect(b.model.stageMode == nil)
     }
 
+    @Test func stageModeClosesOnceStoppedWhenItsSetlistIsEmptiedWhilePlaying() throws {
+        let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
+        b.model.tapStageTile(songs[0])
+        try #require(b.model.isPlaying)
+
+        clock.advance()
+        a.model.removeSongs(songs, fromSetlist: setlist)
+        cloud.send(.changed, toDevice: 1)
+
+        #expect(b.model.library.setlist(id: setlist)?.songIDs == [])
+        #expect(b.model.isPlaying)
+        #expect(b.model.stageMode != nil)
+        #expect(b.model.canLeaveStageMode)
+        b.model.stop()
+        #expect(b.model.stageMode == nil)
+    }
+
+    @Test func stoppingASongWithNoTileLeavesTheNextMark() throws {
+        let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
+        b.model.tapStageTile(songs[1])
+        try #require(b.model.stagePlayingSongID == songs[1])
+
+        clock.advance()
+        a.model.removeSongs([songs[1]], fromSetlist: setlist)
+        cloud.send(.changed, toDevice: 1)
+        try #require(b.model.isPlaying)
+        try #require(b.model.stagePlayingSongID == nil)
+        let next = b.model.stageMode?.nextSongID
+
+        b.model.stop()
+        #expect(b.model.stageMode?.nextSongID == next)
+    }
+
+    /// Back in the setlist, the song still plays with no tile: it was not loaded from it again.
+    @Test func stoppingASongThatCameBackWithNoTileLeavesTheNextMark() throws {
+        let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
+        b.model.tapStageTile(songs[1])
+        try #require(b.model.stagePlayingSongID == songs[1])
+
+        clock.advance()
+        a.model.removeSongs([songs[1]], fromSetlist: setlist)
+        cloud.send(.changed, toDevice: 1)
+        clock.advance()
+        a.model.addSongs([songs[1]], toSetlist: setlist)
+        cloud.send(.changed, toDevice: 1)
+        try #require(b.model.isPlaying)
+        try #require(b.model.library.setlist(id: setlist)?.songIDs.contains(songs[1]) == true)
+        try #require(b.model.stagePlayingSongID == nil)
+        let next = b.model.stageMode?.nextSongID
+
+        b.model.stop()
+        #expect(b.model.stageMode?.nextSongID == next)
+    }
+
     @Test func thePlayingSongLeavingTheSetlistLeavesDoneWorking() throws {
         let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
         b.model.tapStageTile(songs[1])

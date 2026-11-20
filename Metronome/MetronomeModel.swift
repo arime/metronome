@@ -188,10 +188,11 @@ final class MetronomeModel {
     }
 
     /// Every way playback ends passes through here, so stage mode's next mark moves on to the
-    /// following song however it stopped. A start that failed was never playing and moves nothing.
+    /// following song however it stopped. Only a playing tile moves it: a start that failed was
+    /// never playing, and a song playing with no tile leaves it where it is.
     private func becomeStopped() {
-        if isPlaying, let stageMode, let id = loadedSongID,
-           let songIDs = library.setlist(id: stageMode.setlistID)?.songIDs, songIDs.contains(id) {
+        if let id = stagePlayingSongID, let stageMode,
+           let songIDs = library.setlist(id: stageMode.setlistID)?.songIDs {
             self.stageMode?.nextSongID = StageMode.following(id, in: songIDs)
         }
         isPlaying = false
@@ -948,8 +949,8 @@ final class MetronomeModel {
         guard let stageMode else { return }
         switch StageMode.tap(on: songID, playingSongID: stagePlayingSongID, isPlaying: isPlaying) {
         case .start(let id):
-            haptics?.transport()
             guard load(id, from: stageMode.setlistID) else { return }
+            haptics?.transport()
             trackPosition = 0
             self.stageMode?.nextSongID = id
             start()

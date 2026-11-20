@@ -112,16 +112,17 @@ enum StageBeatDots {
         }
     }
 
-    /// 12 pt accented and 8 pt plain dots 5 pt apart up to 7 beats; 8 and 5 pt, 3 pt apart,
-    /// in 9/8 and 12/8. Scaled down alike, never up, to fit the available width.
+    /// 12 pt accented and 8 pt plain dots 5 pt apart; 8 and 5 pt, 3 pt apart, in 9/8 and 12/8.
+    /// Scaled down alike, never up, to fit the available width.
     static func layout(beatsPerBar: Int, accents: Set<Int>, availableWidth: CGFloat) -> Layout {
-        let isLong = beatsPerBar > 7
+        guard beatsPerBar > 0 else { return Layout(diameters: [], gap: 0) }
+        let isLong = [TimeSignature.nineEight, .twelveEight].map(\.beatsPerBar).contains(beatsPerBar)
         let accented: CGFloat = isLong ? 8 : 12
         let plain: CGFloat = isLong ? 5 : 8
         let full = Layout(
-            diameters: (0..<max(beatsPerBar, 0)).map { accents.contains($0 + 1) ? accented : plain },
+            diameters: (0..<beatsPerBar).map { accents.contains($0 + 1) ? accented : plain },
             gap: isLong ? 3 : 5)
-        let scale = min(1, availableWidth / full.width)
+        let scale = min(1, max(availableWidth, 0) / full.width)
         return Layout(diameters: full.diameters.map { $0 * scale }, gap: full.gap * scale)
     }
 }

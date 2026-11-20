@@ -15,7 +15,7 @@ struct StageTileView: View {
             Spacer(minLength: 0)
             Text(tile.song.name)
                 .font(.system(size: 20, weight: .heavy))
-                .tracking(-0.4)
+                .tracking(-0.4)  // -0.02 em of 20 pt
                 .foregroundStyle(isPlaying ? Theme.ink : Theme.dialWhite)
                 .lineLimit(2)
                 .truncationMode(.tail)
@@ -25,6 +25,7 @@ struct StageTileView: View {
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
+        // A two-line name makes the row 120 pt: 14 + 18 + two 24 pt lines + 8 + 18 + 14, the 18 pt lines fixed.
         .frame(maxWidth: .infinity, minHeight: 112, maxHeight: .infinity, alignment: .leading)
         .background(fill, in: shape)
         .overlay {
@@ -35,6 +36,8 @@ struct StageTileView: View {
         .shadow(color: isPlaying ? Theme.amber.opacity(0.28) : .clear, radius: 14)
         .opacity(tile.isDimmed ? 0.4 : 1)
         .contentShape(shape)
+        // Takes a hold, which the tap would otherwise take as a tap once released.
+        .onLongPressGesture {}
         .rowTap(tap)
         .accessibilityLabel(tile.accessibilityLabel)
         .disabled(tile.isDimmed)
@@ -68,7 +71,7 @@ struct StageTileView: View {
             case .next:
                 Text("NEXT")
                     .font(.system(size: 11, weight: .semibold))
-                    .tracking(1.98)
+                    .tracking(1.98)  // 0.18 em of 11 pt
                     .foregroundStyle(Theme.amber)
             case .playing:
                 // The track's time is read from the engine and not observed, so it is redrawn
