@@ -300,4 +300,100 @@ struct SyncModelTests {
         #expect(relaunched.model.syncEnabled == false)
         #expect(relaunched.model.syncStatus == nil)
     }
+
+    // MARK: - Stage mode
+
+    /// A makes S1, S2 and S3 and a setlist of them; B has them and shows the setlist in stage mode.
+    private func stageModeOnTheOtherDevice() throws -> (a: Device, b: Device, songs: [UUID], setlist: UUID) {
+        let a = makeDevice(), b = makeDevice()
+        clock.advance()
+        let songs = try ["S1", "S2", "S3"].map {
+            try #require(a.model.createSong(name: $0, settings: settings(100), addingTo: nil)).id
+        }
+        let setlist = a.model.createSetlist()
+        a.model.addSongs(songs, toSetlist: setlist)
+        cloud.send(.changed, toDevice: 1)
+        b.model.enterStageMode(setlistID: setlist)
+        try #require(b.model.stageMode != nil)
+        return (a, b, songs, setlist)
+    }
+
+    @Test func stageModeFollowsAReorderFromAnotherDevice() throws {
+        let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
+
+        clock.advance()
+        a.model.reorderSetlist(setlist, to: [songs[2], songs[0], songs[1]])
+        cloud.send(.changed, toDevice: 1)
+
+        #expect(b.model.stageTiles.map(\.song.id) == [songs[2], songs[0], songs[1]])
+        #expect(b.model.stageTiles.map(\.number) == [1, 2, 3])
+        #expect(b.model.stageTiles.filter { $0.mark == .next }.map(\.song.id) == [songs[0]])
+    }
+
+    @Test func theNextMarkGoesWhenItsSongLeavesTheSetlist() throws {
+        let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
+
+        clock.advance()
+        a.model.removeSongs([songs[0]], fromSetlist: setlist)
+        cloud.send(.changed, toDevice: 1)
+
+        #expect(b.model.stageTiles.map(\.song.id) == [songs[1], songs[2]])
+        #expect(b.model.stageTiles.allSatisfy { $0.mark != .next })
+    }
+
+    @Test func stageModeClosesWhenItsSetlistIsDeletedElsewhere() throws {
+        let (a, b, _, setlist) = try stageModeOnTheOtherDevice()
+
+        clock.advance()
+        a.model.deleteSetlist(setlist)
+        cloud.send(.changed, toDevice: 1)
+
+        #expect(b.model.stageMode == nil)
+    }
+
+    @Test func stageModeClosesWhenItsSetlistIsEmptiedElsewhere() throws {
+        let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
+
+        clock.advance()
+        a.model.removeSongs(songs, fromSetlist: setlist)
+        cloud.send(.changed, toDevice: 1)
+
+        #expect(b.model.library.setlist(id: setlist)?.songIDs == [])
+        #expect(b.model.stageMode == nil)
+    }
+
+    @Test func stageModeClosesOnceStoppedWhenItsSetlistGoesWhilePlaying() throws {
+        let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
+        b.model.tapStageTile(songs[0])
+        try #require(b.model.isPlaying)
+
+        clock.advance()
+        a.model.deleteSetlist(setlist)
+        cloud.send(.changed, toDevice: 1)
+
+        #expect(b.model.stageMode != nil)
+        #expect(b.model.isPlaying)
+        #expect(b.model.canLeaveStageMode)
+        b.model.stop()
+        #expect(b.model.stageMode == nil)
+    }
+
+    @Test func thePlayingSongLeavingTheSetlistLeavesDoneWorking() throws {
+        let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
+        b.model.tapStageTile(songs[1])
+        try #require(b.model.stagePlayingSongID == songs[1])
+
+        clock.advance()
+        a.model.removeSongs([songs[1]], fromSetlist: setlist)
+        cloud.send(.changed, toDevice: 1)
+
+        #expect(b.model.isPlaying)
+        #expect(b.model.stagePlayingSongID == nil)
+        #expect(b.model.canLeaveStageMode)
+        #expect(b.model.stageTiles.map(\.song.id) == [songs[0], songs[2]])
+        #expect(b.model.stageTiles.allSatisfy { $0.isDimmed })
+        b.model.tapStageTile(songs[0])
+        #expect(b.model.isPlaying)
+        #expect(b.model.loadedSongID == songs[1])
+    }
 }

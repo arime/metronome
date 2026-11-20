@@ -198,6 +198,7 @@ final class MetronomeModel {
         isPlayingTrack = false
         startedBeforeFile = false
         currentBeat = nil
+        closeStageModeIfItsSetlistIsGone()
     }
 
     /// An interruption, a route change or an engine failure: the track keeps its position, as with Stop.
@@ -966,6 +967,15 @@ final class MetronomeModel {
         stageMode = nil
     }
 
+    /// Its setlist deleted or emptied on another device: closes as `Done` does, at once while
+    /// stopped, or else when playback stops.
+    private func closeStageModeIfItsSetlistIsGone() {
+        guard let stageMode, !isPlaying,
+              library.setlist(id: stageMode.setlistID)?.songIDs.isEmpty ?? true
+        else { return }
+        self.stageMode = nil
+    }
+
     // MARK: - The library
 
     /// Creates a song, optionally at the end of a setlist. It is not loaded, with one
@@ -1370,6 +1380,7 @@ final class MetronomeModel {
         libraryStore.save(state)
         trackFiles.removeAll(except: library.referencedFileIDs)
         syncSaveOffer()
+        closeStageModeIfItsSetlistIsGone()
     }
 
     /// The loaded song's track changed on another device, or the song went. The same file with a
