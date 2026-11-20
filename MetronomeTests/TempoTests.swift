@@ -39,15 +39,15 @@ struct DialGeometryTests {
         #expect(DialGeometry.arcFraction(dx: 0.1, dy: 1) == 1)
     }
 
-    @Test func theDialNumberIs114AndSmallerForThreeDigits() {
-        #expect(DialGeometry.numberSize(bpm: 99, dialDiameter: 300) == 114)
-        #expect(abs(DialGeometry.numberSize(bpm: 100, dialDiameter: 300) - 100.32) < 0.001)
-        #expect(abs(DialGeometry.numberSize(bpm: 300, dialDiameter: 300) - 100.32) < 0.001)
+    @Test func theDialNumberIs92ForEveryTempo() {
+        #expect(DialGeometry.numberSize(bpm: 99, dialDiameter: 264) == 92)
+        #expect(DialGeometry.numberSize(bpm: 100, dialDiameter: 264) == 92)
+        #expect(DialGeometry.numberSize(bpm: 300, dialDiameter: 264) == 92)
     }
 
     @Test func theDialNumberScalesWithTheDial() {
-        #expect(DialGeometry.numberSize(bpm: 60, dialDiameter: 150) == 57)
-        #expect(abs(DialGeometry.numberSize(bpm: 120, dialDiameter: 340) - 113.696) < 0.001)
+        #expect(DialGeometry.numberSize(bpm: 120, dialDiameter: 132) == 46)
+        #expect(abs(DialGeometry.numberSize(bpm: 60, dialDiameter: 221) - 77.015) < 0.001)
     }
 
     @Test func aTurnCanStartAnywhereOnTheDial() {

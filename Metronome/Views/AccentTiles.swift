@@ -83,7 +83,7 @@ struct BeatTile: View {
     /// Smaller on the two-row layout and on the shorter tiles used on small phones.
     private var numberSize: CGFloat {
         if isCompact { return 20 }
-        return height >= 70 ? 28 : 22
+        return height >= 60 ? 28 : 22
     }
 
     /// The number alone says the beat; the fill, border and weight say the accent.

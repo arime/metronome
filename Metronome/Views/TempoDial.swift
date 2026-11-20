@@ -12,9 +12,11 @@ struct TempoDial: View {
 
     var body: some View {
         ZStack {
-            DialRing(fraction: Tempo.arcFraction(for: model.settings.bpm))
-            // Over the knob, so the beat lights up its face.
-            BeatGlow(lastBeat: model.lastBeat, bpm: model.settings.bpm, diameter: diameter)
+            DialRing(fraction: Tempo.arcFraction(for: model.tempoInEffect))
+            // Over the knob, so the beat lights up its face. Stopped, there is no glow, even
+            // mid-fade (section 12).
+            BeatGlow(lastBeat: model.lastBeat, bpm: model.tempoInEffect, diameter: diameter)
+                .opacity(model.isPlaying ? 1 : 0)
             readout
                 .contentShape(Rectangle())
                 .onTapGesture { isEntryShown = true }
@@ -24,7 +26,7 @@ struct TempoDial: View {
         .gesture(ringDrag)
         .accessibilityElement()
         .accessibilityLabel("Tempo")
-        .accessibilityValue("\(model.settings.bpm) beats per minute")
+        .accessibilityValue("\(model.tempoInEffect) beats per minute")
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: model.nudgeBPM(by: 1)
@@ -34,13 +36,13 @@ struct TempoDial: View {
         }
         .accessibilityAction(named: "Type a tempo") { isEntryShown = true }
         .sheet(isPresented: $isEntryShown) {
-            TempoEntrySheet(current: model.settings.bpm) { model.setBPM($0) }
+            TempoEntrySheet(current: model.tempoInEffect) { model.setBPM($0) }
                 .environment(model)
         }
     }
 
     private var readout: some View {
-        DialNumber(bpm: model.settings.bpm, diameter: diameter)
+        DialNumber(bpm: model.tempoInEffect, diameter: diameter)
     }
 
     /// Turns the knob by the angle the finger travels around the centre, from wherever on the
@@ -64,7 +66,7 @@ struct TempoDial: View {
                     // Measured from here, not from where the touch began, so the first
                     // movement does not arrive as a jump.
                     let turn = DialDrag(
-                        startFraction: Tempo.arcFraction(for: model.settings.bpm),
+                        startFraction: Tempo.arcFraction(for: model.tempoInEffect),
                         dx: dx, dy: dy, dialDiameter: diameter
                     )
                     drag = (value.startLocation, turn)
@@ -78,8 +80,7 @@ struct TempoDial: View {
     }
 }
 
-/// The BPM number on a dial's face, pulsing with the beat. Its line keeps the two-digit
-/// height, so the number does not move up or down when a third digit makes it smaller.
+/// The BPM number on a dial's face, pulsing with the beat.
 struct DialNumber: View {
     @Environment(MetronomeModel.self) private var model
     let bpm: Int
@@ -109,22 +110,16 @@ struct DialNumber: View {
             // Laid out at its natural width. Squeezing it into a fixed width with a
             // scale factor clipped the right edge of the last digit.
             .fixedSize()
-            .frame(height: DialGeometry.fullNumberSize * diameter / 300)
+            .frame(height: numberSize)
             .modifier(NumberPulse(lastBeat: model.lastBeat, bpm: bpm))
     }
 }
 
-/// The scale of ticks and the knob inside it: a raised disc with a ridged edge and an amber
-/// pointer, turned to the tempo. As a gauge, on the track screen (6.12), a flat disc in the
-/// surface colour takes the knob's place, so the dial looks locked. Drawn in a 300 pt
-/// coordinate space and scaled to fit.
+/// The scale of ticks and the knob inside it: a dark raised disc lit from the upper left, with
+/// a ridged edge and an amber pointer, turned to the tempo. Drawn in a 300 pt coordinate
+/// space and scaled to fit.
 struct DialRing: View {
-    enum Style {
-        case knob, gauge
-    }
-
     let fraction: Double
-    var style: Style = .knob
 
     private static let tickCount = 48
     private static let tickOuter = 146.0
@@ -144,6 +139,21 @@ struct DialRing: View {
     private static let knobBottom = Color(hex: 0x141416)
     private static let faceTop = Color(hex: 0x1D1D21)
     private static let faceBottom = Color(hex: 0x202024)
+
+    /// The round shade over the knob that darkens it away from the light: lightest at 35 %
+    /// across and 28 % down the knob's square, darkest at the square's farthest corner,
+    /// 1.94 knob radii away.
+    private static let shadeLight = Color.black.opacity(0.18)
+    private static let shadeDark = Color.black.opacity(0.50)
+    private static let shadeCentre = CGPoint(x: 0.35, y: 0.28)
+    private static let shadeReach = 1.94
+    /// The thin line of light along the knob's upper edge.
+    private static let highlight = Color.white.opacity(0.10)
+    /// The soft shadow inside the knob's lower edge, measured on the 264 pt dial: 10 pt up,
+    /// and an 18 pt blur, which is a 9 pt shadow radius.
+    private static let innerShadow = Color.black.opacity(0.35)
+    private static let innerShadowOffset = 10 * 300 / DialGeometry.designDial
+    private static let innerShadowRadius = 9 * 300 / DialGeometry.designDial
 
     /// Extra canvas around the dial so the knob's shadow and the pointer's glow are not clipped.
     private static let bleed = 24.0
@@ -189,13 +199,6 @@ struct DialRing: View {
                 )
             }
 
-            if style == .gauge {
-                // A flat disc of the knob's radius: no shadow, ridges, face or pointer.
-                context.fill(circle(Self.knobRadius), with: .color(Theme.surface))
-                context.stroke(circle(Self.knobRadius), with: .color(Theme.line), lineWidth: 1.5 * scale)
-                return
-            }
-
             // The knob's body, lit from above and standing off the background.
             let pointerAngle = angle(at: fraction)
             var knobBody = context
@@ -217,7 +220,9 @@ struct DialRing: View {
             // The face, a little darker than the edge, under the number.
             context.fill(circle(Self.faceRadius), with: vertical(Self.faceTop, Self.faceBottom, radius: Self.faceRadius))
 
-            // The pointer.
+            Self.light(context, centre: centre, scale: scale, size: size)
+
+            // The pointer, over the shade at full amber.
             var glow = context
             glow.addFilter(.shadow(color: Theme.amber.opacity(0.7), radius: 5 * scale))
             glow.stroke(
@@ -228,5 +233,47 @@ struct DialRing: View {
         }
         .padding(-Self.bleed)
         .allowsHitTesting(false)
+    }
+
+    /// The light from the upper left: a round shade over the whole knob, ridges and face
+    /// included, a highlight along the upper edge and a shadow inside the lower edge.
+    private static func light(_ context: GraphicsContext, centre: CGPoint, scale: CGFloat, size: CGSize) {
+        let radius = knobRadius * scale
+        let knob = Path(ellipseIn: CGRect(x: centre.x - radius, y: centre.y - radius, width: 2 * radius, height: 2 * radius))
+
+        let shadeOrigin = CGPoint(
+            x: centre.x + (2 * shadeCentre.x - 1) * radius,
+            y: centre.y + (2 * shadeCentre.y - 1) * radius
+        )
+        context.fill(knob, with: .radialGradient(
+            Gradient(colors: [shadeLight, shadeDark]),
+            center: shadeOrigin, startRadius: 0, endRadius: shadeReach * radius
+        ))
+
+        let edge = radius - 0.5 * scale
+        let highlightLine = Path(ellipseIn: CGRect(x: centre.x - edge, y: centre.y - edge, width: 2 * edge, height: 2 * edge))
+        context.stroke(
+            highlightLine,
+            with: .linearGradient(
+                Gradient(colors: [highlight, highlight.opacity(0)]),
+                startPoint: CGPoint(x: centre.x, y: centre.y - radius),
+                endPoint: centre
+            ),
+            lineWidth: scale
+        )
+
+        // The shadow of everything around the knob, moved up and clipped to the knob, falls
+        // just inside its lower edge.
+        var inner = context
+        inner.clip(to: knob)
+        inner.addFilter(.shadow(
+            color: innerShadow,
+            radius: innerShadowRadius * scale,
+            y: -innerShadowOffset * scale,
+            options: .shadowOnly
+        ))
+        var surround = Path(CGRect(origin: .zero, size: size))
+        surround.addPath(knob)
+        inner.fill(surround, with: .color(.black), style: FillStyle(eoFill: true))
     }
 }

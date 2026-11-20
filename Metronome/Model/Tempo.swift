@@ -38,13 +38,15 @@ enum DialGeometry {
         return relative < gapMiddle ? 1 : 0
     }
 
-    /// The BPM number on the knob's face of a 300 pt dial, for two digits.
-    static let fullNumberSize = 114.0
+    /// The dial's diameter in the design, and the largest it is drawn.
+    static let designDial = 264.0
+    /// The BPM number on the knob's face of the design dial.
+    static let designNumberSize = 92.0
 
-    /// The BPM number's font size, scaled with the dial. Three-digit tempos are drawn at 88 %
-    /// so they stay clear of the face's edge and the pointer.
+    /// The BPM number's font size, scaled with the dial. Two digits and three alike: at this
+    /// size the widest three-digit number stays clear of the pointer.
     static func numberSize(bpm: Int, dialDiameter: Double) -> Double {
-        fullNumberSize * dialDiameter / 300 * (bpm >= 100 ? 0.88 : 1)
+        designNumberSize * dialDiameter / designDial
     }
 
     /// True when the touch starts on the dial: anywhere within 0.55 dial diameters of the
