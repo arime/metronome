@@ -1,33 +1,20 @@
 import CoreGraphics
 import Foundation
 
-/// Stage mode for one setlist (9.4): which setlist it shows and which song is marked next.
-/// Nothing of it is kept between launches.
+/// Stage mode for one setlist (9.4): which setlist it shows. Nothing of it is kept between launches.
 struct StageMode: Equatable {
     let setlistID: UUID
-    var nextSongID: UUID?
 
-    /// The loaded song is marked next when it was loaded from this setlist and is still in
-    /// it; otherwise the setlist's first song is.
-    static func entering(_ setlist: Setlist, loadedSongID: UUID?, loadedFromSetlistID: UUID?) -> StageMode {
-        let next: UUID?
-        if loadedFromSetlistID == setlist.id, let loadedSongID, setlist.songIDs.contains(loadedSongID) {
-            next = loadedSongID
-        } else {
-            next = setlist.songIDs.first
-        }
-        return StageMode(setlistID: setlist.id, nextSongID: next)
+    /// The active song: the loaded song when it was loaded from this setlist and is still in it.
+    static func activeSongID(in setlist: Setlist, loadedSongID: UUID?, loadedFromSetlistID: UUID?) -> UUID? {
+        guard loadedFromSetlistID == setlist.id, let loadedSongID, setlist.songIDs.contains(loadedSongID)
+        else { return nil }
+        return loadedSongID
     }
 
     /// Only a setlist with songs, and only while the metronome is stopped.
     static func canEnter(songCount: Int, isPlaying: Bool) -> Bool {
         songCount > 0 && !isPlaying
-    }
-
-    /// The song after this one, nil after the last or when it is not in the list.
-    static func following(_ songID: UUID, in songIDs: [UUID]) -> UUID? {
-        guard let index = songIDs.firstIndex(of: songID), index + 1 < songIDs.count else { return nil }
-        return songIDs[index + 1]
     }
 
     /// What a tap on a tile does.
@@ -49,21 +36,13 @@ struct StageMode: Equatable {
         playingSongID == nil
     }
 
-    /// The setlist's songs as tiles, in the given order. `playingSongID` is the playing
-    /// tile's song, nil when no tile plays.
-    func tiles(for songs: [Song], playingSongID: UUID?, isPlaying: Bool) -> [StageTile] {
+    /// The setlist's songs as tiles, in the given order. The active song's tile is the playing
+    /// tile while the metronome plays, and marked while it is stopped.
+    static func tiles(for songs: [Song], activeSongID: UUID?, isPlaying: Bool) -> [StageTile] {
         songs.enumerated().map { index, song in
-            let mark: StageTile.Mark =
-                if song.id == playingSongID {
-                    .playing
-                } else if !isPlaying && song.id == nextSongID {
-                    .next
-                } else {
-                    .none
-                }
-            return StageTile(
-                number: index + 1, song: song, mark: mark,
-                isDimmed: isPlaying && song.id != playingSongID)
+            let isActive = song.id == activeSongID
+            let mark: StageTile.Mark = isActive ? (isPlaying ? .playing : .active) : .none
+            return StageTile(number: index + 1, song: song, mark: mark, isDimmed: isPlaying && !isActive)
         }
     }
 }
@@ -71,7 +50,7 @@ struct StageMode: Equatable {
 /// One song's tile in stage mode.
 struct StageTile: Equatable, Identifiable {
     enum Mark: Equatable {
-        case none, next, playing
+        case none, active, playing
     }
 
     /// The song's place in the setlist, from 1.
@@ -88,7 +67,7 @@ struct StageTile: Equatable, Identifiable {
         let state =
             switch mark {
             case .none: ""
-            case .next: ", next"
+            case .active: ", loaded"
             case .playing: ", playing"
             }
         return "\(number), " + song.spokenDescription + state

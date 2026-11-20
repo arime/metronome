@@ -38,14 +38,32 @@ struct StageModeModelTests {
         let (model, _, b, _, setlist) = modelWithSetlist()
         model.loadSong(b, from: setlist)
         model.enterStageMode(setlistID: setlist)
-        #expect(model.stageMode == StageMode(setlistID: setlist, nextSongID: b))
+        #expect(model.stageMode == StageMode(setlistID: setlist))
+        #expect(model.stageTiles.map(\.mark) == [.none, .active, .none])
     }
 
-    @Test func enteringWithASongFromElsewhereMarksTheFirst() {
-        let (model, a, b, _, setlist) = modelWithSetlist()
+    @Test func enteringWithASongFromElsewhereMarksNothing() {
+        let (model, _, b, _, setlist) = modelWithSetlist()
         model.loadSong(b, from: nil)
         model.enterStageMode(setlistID: setlist)
-        #expect(model.stageMode?.nextSongID == a)
+        #expect(model.stageTiles.map(\.mark) == [.none, .none, .none])
+    }
+
+    @Test func enteringWithASongFromAnotherSetlistMarksNothing() {
+        let (model, _, b, _, setlist) = modelWithSetlist()
+        let other = model.createSetlist()
+        model.setSong(b, inSetlist: other, included: true)
+        model.loadSong(b, from: other)
+        model.enterStageMode(setlistID: setlist)
+        #expect(model.stageTiles.map(\.mark) == [.none, .none, .none])
+    }
+
+    @Test func enteringWithNothingLoadedMarksNothing() {
+        let (model, _, _, _, setlist) = modelWithSetlist()
+        model.unloadSong()
+        model.enterStageMode(setlistID: setlist)
+        #expect(model.loadedSongID == nil)
+        #expect(model.stageTiles.map(\.mark) == [.none, .none, .none])
     }
 
     @Test func enteringChangesNothingOnTheMetronome() {
@@ -113,26 +131,25 @@ struct StageModeModelTests {
         #expect(engine.startedSettings.last?.bpm == 99)
     }
 
-    @Test func tappingThePlayingTileStopsAndMarksTheFollowing() {
-        let (model, _, b, c, setlist) = modelWithSetlist()
+    @Test func tappingThePlayingTileStopsAndKeepsItMarked() {
+        let (model, _, b, _, setlist) = modelWithSetlist()
         model.enterStageMode(setlistID: setlist)
         model.tapStageTile(b)
         model.tapStageTile(b)
         #expect(model.isPlaying == false)
         #expect(engine.stopCount == 1)
         #expect(haptics.transportCount == 2)
-        #expect(model.stageMode?.nextSongID == c)
-        #expect(model.stageTiles.map(\.mark) == [.none, .none, .next])
+        #expect(model.stageTiles.map(\.mark) == [.none, .active, .none])
     }
 
-    @Test func stoppingTheLastSongMarksNothing() {
+    @Test func stoppingTheLastSongKeepsItMarked() {
         let (model, _, _, c, setlist) = modelWithSetlist()
         model.enterStageMode(setlistID: setlist)
         model.tapStageTile(c)
         model.tapStageTile(c)
         #expect(model.isPlaying == false)
         #expect(model.stageMode != nil)
-        #expect(model.stageMode?.nextSongID == nil)
+        #expect(model.stageTiles.map(\.mark) == [.none, .none, .active])
     }
 
     @Test func otherTilesDoNothingWhileOnePlays() {
@@ -163,32 +180,32 @@ struct StageModeModelTests {
 
     // MARK: - Stopping by itself
 
-    @Test func anInterruptionMarksTheFollowingSong() {
-        let (model, a, b, _, setlist) = modelWithSetlist()
+    @Test func anInterruptionKeepsThePlayedSongMarked() {
+        let (model, a, _, _, setlist) = modelWithSetlist()
         model.enterStageMode(setlistID: setlist)
         model.tapStageTile(a)
         engine.onStopped?()
         #expect(model.isPlaying == false)
-        #expect(model.stageMode?.nextSongID == b)
         #expect(model.stageMode != nil)
+        #expect(model.stageTiles.map(\.mark) == [.active, .none, .none])
     }
 
-    @Test func leavingTheForegroundMarksTheFollowingSong() {
-        let (model, a, b, _, setlist) = modelWithSetlist()
+    @Test func leavingTheForegroundKeepsThePlayedSongMarked() {
+        let (model, a, _, _, setlist) = modelWithSetlist()
         model.enterStageMode(setlistID: setlist)
         model.tapStageTile(a)
         model.appDidLeaveForeground()
         #expect(model.isPlaying == false)
-        #expect(model.stageMode?.nextSongID == b)
+        #expect(model.stageTiles.map(\.mark) == [.active, .none, .none])
     }
 
-    @Test func aFailedStartKeepsTheTappedTileNext() {
+    @Test func aFailedStartMarksTheTappedTile() {
         let (model, _, b, _, setlist) = modelWithSetlist()
         model.enterStageMode(setlistID: setlist)
         engine.startError = StartFailed()
         model.tapStageTile(b)
         #expect(model.isPlaying == false)
-        #expect(model.stageMode?.nextSongID == b)
+        #expect(model.stageTiles.map(\.mark) == [.none, .active, .none])
     }
 
     @Test func theScreenStaysAwakeWhileStageModeIsShown() {
@@ -206,20 +223,20 @@ struct StageModeModelTests {
     /// The bench's song with a track, first in a setlist, and a song without one after it.
     private func trackModelInStageMode(
         _ bench: TrackTestBench, missing: Bool = false
-    ) throws -> (model: MetronomeModel, song: UUID, following: UUID) {
+    ) throws -> (model: MetronomeModel, song: UUID) {
         let model = try bench.makeModel(missing: missing)
         let song = try #require(model.loadedSongID)
         let setlist = model.createSetlist()
         model.setSong(song, inSetlist: setlist, included: true)
-        let following = try #require(
+        _ = try #require(
             model.createSong(name: "Following", settings: MetronomeSettings(bpm: 90, timeSignature: .fourFour, accents: [1]), addingTo: setlist))
         model.enterStageMode(setlistID: setlist)
-        return (model, song, following.id)
+        return (model, song)
     }
 
     @Test func aTileWithATrackCountsIn() throws {
         let bench = try TrackTestBench()
-        let (model, song, _) = try trackModelInStageMode(bench)
+        let (model, song) = try trackModelInStageMode(bench)
         model.tapStageTile(song)
         let started = try #require(bench.engine.startedTracks.last)
         #expect(started.startTime < 0)
@@ -229,7 +246,7 @@ struct StageModeModelTests {
 
     @Test func theSameTileAgainStartsFromTheTop() throws {
         let bench = try TrackTestBench()
-        let (model, song, _) = try trackModelInStageMode(bench)
+        let (model, song) = try trackModelInStageMode(bench)
         model.tapStageTile(song)
         bench.engine.trackTime = 80
         model.tapStageTile(song)
@@ -241,18 +258,18 @@ struct StageModeModelTests {
         #expect(started.startTime < 0)
     }
 
-    @Test func theEndOfTheTrackMarksTheFollowingSong() throws {
+    @Test func theEndOfTheTrackKeepsItsSongMarked() throws {
         let bench = try TrackTestBench()
-        let (model, song, following) = try trackModelInStageMode(bench)
+        let (model, song) = try trackModelInStageMode(bench)
         model.tapStageTile(song)
         bench.engine.onTrackEnded?()
         #expect(model.isPlaying == false)
-        #expect(model.stageMode?.nextSongID == following)
+        #expect(model.stageTiles.map(\.mark) == [.active, .none])
     }
 
     @Test func aMissingFilePlaysTheClickAlone() throws {
         let bench = try TrackTestBench()
-        let (model, song, _) = try trackModelInStageMode(bench, missing: true)
+        let (model, song) = try trackModelInStageMode(bench, missing: true)
         model.tapStageTile(song)
         #expect(model.isPlaying)
         #expect(bench.engine.startedTracks.isEmpty)

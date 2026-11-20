@@ -187,14 +187,8 @@ final class MetronomeModel {
         }
     }
 
-    /// Every way playback ends passes through here, so stage mode's next mark moves on to the
-    /// following song however it stopped. Only a playing tile moves it: a start that failed was
-    /// never playing, and a song playing with no tile leaves it where it is.
+    /// Every way playback ends passes through here.
     private func becomeStopped() {
-        if let id = stagePlayingSongID, let stageMode,
-           let songIDs = library.setlist(id: stageMode.setlistID)?.songIDs {
-            self.stageMode?.nextSongID = StageMode.following(id, in: songIDs)
-        }
         isPlaying = false
         isPlayingTrack = false
         startedBeforeFile = false
@@ -907,8 +901,7 @@ final class MetronomeModel {
 
     // MARK: - Stage mode
 
-    /// Whether stage mode is shown (9.4), for which setlist, and which song is marked next.
-    /// Not saved, so off at launch.
+    /// Whether stage mode is shown (9.4), and for which setlist. Not saved, so off at launch.
     private(set) var stageMode: StageMode?
 
     /// Only for a setlist with songs, and only while stopped.
@@ -917,25 +910,28 @@ final class MetronomeModel {
         return StageMode.canEnter(songCount: setlist.songIDs.count, isPlaying: isPlaying)
     }
 
-    /// Changes nothing on the metronome; only marks the song to play next.
+    /// Changes nothing on the metronome.
     func enterStageMode(setlistID: UUID) {
-        guard canEnterStageMode(setlistID: setlistID), let setlist = library.setlist(id: setlistID) else { return }
-        stageMode = .entering(setlist, loadedSongID: loadedSongID, loadedFromSetlistID: loadedFromSetlistID)
+        guard canEnterStageMode(setlistID: setlistID) else { return }
+        stageMode = StageMode(setlistID: setlistID)
     }
 
-    /// The playing tile's song: the loaded song while it plays, loaded from stage mode's setlist
-    /// and still in it. nil when no tile plays.
+    /// The active tile's song: the loaded song, loaded from stage mode's setlist and still in it.
+    private var stageActiveSongID: UUID? {
+        guard let stageMode, let setlist = library.setlist(id: stageMode.setlistID) else { return nil }
+        return StageMode.activeSongID(
+            in: setlist, loadedSongID: loadedSongID, loadedFromSetlistID: loadedFromSetlistID)
+    }
+
+    /// The playing tile's song: the active song while it plays. nil when no tile plays.
     var stagePlayingSongID: UUID? {
-        guard isPlaying, let stageMode, loadedFromSetlistID == stageMode.setlistID, let id = loadedSongID,
-              library.setlist(id: stageMode.setlistID)?.songIDs.contains(id) == true
-        else { return nil }
-        return id
+        isPlaying ? stageActiveSongID : nil
     }
 
     var stageTiles: [StageTile] {
         guard let stageMode else { return [] }
-        return stageMode.tiles(
-            for: library.songs(inSetlist: stageMode.setlistID), playingSongID: stagePlayingSongID,
+        return StageMode.tiles(
+            for: library.songs(inSetlist: stageMode.setlistID), activeSongID: stageActiveSongID,
             isPlaying: isPlaying)
     }
 
@@ -952,7 +948,6 @@ final class MetronomeModel {
             guard load(id, from: stageMode.setlistID) else { return }
             haptics?.transport()
             trackPosition = 0
-            self.stageMode?.nextSongID = id
             start()
         case .stop:
             haptics?.transport()

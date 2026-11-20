@@ -67,7 +67,7 @@ enum ScreenshotScene: String, CaseIterable {
     /// the two tempos differ. Not an App Store screenshot; for checking that the track screen's
     /// dial shows the track's tempo. The demo file still ticks at 120, so it plays out of sync.
     case trackOtherTempo
-    /// Stage mode for the sample setlist, stopped, with the loaded song marked next. Not an App
+    /// Stage mode for the sample setlist, stopped, with the loaded song's tile marked. Not an App
     /// Store screenshot; for checking stage mode in the simulator.
     case stage
     /// Stage mode with the track song's tile playing from launch, on an engine that plays nothing,

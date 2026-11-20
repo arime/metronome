@@ -21,23 +21,19 @@ import Testing
 
     private var songs: [Song] { [song(a), song(b), song(c)] }
 
-    // MARK: Entering
+    // MARK: The active song
 
-    @Test func enteringMarksTheLoadedSongWhenItCameFromThisSetlist() {
+    @Test func theLoadedSongIsActiveWhenItCameFromThisSetlist() {
         let setlist = setlist
-        let stage = StageMode.entering(setlist, loadedSongID: b, loadedFromSetlistID: setlist.id)
-        #expect(stage.setlistID == setlist.id)
-        #expect(stage.nextSongID == b)
+        #expect(StageMode.activeSongID(in: setlist, loadedSongID: b, loadedFromSetlistID: setlist.id) == b)
     }
 
-    @Test func enteringMarksTheFirstSongOtherwise() {
+    @Test func noSongIsActiveWhenTheLoadedSongCameFromElsewhere() {
         let setlist = setlist
-        let fromAnother = StageMode.entering(setlist, loadedSongID: b, loadedFromSetlistID: UUID())
-        let onItsOwn = StageMode.entering(setlist, loadedSongID: b, loadedFromSetlistID: nil)
-        let nothingLoaded = StageMode.entering(setlist, loadedSongID: nil, loadedFromSetlistID: nil)
-        #expect(fromAnother.nextSongID == a)
-        #expect(onItsOwn.nextSongID == a)
-        #expect(nothingLoaded.nextSongID == a)
+        #expect(StageMode.activeSongID(in: setlist, loadedSongID: b, loadedFromSetlistID: UUID()) == nil)
+        #expect(StageMode.activeSongID(in: setlist, loadedSongID: b, loadedFromSetlistID: nil) == nil)
+        #expect(StageMode.activeSongID(in: setlist, loadedSongID: nil, loadedFromSetlistID: nil) == nil)
+        #expect(StageMode.activeSongID(in: setlist, loadedSongID: x, loadedFromSetlistID: setlist.id) == nil)
     }
 
     @Test func onlyAStoppedSetlistWithSongsCanBeEntered() {
@@ -47,12 +43,6 @@ import Testing
     }
 
     // MARK: Playing
-
-    @Test func theFollowingSongIsTheNextInOrder() {
-        #expect(StageMode.following(a, in: [a, b, c]) == b)
-        #expect(StageMode.following(c, in: [a, b, c]) == nil)
-        #expect(StageMode.following(x, in: [a, b, c]) == nil)
-    }
 
     @Test func aTapWhileStoppedStartsThatSong() {
         #expect(StageMode.tap(on: c, playingSongID: nil, isPlaying: false) == .start(c))
@@ -69,8 +59,7 @@ import Testing
     @Test func aSongPlayingWithoutATileLeavesDoneWorking() {
         #expect(StageMode.tap(on: a, playingSongID: nil, isPlaying: true) == .nothing)
         #expect(StageMode.canLeave(playingSongID: nil))
-        let stage = StageMode(setlistID: setlist.id, nextSongID: b)
-        let tiles = stage.tiles(for: songs, playingSongID: nil, isPlaying: true)
+        let tiles = StageMode.tiles(for: songs, activeSongID: nil, isPlaying: true)
         #expect(tiles.map(\.isDimmed) == [true, true, true])
         #expect(tiles.map(\.mark) == [.none, .none, .none])
     }
@@ -82,29 +71,25 @@ import Testing
     // MARK: Tiles
 
     @Test func tilesAreNumberedInTheSetlistsOrder() {
-        let tiles = StageMode(setlistID: setlist.id, nextSongID: nil)
-            .tiles(for: songs, playingSongID: nil, isPlaying: false)
+        let tiles = StageMode.tiles(for: songs, activeSongID: nil, isPlaying: false)
         #expect(tiles.map(\.number) == [1, 2, 3])
         #expect(tiles.map(\.id) == [a, b, c])
     }
 
-    @Test func stoppedTheNextTileIsMarked() {
-        let tiles = StageMode(setlistID: setlist.id, nextSongID: b)
-            .tiles(for: songs, playingSongID: nil, isPlaying: false)
-        #expect(tiles.map(\.mark) == [.none, .next, .none])
+    @Test func stoppedTheActiveTileIsMarked() {
+        let tiles = StageMode.tiles(for: songs, activeSongID: b, isPlaying: false)
+        #expect(tiles.map(\.mark) == [.none, .active, .none])
         #expect(tiles.map(\.isDimmed) == [false, false, false])
     }
 
     @Test func playingOnlyThePlayingTileIsUndimmed() {
-        let tiles = StageMode(setlistID: setlist.id, nextSongID: b)
-            .tiles(for: songs, playingSongID: c, isPlaying: true)
+        let tiles = StageMode.tiles(for: songs, activeSongID: c, isPlaying: true)
         #expect(tiles.map(\.mark) == [.none, .none, .playing])
         #expect(tiles.map(\.isDimmed) == [true, true, false])
     }
 
-    @Test func aNextSongNotInTheSetlistMarksNothing() {
-        let tiles = StageMode(setlistID: setlist.id, nextSongID: x)
-            .tiles(for: songs, playingSongID: nil, isPlaying: false)
+    @Test func noActiveSongMarksNothing() {
+        let tiles = StageMode.tiles(for: songs, activeSongID: nil, isPlaying: false)
         #expect(tiles.map(\.mark) == [.none, .none, .none])
     }
 
@@ -115,12 +100,10 @@ import Testing
             song(b, "Copper Sky", bpm: 120),
             song(c, "Seven Bridges", bpm: 168, .sevenEight, track: track),
         ]
-        let stopped = StageMode(setlistID: setlist.id, nextSongID: b)
-            .tiles(for: songs, playingSongID: nil, isPlaying: false)
+        let stopped = StageMode.tiles(for: songs, activeSongID: b, isPlaying: false)
         #expect(stopped[0].accessibilityLabel == "1, Harbour Lights, 96 beats per minute, 4/4")
-        #expect(stopped[1].accessibilityLabel == "2, Copper Sky, 120 beats per minute, 4/4, next")
-        let playing = StageMode(setlistID: setlist.id, nextSongID: b)
-            .tiles(for: songs, playingSongID: c, isPlaying: true)
+        #expect(stopped[1].accessibilityLabel == "2, Copper Sky, 120 beats per minute, 4/4, loaded")
+        let playing = StageMode.tiles(for: songs, activeSongID: c, isPlaying: true)
         #expect(
             playing[2].accessibilityLabel
                 == "3, Seven Bridges, 168 beats per minute, 7/8, backing track, playing")

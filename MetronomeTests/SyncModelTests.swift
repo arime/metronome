@@ -320,6 +320,7 @@ struct SyncModelTests {
 
     @Test func stageModeFollowsAReorderFromAnotherDevice() throws {
         let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
+        b.model.loadSong(songs[0], from: setlist)
 
         clock.advance()
         a.model.reorderSetlist(setlist, to: [songs[2], songs[0], songs[1]])
@@ -327,18 +328,20 @@ struct SyncModelTests {
 
         #expect(b.model.stageTiles.map(\.song.id) == [songs[2], songs[0], songs[1]])
         #expect(b.model.stageTiles.map(\.number) == [1, 2, 3])
-        #expect(b.model.stageTiles.filter { $0.mark == .next }.map(\.song.id) == [songs[0]])
+        #expect(b.model.stageTiles.map(\.mark) == [.none, .active, .none])
     }
 
-    @Test func theNextMarkGoesWhenItsSongLeavesTheSetlist() throws {
+    @Test func theActiveMarkGoesWhenItsSongLeavesTheSetlist() throws {
         let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
+        b.model.loadSong(songs[0], from: setlist)
+        try #require(b.model.stageTiles.map(\.mark) == [.active, .none, .none])
 
         clock.advance()
         a.model.removeSongs([songs[0]], fromSetlist: setlist)
         cloud.send(.changed, toDevice: 1)
 
         #expect(b.model.stageTiles.map(\.song.id) == [songs[1], songs[2]])
-        #expect(b.model.stageTiles.allSatisfy { $0.mark != .next })
+        #expect(b.model.stageTiles.map(\.mark) == [.none, .none])
     }
 
     @Test func stageModeClosesWhenItsSetlistIsDeletedElsewhere() throws {
@@ -395,7 +398,7 @@ struct SyncModelTests {
         #expect(b.model.stageMode == nil)
     }
 
-    @Test func stoppingASongWithNoTileLeavesTheNextMark() throws {
+    @Test func stoppingASongWithNoTileMarksNothing() throws {
         let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
         b.model.tapStageTile(songs[1])
         try #require(b.model.stagePlayingSongID == songs[1])
@@ -405,14 +408,13 @@ struct SyncModelTests {
         cloud.send(.changed, toDevice: 1)
         try #require(b.model.isPlaying)
         try #require(b.model.stagePlayingSongID == nil)
-        let next = b.model.stageMode?.nextSongID
 
         b.model.stop()
-        #expect(b.model.stageMode?.nextSongID == next)
+        #expect(b.model.stageTiles.map(\.mark) == [.none, .none])
     }
 
     /// Back in the setlist, the song still plays with no tile: it was not loaded from it again.
-    @Test func stoppingASongThatCameBackWithNoTileLeavesTheNextMark() throws {
+    @Test func stoppingASongThatCameBackWithNoTileMarksNothing() throws {
         let (a, b, songs, setlist) = try stageModeOnTheOtherDevice()
         b.model.tapStageTile(songs[1])
         try #require(b.model.stagePlayingSongID == songs[1])
@@ -426,10 +428,9 @@ struct SyncModelTests {
         try #require(b.model.isPlaying)
         try #require(b.model.library.setlist(id: setlist)?.songIDs.contains(songs[1]) == true)
         try #require(b.model.stagePlayingSongID == nil)
-        let next = b.model.stageMode?.nextSongID
 
         b.model.stop()
-        #expect(b.model.stageMode?.nextSongID == next)
+        #expect(b.model.stageTiles.map(\.mark) == [.none, .none, .none])
     }
 
     @Test func thePlayingSongLeavingTheSetlistLeavesDoneWorking() throws {
