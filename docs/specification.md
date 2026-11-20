@@ -14,11 +14,13 @@ The library's top-level header with its menu button, the controls line with the 
 
 A setlist's controls line with its search and +, and select mode in a setlist (8.3, 8.8), and the Add song screen's search (9.3) are drawn on the page *Setlist controls (draft)* of the same file, on the boards *Setlist — search and +*, *Setlist — searching*, *Setlist — select mode* and *Add song — search*. The *v1.0* boards *Library — Setlist* and *Library — Add song* draw the Add song row after the last song, a 36 pt menu button and no search, and *Library — Setlist* also draws a count line, such as `8 SONGS`, above the list, and a drag handle (≡) at the end of each row; the boards of this page draw a ⋯ at the end of every song row outside select mode; for these parts this page and this document hold. Not drawn: the Undo bar for several songs, and the Add to setlist menu in a setlist's select mode.
 
+Stage mode (9.4) is drawn on the page *Stage mode (draft)* of the same file, on the boards *Stage — ready*, *Stage — playing* and *Stage — stopped, next marked*. The boards draw every song's name on one line and `Done` at 35 % opacity while a tile plays; where a board and this document differ in a detail, this document holds. Not drawn: the Stage mode items in the header menu and the setlist's menu, a name on two lines with its taller row, the beat dots in 9/8 and 12/8, a playing song without a playable backing track and so with the track mark in ink, the count-in, a setlist longer than the screen, a narrow phone, and the next tile carrying a track mark.
+
 ## 1. Summary
 
 A native iOS metronome with one main screen. The user sets a tempo and a time signature, chooses which beats are accented, and presses Start. Each beat produces a click, a visual effect and a haptic tap on the same instant. Everything can be changed while it plays.
 
-Settings can be saved as named **songs**; a practice setup can be saved as one too. The **library** lists all songs, and **setlists** are named, ordered selections from it. The loaded song's name sits in the header of the metronome screen; tapping it opens the library.
+Settings can be saved as named **songs**; a practice setup can be saved as one too. The **library** lists all songs, and **setlists** are named, ordered selections from it. The loaded song's name sits in the header of the metronome screen; tapping it opens the library. On stage a setlist is played in **stage mode**, with its songs as large tiles: a tap starts a song and a second tap stops it.
 
 A song can have a **backing track**: an audio file produced to a click, with its own tempo. Start then plays a count-in of click only, after which the track and the click play together, locked to each other, until the track ends. While a track is in use the screen is for playing: the dial as a gauge of the track's tempo, the accents and a player. The track's tempo and its offset are set in Sync mode by tapping along on beat 1. A switch in the header turns backing tracks off for the whole app, and every song then plays as a plain metronome at the song's own tempo.
 
@@ -32,6 +34,7 @@ Included:
 - Start / Stop with click sound, visual beat effects and haptics.
 - A mute button that silences the click while the metronome keeps running.
 - A song library and setlists.
+- Stage mode, for playing a setlist on stage.
 - Backing tracks: an audio file attached to a song that plays locked to the click, with its own tempo, a count-in, rewind, fast-forward and a Sync mode that sets the track's tempo and offset by tapping on beat 1 and sets the mix between click and track, and a switch that turns backing tracks off.
 - A settings sheet with a choice of seven click sounds and a switch that turns all haptics off.
 - Everything remembered between launches.
@@ -112,6 +115,7 @@ Not kept:
 | Current beat | the beat that is sounding | none |
 | Track position | the place in the loaded song's backing track | 0:00, and 0:00 again whenever a song is loaded |
 | Sync mode | whether the track screen shows Sync mode (6.13) | off |
+| Stage mode | whether stage mode is shown, for which setlist, and which song is marked next (9.4) | off |
 | Search | the text in the search fields of the Songs tab, the Setlists tab, a setlist and the Add song screen (8.2, 8.3, 9.3) | empty |
 | Select mode | whether the Songs tab or a setlist is in select mode, and which songs are ticked (8.7, 8.8) | off |
 
@@ -317,16 +321,16 @@ The track screen (6.12) is not fitted on its own: it takes the dial, the tile he
 | Token | Value | Use |
 |---|---|---|
 | ink | `#0B0B0C` | background; text on amber and white, except a swipe button's title, which the system draws white (8.3) |
-| surface | `#17171A` | rows, round buttons, idle tiles, sheets, the player card, the track screen's dial disc, select mode's action bar |
+| surface | `#17171A` | rows, round buttons, idle tiles, sheets, the player card, the track screen's dial disc, select mode's action bar, stage mode's tiles |
 | surface raised | `#222226` | picker options, fields, rows and idle tiles inside sheets; the library's header ⋯ buttons and select mode's action pills; Rewind, Fast-forward, the Sync pill and `Choose file` on the player card; Sync mode's stepper pills, count-in options and playback card |
 | surface selected | `#3A3A3F` | the selected segment of a switch-like control, and buttons that sit on surface raised: the library's selected tab, the Backing tracks switch when on, the selected count-in option, and in Sync mode the steppers' − and +, Rewind and Fast-forward on the playback card and the unplayed part of its progress line, and the empty selection ring on the Add song screen, for a song not in the setlist, and in select mode, for a song not ticked |
 | line | `#2A2A2E` | outlines, dividers, the line of the player card's progress bar and the mix slider |
 | tick | `#606066` | unlit ticks on the dial; the centre mark of the mix slider |
 | dial white | `#F3EEE6` | primary text; sounding unaccented tile |
 | muted | `#8A8780` | labels, secondary text |
-| muted dim | `#6B6963` | large text only (18 pt and up, or 14 pt bold and up): idle unaccented tile numbers, position numbers, the placeholders of the tempo sheet and a new setlist's name; the `Syncing…` dot and the › on the Setlists tab's rows |
+| muted dim | `#6B6963` | large text only (18 pt and up, or 14 pt bold and up): idle unaccented tile numbers, position numbers, the numbers on stage mode's tiles, the placeholders of the tempo sheet and a new setlist's name; the `Syncing…` dot and the › on the Setlists tab's rows |
 | amber | `#FFB224` | the single accent colour |
-| amber tint | `#1E1A12` | idle accented tile fill, muted button fill, Sync mode's tap pads |
+| amber tint | `#1E1A12` | idle accented tile fill, muted button fill, Sync mode's tap pads, stage mode's next tile |
 | red | `#E5484D` | delete actions only |
 | green | `#4CC38A` | confirmations only: the sync status dot when up to date |
 
@@ -481,13 +485,13 @@ All four ways of setting the tempo work when stopped and when playing. They are 
 - Start begins playback on beat 1, with the first click straight away. With a playable track in use, it starts with the count-in, or from the track's position, as in 7.10.
 - Stop silences playback at once, clears the current beat and returns every tile to its idle appearance. A track in use stops with it and keeps its position (7.10).
 - On the track screen, Start and Stop are the player card's play / stop button, and in Sync mode the playback card's (7.11).
-- The screen does not dim or lock while playing. With Keep screen awake on (7.8), it does not dim or lock while stopped either.
+- The screen does not dim or lock while playing, nor while stage mode is shown (9.4). With Keep screen awake on (7.8), it does not dim or lock while stopped either.
 
 ### 7.5 Mute
 
 - Tapping the mute button silences the click at once, including clicks that are already scheduled, or brings it back. It silences only the click, completely, whatever the backing track's mix: the track keeps playing.
 - The metronome keeps running: the glow and the number pulse on the dial, the tile lighting and the haptics carry on.
-- Sync mode has no mute button; the click stays muted or not as it was when Sync mode was entered.
+- Sync mode has no mute button; the click stays muted or not as it was when Sync mode was entered. Stage mode has none either, and the same holds there (9.4).
 - It works when stopped and when playing.
 - Mute is separate from the phone's volume and is not remembered between launches.
 
@@ -511,6 +515,7 @@ All four ways of setting the tempo work when stopped and when playing. They are 
 - Only while the loaded song is edited: **Save changes** and **Revert**.
 - **Edit song** and **Add to setlist** while a song is loaded, with **Save as new song**, always shown, between them.
 - Only while a song is loaded: **Unload**.
+- Only while the loaded song was loaded from a setlist: **Stage mode**.
 - Always: **Settings**.
 
 With nothing loaded the menu is just Save as new song and Settings.
@@ -523,13 +528,14 @@ With nothing loaded the menu is just Save as new song and Settings.
 - **Save as new song** opens the New song sheet (10.1) filled with the current settings, without a backing track, whether a song is loaded or not, edited or not. When the loaded song has a loaded-from setlist, the sheet shows the Add to <setlist> switch for that setlist, on by default (section 10). After saving, the new song is the loaded one, and the song that was loaded is left as it was, its backing track included. With the switch on, the new song is added to the end of that setlist and loaded from it, so the header shows the setlist and the new position, and Previous / Next stay. With the switch off, or with no switch, it is loaded on its own, and Previous / Next go. With Backing tracks on, when the song that was loaded or the new one has a playable backing track (7.10) and the metronome is playing, playback stops, as when another song is loaded.
 - **Add to setlist** opens the same second level as in the row menu (8.4), acting on the loaded song: every setlist, with a tick when the song is in it, and New setlist. Taking the song out of a setlist here shows no Undo bar, as there is no library sheet to show it; ticking it again puts it back, at the end. New setlist opens the library sheet inside the new setlist, ready for naming (9.2).
 - **Unload** unloads the song, so that nothing is loaded. The tempo, time signature and accents stay as they are, playing or stopped, and the click does not change. The song itself is not changed; unsaved edits stay as plain settings. Previous / Next go and the header shows the "nothing loaded" state. When the song has a backing track, the Backing tracks switch goes away from the header, and with the switch on the screen goes back to the plain layout at the metronome's tempo. If the track was in use, playable (7.10) and playing, playback stops.
+- **Stage mode** opens stage mode (9.4) for the loaded-from setlist. While the metronome is playing it is dimmed and does nothing.
 - **Settings** opens the settings sheet (6.10).
 
 On the track screen the badge is shown for a changed time signature or changed accents only (section 5), but the menu is the same: Save changes writes, and Revert sets back, the metronome's tempo too when it differs. The track's tempo is never part of it.
 
 Saving takes two taps, menu button and menu item, as it is a deliberate choice made between songs, and the menu keeps Revert in plain sight beside it. Everything else that is done to the loaded song as a whole is in the same menu, so the header needs no other button for it.
 
-Edits also go away without Save changes or Revert: loading another song, with Previous / Next or from the library, drops them without asking, and Unload keeps them as plain settings.
+Edits also go away without Save changes or Revert: loading another song, with Previous / Next, from the library or with a tile in stage mode (9.4), drops them without asking, and Unload keeps them as plain settings.
 
 **Previous and Next** load the previous or next song in the loaded-from setlist's order.
 
@@ -539,7 +545,7 @@ Edits also go away without Save changes or Revert: loading another song, with Pr
 
 ### 7.7 Interruptions and volume
 
-- Playback stops when the app leaves the foreground, when the screen is locked, and on audio interruptions such as a phone call. It does not resume by itself. A backing track keeps its position, as with Stop.
+- Playback stops when the app leaves the foreground, when the screen is locked, and on audio interruptions such as a phone call. It does not resume by itself. A backing track keeps its position, as with Stop. Stage mode stays shown, with its tile stopped (9.4).
 - Playback stops if the audio output goes away, for example when headphones are unplugged. The screen never shows Playing while nothing can sound.
 - The click plays even when the ring/silent switch is on silent, as a metronome is the app's whole purpose. Other audio is paused while the metronome plays.
 - The click volume is set with the phone's regular volume controls: the side buttons and the Control Center slider. With a backing track the same controls set the overall level of click and track together; the mix (section 4) sets how loud they are against each other. The click is ordinary media audio and the app never overrides the system volume. If "Change with Buttons" is on in the phone's sound settings, the side buttons adjust the ringer while nothing is playing; that is system behaviour.
@@ -563,7 +569,7 @@ Edits also go away without Save changes or Revert: loading another song, with Pr
 **Keep screen awake switch:**
 
 - When on, the screen does not dim or auto-lock while the app is open, whether playing or stopped, so between songs the user can start the next one without unlocking the phone.
-- When off, the screen stays on only while playing (7.4), and dims and locks as usual while stopped.
+- When off, the screen stays on only while playing (7.4) and while stage mode is shown (9.4), and otherwise dims and locks as usual while stopped.
 - The change applies at once, when stopped and when playing. Like the iCloud switch, it plays no haptic.
 - It does not keep the app open: the side button still locks the phone and switching apps still leaves it, and playback stops as in 7.7.
 - It is off on a fresh install, is remembered between launches, and stays on this device; songs do not store it and iCloud does not sync it.
@@ -601,6 +607,7 @@ The switch works when stopped and when playing, applies to this device only and 
   - The Backing tracks switch itself never changes.
 - If the loaded song, the loaded-from setlist or the setlist the library is showing was deleted, the rules in section 5 apply. A deleted loaded song also ends Sync mode.
 - An open library sheet, setlist or setlist editor updates in place. In select mode a ticked song deleted elsewhere drops out of the ticks (8.7), and in a setlist's select mode so does a ticked song that leaves the setlist (8.8). A setlist view or editor whose setlist was deleted closes and the library shows the Setlists tab.
+- Stage mode, when it is shown, follows its setlist as 9.4 says, and closes when the setlist is deleted or left with no songs.
 - Nothing is announced: no alert, banner, sound or haptic.
 
 ### 7.10 Playing a song with a backing track
@@ -718,7 +725,7 @@ In select mode (8.7) the tab switch and the menu button give way to a title and 
 
 - **‹**, which goes back to the Setlists tab.
 - The setlist's name as the title (26 pt heavy). Tapping it does nothing; it is renamed from the menu (9.2).
-- **Menu button**, 40 pt round like every other menu button in the library, with **Select**, **Add song**, **Rename setlist**, **Duplicate setlist** and **Delete setlist** (8.3), a standard iOS menu. While the name is being typed, **Done** takes its place.
+- **Menu button**, 40 pt round like every other menu button in the library, with **Stage mode**, **Select**, **Add song**, **Rename setlist**, **Duplicate setlist** and **Delete setlist** (8.3), a standard iOS menu. While the name is being typed, **Done** takes its place.
 
 There is no Edit button and no separate edit mode: everything that changes a setlist is done in its own view (8.3).
 
@@ -764,6 +771,7 @@ There is no button on a row that loads and starts in one tap. Such a button look
 - **Renaming:** with Rename setlist in the header menu (9.2).
 - Empty setlist: centred, `No songs in this setlist` and a large amber **Add song** button (48 pt tall), which opens 9.3. It is the only thing to do there, so it is filled.
 - **The setlist's menu** (⋯ in the header) holds what is done to the setlist as a whole, in this order:
+  - **Stage mode**, followed by a divider: closes the library sheet and opens stage mode (9.4) for this setlist. In an empty setlist, and while the metronome is playing, it is dimmed and does nothing.
   - **Select:** enters select mode (8.8). Not in an empty setlist.
   - **Add song:** opens 9.3, as the + does.
   - **Rename setlist:** puts the cursor in the name (9.2).
@@ -819,7 +827,7 @@ With no setlists the menu holds New setlist only.
 - **Recently played:** the song with the latest last-played time first. Songs never loaded on this device come after them, by name as above.
 - **Recently used:** as in 9.1, the setlist opened or loaded from last first.
 
-A song's last-played time is set whenever it becomes the loaded song: tapped in the library, on the Songs tab or in a setlist; by Previous and Next; by Save as new song (7.6); and by naming the current settings (10.1). Tapping the loaded song's own row is not a load and does not set it (7.6), and neither does restoring the loaded song when the app opens. The time is kept on this device and not synced (section 5), so each device has its own Recently played order, and on a new install every song starts as never played. A time for a song that no longer exists is dropped.
+A song's last-played time is set whenever it becomes the loaded song: tapped in the library, on the Songs tab or in a setlist; by Previous and Next; by its tile in stage mode (9.4); by Save as new song (7.6); and by naming the current settings (10.1). Tapping the loaded song's own row is not a load and does not set it (7.6), and neither does restoring the loaded song when the app opens. The time is kept on this device and not synced (section 5), so each device has its own Recently played order, and on a new install every song starts as never played. A time for a song that no longer exists is dropped.
 
 Search and sorting go together: the songs or setlists a search finds are listed in the chosen order. A setlist's own view always keeps the setlist's order (8.3), and the Add song screen stays A–Z (9.3), also while searching.
 
@@ -862,7 +870,7 @@ A setlist's view has a select mode for acting on several of its songs at once. I
 - **The controls line**, as on the Songs tab (8.2): the search field, 14 pt, and the + button, with the same space and divider below it. It is there whenever there are setlists.
 - **Search** works exactly as on the Songs tab (8.2), on the setlist's name: the same field, matching, `No matches`, keyboard and emptying of the text. Making a setlist here, with the + or New setlist, empties the text too, so the new setlist is listed on coming back. VoiceOver calls the field `Search setlists`. Rows found by a search work as everywhere else, and the amber setlist (below) is still amber.
 - **The + button** does what New setlist does: creates a setlist and opens it for naming (9.2).
-- Every setlist (or every setlist the search finds) with its song count and a ›, in the order chosen in the tab's menu (8.6), by name A–Z unless another is chosen. A setlist counts as used when it is opened here or a song is loaded from it, Previous and Next included. Its last-used time is then set to the moment, but only when it is not already the most recently used setlist on this device, that is, when another setlist's last-used time is the same as its own or later. Otherwise nothing about it changes and nothing is sent to iCloud, so stepping through a setlist with Next writes nothing.
+- Every setlist (or every setlist the search finds) with its song count and a ›, in the order chosen in the tab's menu (8.6), by name A–Z unless another is chosen. A setlist counts as used when it is opened here or a song is loaded from it, Previous, Next and stage mode's tiles (9.4) included. Its last-used time is then set to the moment, but only when it is not already the most recently used setlist on this device, that is, when another setlist's last-used time is the same as its own or later. Otherwise nothing about it changes and nothing is sent to iCloud, so stepping through a setlist with Next writes nothing.
 - The setlist the loaded song was loaded from is amber, so the user sees where they are.
 - Tapping a setlist opens it (8.3). It loads nothing into the metronome.
 - **Swiping a row left** reveals **Delete**, in red, a shortcut to Delete setlist in the setlist's menu. It asks for confirmation in the same way; the songs stay in the library.
@@ -893,6 +901,48 @@ Opened from a setlist's view, with the + in its controls line, with Add song in 
 - Last row: **New song**, in amber, which opens the New song sheet (section 10) with "Add to <setlist>" switched on. It sits at the end of the list, with the + 8 pt from its text, and stays while a search narrows the list. When nothing matches, the list holds the New song row alone, and `No matches` (17 pt, semibold, dial white) stands centred in the space below it.
 - Tapping a row adds the song to the end of the setlist, or takes it out. Changes take effect at once. Taking a song out here shows no Undo bar: the user is picking, and ticking it again puts it back (at the end).
 - **Empty library:** centred, `No songs in library yet` (17 pt, semibold, dial white), below it `Create one here, and it goes straight into <setlist>.` (15 pt, muted), and a large amber **New song** button that opens the New song sheet with "Add to <setlist>" switched on. Done is grey here (surface raised, dial-white text), so that New song is the one amber button.
+
+### 9.4 Stage mode
+
+Stage mode is for playing a setlist on stage. It shows the setlist's songs as large tiles: a tap on a tile starts that song, a tap on it again stops it, and nothing else can be changed. It covers the whole screen, over the metronome screen, and is drawn at 390 × 844 pt.
+
+**Entering.**
+
+- **Stage mode** in the header menu (7.6), there while the loaded song was loaded from a setlist, opens it for that setlist.
+- **Stage mode** in a setlist's menu (8.3) closes the library sheet and opens it for that setlist. In an empty setlist it is dimmed and does nothing.
+- Both are dimmed and do nothing while the metronome is playing.
+- Entering changes nothing on the metronome: the loaded song and its unsaved edits, the settings, the Backing tracks switch and mute stay as they are.
+- On entering, the loaded song's tile is marked next when the song was loaded from this setlist; otherwise the setlist's first song is marked next.
+
+**Layout.** The background is ink. From top to bottom:
+
+- **Title row**, 48 pt tall, 6 pt below the top of the safe area, set as Sync mode's (6.13): at the left the setlist's name (20 pt heavy, dial white, one line, cut with an ellipsis) and 2 pt below it `Stage mode` (13 pt medium, muted); at the right, 16 pt from them, `Done` (17 pt semibold, amber), with a touch area of at least 44 × 44 pt. There is no menu button, mute button, Backing tracks switch, dial or Start button.
+- **Tiles**, 20 pt below the title row: two columns 10 pt apart, rows 10 pt apart, in the setlist's order, row by row, between the side margins of the metronome screen (6.8). They scroll under the title row, which stays in place, and the last row scrolls up to 16 pt above the bottom of the safe area.
+- **A tile** is a surface card with 24 pt corners, 112 pt tall, with 14 pt padding at the top and bottom and 16 pt at the sides. At its top an 18 pt line: the song's number in the setlist (15 pt heavy, muted dim) at the left and, at the right, for a song with a backing track, whether its file is on this device or not, the music-note mark of the library's rows (8.2), 16 pt, in muted. At its bottom the song's name (20 pt heavy, dial white, set slightly tight) and 8 pt below it the song's tempo and time signature, for example `96 BPM · 4/4` (14 pt medium, muted); a backing track's own tempo is not shown, as in the library. A long name takes up to two lines and is then cut with an ellipsis. A row in which a name takes two lines is 120 pt tall, both of its tiles, so that the rows stay even.
+- **The next tile**, the song to play next, has the amber tint fill with a 1.5 pt amber outline, its number in amber, and `NEXT` (11 pt semibold, capitals, wide letter spacing, amber) at the right of its top line, in the place of the track mark. At most one tile is marked next, and none while the metronome plays.
+- **The playing tile**, the loaded song's while the metronome plays it, is filled amber with a soft amber glow, its number, name and mark in ink. In the place of its tempo line is a row of **beat dots**, one per beat of the bar, 5 pt apart, in ink: 12 pt for an accented beat and 8 pt for one that is not, the current beat solid and the others at 28 % opacity. In 9/8 and 12/8 the dots are 8 pt and 5 pt, 3 pt apart, so that twelve fit. Where the tile is narrower than the row needs, as on a narrow phone, the dots and gaps are all scaled down alike until it fits. A dot lights on its beat at once, as the accent tiles do (6.5), count-in beats included. While a playable backing track is in use (7.10), the track's place and the file's length stand at the right of the top line in the place of the mark, for example `0:31 / 3:42` (13 pt semibold, ink, digits of equal width), `0:00` until the file has started.
+- While a tile plays, every other tile and `Done` are drawn at 40 % opacity. While the metronome plays a song that has no tile (below), every tile is, and `Done` is not.
+
+**Playing.**
+
+- **Tapping a tile while the metronome is stopped** loads that tile's song from this setlist, exactly as tapping its row in the setlist's view does (7.6, 8.3), and starts it from the top. Loading another song drops the loaded song's unsaved edits without asking (7.6). The loaded song's own tile is not a load: its unsaved edits stay and are played, and it becomes loaded from this setlist. From the top means that the backing track's position goes to 0:00 first, for the loaded song's own tile too, and Start then does what 7.4 and 7.10 say, count-in included; with Backing tracks off or the file missing, what 7.10 and 7.12 say for those. A medium impact plays as on Start (section 12). The tapped tile becomes the playing tile.
+- **Tapping the playing tile** stops playback, as Stop does (7.4). The song after it in the setlist is then marked next; after the last song no tile is marked next.
+- While a tile plays, the other tiles do nothing, and neither does `Done`: the song is stopped first, then stage mode is left.
+- While stopped, any tile starts its song, the one just played and songs earlier in the setlist included. Nothing marks a song as played.
+- Playback that stops by itself, at the end of a backing track (7.10), on an interruption, when the audio output goes away or when the app leaves the foreground (7.7), leaves the tile stopped with the following song marked next, as a tap would. Stage mode stays shown. A start that fails (section 11) leaves the tapped tile marked next.
+- The end of a backing track does not start the next song (7.10).
+- Nothing else can be changed: there is no tempo, time signature or accent control, no reordering, no menu, no swipe, and a hold or a drag on a tile does nothing but scroll. A tile acts on a tap alone, as a library row does (8).
+- The Backing tracks switch stays as it was on entering, and a song plays by it (7.12).
+
+**Leaving.** `Done` closes stage mode and shows the metronome screen, with the song last loaded still loaded. Loaded from this setlist, as a tile loads it, the header shows the setlist and the position, and Previous, Next and the next-up line are shown (6.1, 6.7). Stage mode is not kept between launches.
+
+**Staying awake.** While stage mode is shown, the screen does not dim or lock, playing or stopped, whatever Keep screen awake says (7.8). It does not keep the app open: the side button still locks the phone, and playback stops as in 7.7.
+
+**Changes from other devices** (7.9) update the tiles at once: songs added, removed or moved, and a changed name, tempo, time signature or backing track. The setlist's new name shows in the title row. The next mark stays on its song wherever it moves; when that song leaves the setlist no tile is marked next. A playing song that leaves the setlist or is deleted plays on as section 5 and 7.9 say; no tile is then playing, the tiles still do nothing while the metronome plays, and `Done` works. When the setlist is deleted or left with no songs, stage mode closes as with `Done`, at once while nothing plays, or else as soon as playback stops.
+
+**Other screens.** While stage mode is shown the library, the header menu, the settings sheet and Sync mode cannot be reached.
+
+**Small screens.** The tiles keep their size on every phone and the grid scrolls. The side margins follow 6.8. Stage mode is portrait only, like the rest of the app (section 3), and its text does not scale with Dynamic Type (section 13).
 
 ## 10. Song sheet
 
@@ -1006,15 +1056,15 @@ Each beat fires all of the following at the moment of its click.
 | Tile | The beat's tile switches to its sounding state at once. The previous tile fades back to idle over 150 ms. | Same. |
 | Haptic | Light impact, intensity 0.5. | Rigid impact, intensity 1.0. |
 
-The glow and the number pulse belong to the dial's number: the plain screen and the track screen each have it, and Sync mode has none, so there only the tiles and the haptics mark the beat. On the track screen the number marks every beat, accented or not, and stays dial white. There are no other beat visuals; in particular nothing ripples or moves outside the dial. The beats of a count-in (7.10) fire all of these like any other beat.
+The glow and the number pulse belong to the dial's number: the plain screen and the track screen each have it, and Sync mode has none, so there only the tiles and the haptics mark the beat. On the track screen the number marks every beat, accented or not, and stays dial white. There are no other beat visuals, except the beat dots on stage mode's playing tile (9.4), which stand in for the dial there, as stage mode has none; nothing ripples or moves. The beats of a count-in (7.10) fire all of these like any other beat.
 
-Other haptics: a selection tick for each 1 BPM change from the dial or − / +, Sync mode's included, for each tap-tempo tap, Sync mode's Tap tempo included, for each key in the tempo sheet and for `Set tempo` when it changes the tempo, from Sync mode too, for each accent toggle, for Revert, for each tap on the mute button and on the Backing tracks switch, and in Sync mode for each 0.01 s step of the offset, each tap on Tap on beat 1 while it works, each change of count-in and each time the mix knob reaches the centre. `Done` plays none. Beat haptics continue while muted. A medium impact on Start and Stop, the player card's and the playback card's play / stop buttons included. The system's success notification on Save changes.
+Other haptics: a selection tick for each 1 BPM change from the dial or − / +, Sync mode's included, for each tap-tempo tap, Sync mode's Tap tempo included, for each key in the tempo sheet and for `Set tempo` when it changes the tempo, from Sync mode too, for each accent toggle, for Revert, for each tap on the mute button and on the Backing tracks switch, and in Sync mode for each 0.01 s step of the offset, each tap on Tap on beat 1 while it works, each change of count-in and each time the mix knob reaches the centre. `Done` plays none. Beat haptics continue while muted. A medium impact on Start and Stop, the player card's and the playback card's play / stop buttons and a tap on a tile in stage mode included; a tile that loads a song plays no selection tick for the load. The system's success notification on Save changes.
 
 The Haptics switch in settings (7.8) turns all of these off.
 
 ## 13. Accessibility
 
-- **Reduce Motion:** the number pulse is disabled, on the plain screen's dial and the track screen's. Tile changes and the glow remain. The app has no setting that turns beat effects off.
+- **Reduce Motion:** the number pulse is disabled, on the plain screen's dial and the track screen's. Tile changes, stage mode's beat dots and the glow remain. The app has no setting that turns beat effects off.
 - **VoiceOver:**
   - On the plain screen the dial is an adjustable element ("Tempo, 120 beats per minute") that steps by 1 BPM. It has the action "Type a tempo", which opens the tempo sheet.
   - In the tempo sheet the field reads as "Tempo" with the typed digits, each key as its digit, and the delete key as "Delete". The buttons below read "Cancel" and "Set tempo", Set tempo as dimmed while it is not ready.
@@ -1040,6 +1090,7 @@ The Haptics switch in settings (7.8) turns all of these off.
   - In a setlist's view, a row is moved with the drag that the system list offers VoiceOver for a row it can reorder, while the search field is empty and outside select mode, and the row's Edit and Remove are offered among its actions, as a swipe's buttons are on every list; the app adds no actions of its own for either. Its search field reads "Search this setlist" and its ⓧ "Clear search", and its + reads "Add song". A row found by a search reads as everywhere else; its position number is not read.
   - In a setlist's select mode the title, Done and the rows read as in the Songs tab's select mode, and the action bar's buttons read "Add to setlist" and "Remove", as dimmed while nothing is ticked.
   - The Add song screen's title reads "Add to <setlist>", and each row says whether the song is in the setlist. Its search field reads "Search songs" and its ⓧ "Clear search".
+  - In stage mode the title row reads the setlist's name as a heading, followed by "Stage mode", and `Done` reads "Done", as dimmed while a tile plays. Each tile is one button that reads its number, the song's name, tempo and time signature, for example "3, Seven Bridges, 168 beats per minute, 7/8", with "backing track" after it when the song has one, as a song row does, and "next" or "playing" for the tile so marked; a tile that does nothing while another plays reads as dimmed. The beat dots and the track's time are not read. The Stage mode items in the header menu and the setlist's menu read as written, as dimmed when they are.
   - Beat changes during playback are not announced.
 - Every tappable control is at least 44 × 44 pt.
 - Text does not scale with Dynamic Type; see section 16.
@@ -1223,11 +1274,26 @@ Backing tracks:
 - [x] Sync mode ends by itself when the track is removed or replaced, or the song deleted, on another device. *(Unit tested against an in-memory stand-in for iCloud: syncModeEndsWhenTheTrackIsRemovedElsewhere, syncModeEndsWhenTheTrackIsReplacedElsewhere and syncModeEndsWhenTheSongIsDeletedElsewhere; not seen between two devices.)*
 - [ ] VoiceOver reads the Backing tracks switch, the track screen's dial, the player card with its Sync pill, Sync mode and the Backing track row as in section 13, and every new control has a 44 × 44 pt touch area. *(The mix's spoken values and the spoken times are unit tested. VoiceOver was not switched on. The touch areas were not measured; in the simulator a tap 8 pt above the Sync pill and one 8 pt above `Choose file` each worked.)*
 
+Stage mode:
+
+- [ ] Stage mode is in the header menu only while the loaded song was loaded from a setlist, and first in a setlist's menu, followed by a divider; both are dimmed and do nothing while playing, and the setlist's is dimmed in an empty setlist; from the setlist's menu the library sheet closes and stage mode covers the screen. *(Not built yet.)*
+- [ ] On entering, the loaded song's tile is marked next when it was loaded from that setlist, and otherwise the first song's; entering changes nothing on the metronome. *(Not built yet.)*
+- [ ] Stage mode looks as in 9.4: the title row with the setlist's name, `Stage mode` and `Done`; two columns of 112 pt surface tiles 10 pt apart with number, name, tempo and time signature and the track mark; a two-line name making its row 120 pt; the next tile in amber tint with an amber outline, amber number and `NEXT`; the playing tile amber with its glow, ink text, the beat dots and, with a playable track, the track's time; the other tiles and `Done` at 40 % while a tile plays; the grid scrolling under the title row. *(Not built yet.)*
+- [ ] The beat dots show one dot per beat, accented beats larger, the current beat solid, count-in beats included, and twelve fit in 9/8 and 12/8. *(Not built yet.)*
+- [ ] A tap on a tile while stopped loads its song from the setlist as a tap in the setlist's view does, dropping another song's unsaved edits and keeping the loaded song's own, and starts it from the top: beat 1, or the count-in at 0:00 with a playable track, also for the song just played. *(Not built yet.)*
+- [ ] A tap on the playing tile stops it and marks the following song next, and none after the last song; while a tile plays the other tiles and `Done` do nothing. *(Not built yet.)*
+- [ ] The end of a backing track, an interruption, the audio output going away and the app leaving the foreground stop the playing tile with the following song marked next, and stage mode stays shown; a start that fails leaves the tapped tile next. *(Not built yet.)*
+- [ ] `Done` returns to the metronome screen with the last loaded song loaded from the setlist; stage mode is not kept between launches. *(Not built yet.)*
+- [ ] The screen does not dim or lock while stage mode is shown, playing or stopped, with Keep screen awake off. *(Not built yet.)*
+- [ ] A tap on a tile plays the Start / Stop impact and no selection tick. *(Not built yet.)*
+- [ ] Changes from another device update the tiles and the title, the next mark follows its song, and stage mode closes when its setlist is deleted or emptied, at once while stopped and once playback stops while playing. *(Not built yet.)*
+- [ ] VoiceOver reads stage mode's title, `Done` and each tile as in section 13, dimmed tiles and `Done` as dimmed. *(Not built yet.)*
+
 ## 15. Not built yet
 
 A part that is specified before it is built is listed here until it is.
 
-Every part specified above is built.
+- **Stage mode** (9.4), with its items in the header menu (7.6) and in a setlist's menu (8.3), the screen staying awake while it is shown (7.4, 7.8), its haptic (section 12) and its VoiceOver labels (section 13).
 
 ## 16. Ideas for later
 
@@ -1239,4 +1305,3 @@ Not part of version 1.0.
 - **Waveform for the offset.** A waveform of the backing track with a marker for the offset that can be dragged.
 - **Tempos with decimals.** For backing tracks that are not at a whole BPM.
 - **Syncing backing-track files.** The audio file travels to the user's other devices with the song.
-- **Stage mode.** A layout of the metronome screen for playing through a setlist on stage. It starts with Stage mode in the header menu while a song is loaded from a setlist, and with Stage mode in the setlist's menu. The setlist's songs are shown as large tiles, each with its number, name and tempo. Tapping a tile loads the song and starts it, and tapping the playing tile stops it; while one plays, the other tiles do nothing. After a stop the following song is marked as next. Nothing can be edited there, and the screen stays awake.
