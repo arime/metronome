@@ -1,37 +1,42 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The track screen's card at the bottom (6.12), in place of the Start row and the next-up
-/// line: the file's name, the progress bar, the transport row and, for a setlist song, the
-/// next-up line. Its height is fixed; it never shrinks.
+/// The card at the bottom of the metronome screen (6.7): Track content while a track is in
+/// use, Metronome content otherwise. Its size and place never change.
 struct PlayerCard: View {
     @Environment(MetronomeModel.self) private var model
-    private let showsNextLine: Bool
-
-    init(showsNextLine: Bool) {
-        self.showsNextLine = showsNextLine
-    }
-
-    private static let transportHeight: CGFloat = 68
 
     var body: some View {
-        VStack(spacing: 12) {
-            fileNameRow
-            TrackProgressBar()
-            transportRow
-            if showsNextLine {
-                NextUpLine(next: model.nextSong)
+        Group {
+            if model.playerContent == .track {
+                TrackContent()
+            } else {
+                MetronomeContent()
             }
         }
         .padding(.top, 12)
         .padding(.horizontal, 16)
         .padding(.bottom, 18)
-        .frame(
-            height: TrackScreenLayout.playerCardHeight + (showsNextLine ? TrackScreenLayout.playerNextLineHeight : 0),
-            alignment: .top
-        )
+        .frame(maxWidth: .infinity)
+        .frame(height: MetronomeLayout.playerCardHeight, alignment: .top)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// The player card's Track content (6.12): the file's name, the progress bar and the
+/// transport row, 10 pt apart.
+struct TrackContent: View {
+    @Environment(MetronomeModel.self) private var model
+
+    private static let transportHeight: CGFloat = 68
+
+    var body: some View {
+        VStack(spacing: 10) {
+            fileNameRow
+            TrackProgressBar()
+            transportRow
+        }
     }
 
     /// The music note, 8 pt after it the file's name, which takes the space left, and 8 pt
@@ -219,9 +224,9 @@ private struct PlayStopCircle: View {
     }
 }
 
-/// Previous song and Next song on the player card: an arrow against a bar with no fill.
-/// Dimmed and doing nothing at the ends of the setlist.
-private struct SongStepButton: View {
+/// Previous song and Next song on the player card, in both contents: an arrow against a bar
+/// with no fill. Dimmed and doing nothing at the ends of the setlist.
+struct SongStepButton: View {
     let symbol: String
     let label: String
     let isEnabled: Bool

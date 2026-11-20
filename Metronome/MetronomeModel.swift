@@ -792,14 +792,6 @@ final class MetronomeModel {
         position.map { $0.index < $0.count - 1 } ?? false
     }
 
-    /// The song that Next would load; nil at the end of the setlist or without one.
-    var nextSong: Song? {
-        guard let position, position.index + 1 < position.count,
-              let ids = loadedFromSetlistID.flatMap(library.setlist(id:))?.songIDs
-        else { return nil }
-        return library.song(id: ids[position.index + 1])
-    }
-
     var headerTitle: String {
         loadedSong?.name ?? "Library"
     }

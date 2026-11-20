@@ -7,6 +7,8 @@ struct TimeSignatureRow: View {
     var sideMargin: CGFloat = Theme.sideMargin
     /// The row's fill: surface on a screen, surface raised inside a sheet.
     var fill: Color = Theme.surface
+    /// 60 pt, or 48 pt on a small screen (6.8).
+    var height: CGFloat = 60
     @State private var isPickerShown = false
     @ScaledMetric(relativeTo: .body) private var labelSize = 16.0
 
@@ -32,7 +34,7 @@ struct TimeSignatureRow: View {
             }
             .padding(.leading, 20)
             .padding(.trailing, 18)
-            .frame(height: 60)
+            .frame(height: height)
             .background(fill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)

@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Metronome content's Start / Stop pill (6.7): 68 pt tall, taking the width it is given.
 struct StartStopButton: View {
     @Environment(MetronomeModel.self) private var model
 
@@ -10,7 +11,7 @@ struct StartStopButton: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: isPlaying ? "stop.fill" : "play.fill")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                 Text(isPlaying ? "Stop" : "Start")
                     .font(.system(size: 18, weight: .bold))
                     .tracking(-0.18)
@@ -24,5 +25,6 @@ struct StartStopButton: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(isPlaying ? "Stop" : "Start")
     }
 }

@@ -38,26 +38,3 @@ struct SongTitle: View {
         .contentShape(Rectangle())
     }
 }
-
-/// A 56 pt round button beside Start / Stop, as used for Previous and Next.
-struct FooterRoundButton: View {
-    let symbol: String
-    let label: String
-    var isEnabled = true
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(Theme.dialWhite)
-                .frame(width: 56, height: 56)
-                .background(Theme.surface, in: Circle())
-                .opacity(isEnabled ? 1 : 0.35)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .accessibilityLabel(label)
-    }
-}

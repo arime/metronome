@@ -8,8 +8,8 @@ struct StageModeView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let sideMargin = proxy.size.width < ScreenLayout.narrowWidth
-                ? ScreenLayout.narrowSideMargin : Theme.sideMargin
+            let sideMargin = proxy.size.width < MetronomeLayout.narrowWidth
+                ? MetronomeLayout.narrowSideMargin : Theme.sideMargin
             VStack(spacing: 0) {
                 titleRow
                     .frame(height: 48)

@@ -92,18 +92,6 @@ struct SongModelTests {
         #expect(model.loadedSong?.id == songs[0].id)
     }
 
-    @Test func nextSongIsTheOneNextWouldLoad() {
-        let (model, songs, setlist) = modelWithSetlist()
-        #expect(model.nextSong == nil)
-        model.loadSong(songs[0].id, from: setlist)
-        #expect(model.nextSong?.id == songs[1].id)
-        model.loadSong(songs[2].id, from: setlist)
-        #expect(model.nextSong == nil)
-        model.unloadSong()
-        model.loadSong(songs[0].id, from: nil)
-        #expect(model.nextSong == nil)
-    }
-
     @Test func aSongTappedOnTheSongsTabIsLoadedOnItsOwn() {
         let (model, songs, setlist) = modelWithSetlist()
         model.loadSong(songs[0].id, from: setlist)
@@ -114,7 +102,6 @@ struct SongModelTests {
         #expect(model.canGoNext == false)
         #expect(model.canGoPrevious == false)
         #expect(model.headerSubtitle == nil)
-        #expect(model.nextSong == nil)
     }
 
     @Test func nothingIsMarkedWhileNoSongIsLoaded() {

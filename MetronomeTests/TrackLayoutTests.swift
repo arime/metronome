@@ -2,122 +2,13 @@ import CoreGraphics
 import Testing
 @testable import Metronome
 
-/// Heights are the usable height (inside the safe areas). The track screen stacks the
-/// header (48), 12, the dial, 26 (16 in the plain layout's compact step), the tiles, at
-/// least 16 and the player card (192, or 222 with the next-up line), with the dial, the
-/// tile height and the next-up line taken from the plain layout. Sync mode's parts take
-/// 514 pt plus the tiles; the tap pads take the rest.
+/// Heights are the usable height (inside the safe areas). Sync mode's parts take 514 pt plus
+/// the tiles; the tap pads take the rest.
 struct TrackLayoutTests {
-    private func trackScreen(
-        width: CGFloat = 375, height: CGFloat, hasBottomInset: Bool = false, beats: Int = 4,
-        hasSetlist: Bool = false
-    ) -> TrackScreenLayout {
-        TrackScreenLayout(
-            width: width, height: height, hasBottomInset: hasBottomInset, beats: beats, hasSetlist: hasSetlist
-        )
-    }
-
     private func syncMode(
         width: CGFloat = 375, height: CGFloat, hasBottomInset: Bool = false, beats: Int = 4
     ) -> SyncModeLayout {
         SyncModeLayout(width: width, height: height, hasBottomInset: hasBottomInset, beats: beats)
-    }
-
-    // MARK: - The track screen (6.12)
-
-    @Test func theTrackScreenOnAnIPhone17Pro() {
-        let layout = trackScreen(width: 402, height: 778, hasBottomInset: true, hasSetlist: true)
-        #expect(layout.dialDiameter == 340)
-        #expect(layout.showsNextLine)
-        #expect(layout.cardHeight == 222)
-        #expect(layout.tilesTopGap == 26)
-        #expect(layout.tileHeight == 76)
-        #expect(trackScreen(width: 402, height: 778, hasBottomInset: true, beats: 9, hasSetlist: true).dialDiameter == 332)
-        #expect(trackScreen(width: 402, height: 778, hasBottomInset: true).dialDiameter == 340)
-    }
-
-    @Test func theTrackScreenOnAnIPhoneSE() {
-        let layout = trackScreen(height: 647, hasSetlist: true)
-        #expect(layout.dialDiameter == 243)
-        #expect(layout.showsNextLine)
-        #expect(layout.cardHeight == 222)
-        #expect(layout.tilesTopGap == 16)
-        #expect(layout.tileHeight == 56)
-        #expect(trackScreen(height: 647, beats: 9, hasSetlist: true).dialDiameter == 201)
-        #expect(trackScreen(height: 647).dialDiameter == 275)
-    }
-
-    @Test func theTrackScreenWithDisplayZoom() {
-        let layout = trackScreen(width: 320, height: 548, hasSetlist: true)
-        #expect(layout.dialDiameter == 176)
-        #expect(layout.showsNextLine == false)
-        #expect(layout.cardHeight == 192)
-        #expect(trackScreen(width: 320, height: 548, beats: 9, hasSetlist: true).dialDiameter == 134)
-    }
-
-    @Test func theTrackScreenTakesItsSizesFromThePlainLayout() {
-        for width in [CGFloat(320), 375, 402] {
-            for height in stride(from: CGFloat(548), through: 900, by: 13) {
-                for beats in [2, 4, 7, 9, 12] {
-                    for hasSetlist in [false, true] {
-                        for hasBottomInset in [false, true] {
-                            let plain = ScreenLayout(
-                                width: width, height: height, hasBottomInset: hasBottomInset, beats: beats, hasSetlist: hasSetlist
-                            )
-                            let track = trackScreen(
-                                width: width, height: height, hasBottomInset: hasBottomInset, beats: beats, hasSetlist: hasSetlist
-                            )
-                            #expect(track.dialDiameter == plain.dialDiameter)
-                            #expect(track.tileHeight == plain.tileHeight)
-                            #expect(track.showsNextLine == plain.showsNextLine)
-                            #expect(track.tilesTopGap == plain.settingsTopGap)
-                            #expect(track.sideMargin == plain.sideMargin)
-                            #expect(track.bottomPadding == plain.bottomPadding)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// The height left between the accent tiles and the player card, as 6.12 gives it.
-    @Test func theSpareHeightAboveTheCardIsAsSpecified() {
-        let cases: [(width: CGFloat, height: CGFloat, inset: Bool, beats: Int, setlist: Bool, spare: CGFloat)] = [
-            (402, 778, true, 4, false, 84), (402, 778, true, 4, true, 54),
-            (402, 778, true, 9, false, 62), (402, 778, true, 9, true, 40),
-            (375, 647, false, 4, true, 34), (375, 647, false, 4, false, 32),
-            (375, 647, false, 9, true, 34), (375, 647, false, 9, false, 32),
-            (320, 548, false, 4, true, 32), (320, 548, false, 9, true, 32),
-        ]
-        for c in cases {
-            let layout = trackScreen(
-                width: c.width, height: c.height, hasBottomInset: c.inset, beats: c.beats, hasSetlist: c.setlist
-            )
-            let parts = TrackScreenLayout.headerHeight + TrackScreenLayout.dialTopGap + layout.dialDiameter
-                + layout.tilesTopGap + layout.tilesHeight + layout.cardHeight
-            let spare = c.height - layout.bottomPadding - parts
-            #expect(spare == c.spare, "\(c.width) × \(c.height), \(c.beats) beats, setlist \(c.setlist)")
-        }
-    }
-
-    @Test func theCardAlwaysHasAtLeast16AboveIt() {
-        for width in [CGFloat(320), 375, 402] {
-            for height in stride(from: CGFloat(548), through: 900, by: 13) {
-                for beats in [2, 4, 7, 9, 12] {
-                    for hasSetlist in [false, true] {
-                        for hasBottomInset in [false, true] {
-                            let layout = trackScreen(
-                                width: width, height: height, hasBottomInset: hasBottomInset, beats: beats, hasSetlist: hasSetlist
-                            )
-                            let used = TrackScreenLayout.headerHeight + TrackScreenLayout.dialTopGap + layout.dialDiameter
-                                + layout.tilesTopGap + layout.tilesHeight + TrackScreenLayout.cardTopGap + layout.cardHeight
-                                + layout.bottomPadding
-                            #expect(used <= height)
-                        }
-                    }
-                }
-            }
-        }
     }
 
     // MARK: - Sync mode (6.13)

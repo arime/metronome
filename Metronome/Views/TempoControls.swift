@@ -1,15 +1,16 @@
 import SwiftUI
 
 /// − / Tap tempo / +, from margin to margin: the pill fills the space between the round buttons.
+/// The round buttons are as tall as the row: 60 pt, or 48 pt on a small screen (6.8).
 struct TempoControls: View {
-    nonisolated static let height: CGFloat = 60
     @Environment(MetronomeModel.self) private var model
+    var height: CGFloat = 60
 
     var body: some View {
         HStack(spacing: 12) {
-            StepButton(symbol: "minus", label: "Slower", size: Self.height) { model.nudgeBPM(by: -1) }
-            TapTempoPill(height: Self.height)
-            StepButton(symbol: "plus", label: "Faster", size: Self.height) { model.nudgeBPM(by: 1) }
+            StepButton(symbol: "minus", label: "Slower", size: height) { model.nudgeBPM(by: -1) }
+            TapTempoPill(height: height)
+            StepButton(symbol: "plus", label: "Faster", size: height) { model.nudgeBPM(by: 1) }
         }
     }
 }
