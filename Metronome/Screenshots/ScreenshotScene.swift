@@ -36,6 +36,9 @@ enum ScreenshotScene: String, CaseIterable {
     /// the badge and the full header menu show. Not an App Store screenshot; for checking the
     /// header in the simulator.
     case edited
+    /// The song of `edited` loaded on its own, stopped, so the pill shows without Previous and
+    /// Next. Not an App Store screenshot.
+    case metronomeSolo
     /// The track screen: a song with a playable backing track, loaded from the setlist and
     /// stopped. Not an App Store screenshot; for checking the screen in the simulator. The
     /// click and the track play for real, so their sync can be heard.
@@ -101,6 +104,8 @@ enum ScreenshotScene: String, CaseIterable {
 
     /// The beat shown sounding in the playing scene; accented in the loaded song.
     private static let soundingBeat = 5
+    /// How long the playing scene's song has been playing: its readout starts at 2:14.
+    private static let playingSeconds: TimeInterval = 134
     /// Every change time in the sample library; the date itself never shows.
     private static let date = Date(timeIntervalSinceReferenceDate: 800_000_000)
     private static let suiteName = "metronome.screenshots"
@@ -141,7 +146,7 @@ enum ScreenshotScene: String, CaseIterable {
                 // The library opens on the setlist its loaded song came from, so the scene
                 // that shows all songs has the song loaded on its own.
                 loadedFromSetlistID: self == .library || self == .librarySelect || self == .trackSolo
-                    ? nil : sample.setlistID,
+                    || self == .metronomeSolo ? nil : sample.setlistID,
                 selectedSetlistID: self == .setlist || self == .setlistSearch || self == .setlistSelect
                     ? sample.setlistID : nil
             ))
@@ -199,7 +204,16 @@ enum ScreenshotScene: String, CaseIterable {
             libraryStore: libraryStore,
             now: { Self.date }
         )
-        if self == .playing { model.togglePlayback() }
+        if self == .playing {
+            model.togglePlayback()
+            // The engine sounds a single beat, so the readout is seeded with a run already going;
+            // its time runs on from 2:14.
+            let settings = sample.loadedSettings
+            let bar = 1 + Int(Self.playingSeconds * Double(settings.bpm) / 60) / settings.timeSignature.beatsPerBar
+            model.showPlayCount(PlayCount(
+                runningSince: ProcessInfo.processInfo.systemUptime - Self.playingSeconds, bar: bar
+            ))
+        }
         if self == .edited { model.nudgeBPM(by: 4) }
         if self == .stage { model.enterStageMode(setlistID: sample.setlistID) }
         return model
