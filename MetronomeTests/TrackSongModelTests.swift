@@ -226,9 +226,12 @@ struct TrackSongModelTests {
     @Test func saveAsNewSongHasNoTrackAndStopsAPlayingTrack() throws {
         let setup = try makeModel()
         let model = setup.model
+        // The metronome's tempo is set with the switch off, as the dial sets the track's while it is on.
+        model.toggleBackingTracks()
+        model.setBPM(130)
+        model.toggleBackingTracks()
         model.togglePlayback()
         engine.trackTime = 30
-        model.setBPM(130)
         let copy = try #require(model.saveAsNewSong(name: "Copy", settings: model.settings))
         #expect(copy.track == nil)
         #expect(model.loadedSongID == copy.id)

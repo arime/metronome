@@ -22,6 +22,11 @@ enum TrackEdit: Equatable, Sendable {
     case keep, remove, attach(PickedTrack)
 }
 
+/// What the player card shows: the elapsed time, bar count and transport, or the track (6.7, 6.12).
+enum PlayerContent: Equatable {
+    case metronome, track
+}
+
 /// The state of the app, and the rules for changing it.
 @MainActor
 @Observable
@@ -75,6 +80,8 @@ final class MetronomeModel {
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let trackFiles: TrackFileStore
     @ObservationIgnored private let lengthOfTrack: (URL) -> TimeInterval?
+    /// The system uptime; what the play count's times are measured in.
+    @ObservationIgnored private let uptime: () -> TimeInterval
     /// The player while haptics are on, nil while they are off; every haptic goes through here.
     private var haptics: HapticsPlaying? { hapticsEnabled ? hapticsPlayer : nil }
     @ObservationIgnored private var taps = TapTempo()
@@ -87,7 +94,9 @@ final class MetronomeModel {
          saveOfferDelay: Duration = .milliseconds(500),
          syncSettingSaveDelay: Duration = .milliseconds(300),
          trackFiles: TrackFileStore = TrackFileStore(),
-         lengthOfTrack: @escaping (URL) -> TimeInterval? = { try? TrackAudio.length(of: $0) }) {
+         lengthOfTrack: @escaping (URL) -> TimeInterval? = { try? TrackAudio.length(of: $0) },
+         uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+        self.uptime = uptime
         self.saveOfferDelay = saveOfferDelay
         self.syncSettingSaveDelay = syncSettingSaveDelay
         self.trackFiles = trackFiles
@@ -155,6 +164,7 @@ final class MetronomeModel {
     /// otherwise from the position at once. A file that cannot be opened plays the click alone
     /// for this run. Either way the click plays at the tempo in effect.
     private func start() {
+        playCount.restart()
         let settings = settingsInEffect
         if isTrackPlayable, let track = loadedTrack, let url = trackFiles.url(for: track.fileID) {
             let grid = TrackGrid(
@@ -193,6 +203,7 @@ final class MetronomeModel {
         isPlayingTrack = false
         startedBeforeFile = false
         currentBeat = nil
+        playCount.stop(at: uptime())
         closeStageModeIfItsSetlistIsGone()
     }
 
@@ -224,10 +235,40 @@ final class MetronomeModel {
     private func beatSounded(_ beat: ScheduledBeat) {
         // A callback that was already on its way when playback stopped.
         guard isPlaying else { return }
+        playCount.count(beat, at: uptime())
         beatCount += 1
         currentBeat = beat.beat
         lastBeat = BeatEvent(id: beatCount, beat: beat.beat, isAccented: beat.isAccented)
         haptics?.beat(accented: beat.isAccented)
+    }
+
+    // MARK: - The player
+
+    /// The time and the bars played since the last Start (7.13). Not saved.
+    private(set) var playCount = PlayCount()
+
+    /// What the player card's readout shows now. Its time runs with the clock, which is not
+    /// observed, so views read it again while playing.
+    func readout() -> PlayReadout {
+        playCount.readout(at: uptime())
+    }
+
+    #if DEBUG
+    /// Shows a count already running, for screenshot scenes.
+    func showPlayCount(_ count: PlayCount) {
+        playCount = count
+    }
+    #endif
+
+    /// Whether the player card shows the metronome's readout and transport or the track's.
+    var playerContent: PlayerContent {
+        isTrackInUse ? .track : .metronome
+    }
+
+    /// The readout starts again whenever the loaded song becomes another song or none; while
+    /// playing it counts afresh from the next beat. Every such change passes through here.
+    private func loadedSongChanged() {
+        playCount.restart()
     }
 
     /// Silences the click or brings it back. The metronome keeps running either way,
@@ -590,20 +631,29 @@ final class MetronomeModel {
     }
 
     // MARK: - Tempo
+    // The dial, - / +, tap tempo and the tempo sheet set the tempo in effect: the track's while a
+    // track is in use, saved into the song at once as Sync mode does, and the metronome's otherwise.
 
     func setBPM(_ bpm: Int) {
-        guard applyBPM(bpm) else { return }
+        guard applyTempoInEffect(bpm) else { return }
         haptics?.selection()
     }
 
     func nudgeBPM(by delta: Int) {
-        setBPM(settings.bpm + delta)
+        setBPM(tempoInEffect + delta)
     }
 
+    /// The plain screen's series, also while it sets the track's tempo; Sync mode keeps its own.
     func tapTempo(at time: TimeInterval) {
         haptics?.selection()
         guard let bpm = taps.tap(at: time) else { return }
-        applyBPM(bpm)
+        applyTempoInEffect(bpm)
+    }
+
+    /// Returns true when it changed.
+    @discardableResult
+    private func applyTempoInEffect(_ bpm: Int) -> Bool {
+        isTrackInUse ? applyTrackTempo(bpm) : applyBPM(bpm)
     }
 
     /// Sets the metronome's tempo. Returns true when it changed.
@@ -797,6 +847,7 @@ final class MetronomeModel {
         loadedFromSetlistID = members.contains(id) ? setlistID : nil
         if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: now()) }
         if isAnotherSong {
+            loadedSongChanged()
             loadedTrackReplaced(replacing: old)
             apply(song.settings)
             markPlayed(id)
@@ -855,6 +906,7 @@ final class MetronomeModel {
         let old = loadedTrack
         loadedSongID = nil
         loadedFromSetlistID = nil
+        loadedSongChanged()
         loadedTrackReplaced(replacing: old)
         persistLibrary()
         haptics?.selection()
@@ -887,6 +939,7 @@ final class MetronomeModel {
         }
         loadedSongID = song.id
         loadedFromSetlistID = setlistID
+        loadedSongChanged()
         loadedTrackReplaced(replacing: old)
         apply(song.settings)
         markPlayed(song.id)
@@ -1001,6 +1054,7 @@ final class MetronomeModel {
             let members = setlistID.flatMap(library.setlist(id:))?.songIDs ?? []
             loadedFromSetlistID = members.contains(song.id) ? setlistID : nil
             if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: moment) }
+            loadedSongChanged()
             loadedTrackReplaced(replacing: nil)
             markPlayed(song.id)
         }
@@ -1128,6 +1182,7 @@ final class MetronomeModel {
         if isLoaded {
             loadedSongID = nil
             loadedFromSetlistID = nil
+            loadedSongChanged()
             loadedTrackReplaced(replacing: old)
         }
     }
@@ -1372,6 +1427,7 @@ final class MetronomeModel {
         selectedSetlistID = state.selectedSetlistID
         // This device's own: the orders stay, and only times for songs that went are dropped.
         lastPlayed = state.lastPlayed
+        if loadedSongID != before.loadedSongID { loadedSongChanged() }
         if loadedTrack != trackBefore { loadedTrackArrived(replacing: trackBefore) }
         libraryStore.save(state)
         trackFiles.removeAll(except: library.referencedFileIDs)

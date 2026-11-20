@@ -181,7 +181,10 @@ struct SyncModeModelTests {
         let model = try bench.makeModel()
         model.toggleAccent(beat: 2)
         #expect(model.isSaveOffered)
+        // The metronome's tempo is set with the switch off, as the dial sets the track's while it is on.
+        model.toggleBackingTracks()
         model.nudgeBPM(by: 5)
+        model.toggleBackingTracks()
         model.enterSyncMode()
         model.toggleAccent(beat: 3)
         #expect(model.isSaveOffered == false)
