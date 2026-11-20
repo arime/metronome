@@ -131,9 +131,9 @@ struct DialRing: View {
     private static let ridgeCount = 90
     private static let ridgeLength = 10.0
     /// The pointer sits on the knob's rim, over the ridges and outside the widest
-    /// three-digit number.
+    /// three-digit number (see `DialGeometry.numberSize`).
     private static let pointerOuter = 112.0
-    private static let pointerInner = 98.0
+    private static let pointerInner = 102.0
 
     private static let knobTop = Color(hex: 0x2C2C31)
     private static let knobBottom = Color(hex: 0x141416)
