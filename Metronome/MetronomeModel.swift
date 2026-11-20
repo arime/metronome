@@ -85,7 +85,7 @@ final class MetronomeModel {
     /// The player while haptics are on, nil while they are off; every haptic goes through here.
     private var haptics: HapticsPlaying? { hapticsEnabled ? hapticsPlayer : nil }
     @ObservationIgnored private var taps = TapTempo()
-    /// Sync mode's Tap tempo keeps a series of its own, apart from the plain screen's.
+    /// Sync mode's Tap tempo keeps a series of its own, apart from the tempo controls' pill.
     @ObservationIgnored private var trackTaps = TapTempo()
     @ObservationIgnored private var beatCount = 0
 
@@ -494,10 +494,10 @@ final class MetronomeModel {
     // memory take them at once; saving the library and sending it to iCloud wait for a pause
     // (`persistSoon`), as a held button or a dragged knob changes them many times a second.
 
-    /// Whether the track screen shows Sync mode (6.13). Not saved, so off at launch.
+    /// Whether the Sync mode sheet (6.13) is shown. Not saved, so off at launch.
     private(set) var isSyncModeShown = false
 
-    /// Sync on the track screen; only with the file here. Playback carries on as it is.
+    /// The Sync pill of Track content; only with the file here. Playback carries on as it is.
     func enterSyncMode() {
         guard isTrackPlayable else { return }
         isSyncModeShown = true
@@ -643,7 +643,7 @@ final class MetronomeModel {
         setBPM(tempoInEffect + delta)
     }
 
-    /// The plain screen's series, also while it sets the track's tempo; Sync mode keeps its own.
+    /// The tempo controls' series, also while they set the track's tempo; Sync mode keeps its own.
     func tapTempo(at time: TimeInterval) {
         haptics?.selection()
         guard let bpm = taps.tap(at: time) else { return }

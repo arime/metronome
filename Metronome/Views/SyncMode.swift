@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Sync mode (6.13), a full-height sheet over the track screen: its own header, then the time
+/// Sync mode (6.13), a full-height sheet over the metronome screen: its own header, then the time
 /// signature row, the accent tiles, the two tap pads, the Tempo and Offset steppers, the count-in
 /// and the mix, and the playback card pinned to the bottom. The same stopped and playing. The pads
 /// take the height the other parts leave; when even their least height does not fit, the part

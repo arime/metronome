@@ -40,14 +40,12 @@ struct DialGeometryTests {
     }
 
     @Test func theDialNumberIs92ForEveryTempo() {
-        #expect(DialGeometry.numberSize(bpm: 99, dialDiameter: 264) == 92)
-        #expect(DialGeometry.numberSize(bpm: 100, dialDiameter: 264) == 92)
-        #expect(DialGeometry.numberSize(bpm: 300, dialDiameter: 264) == 92)
+        #expect(DialGeometry.numberSize(dialDiameter: 264) == 92)
     }
 
     @Test func theDialNumberScalesWithTheDial() {
-        #expect(DialGeometry.numberSize(bpm: 120, dialDiameter: 132) == 46)
-        #expect(abs(DialGeometry.numberSize(bpm: 60, dialDiameter: 221) - 77.015) < 0.001)
+        #expect(DialGeometry.numberSize(dialDiameter: 132) == 46)
+        #expect(abs(DialGeometry.numberSize(dialDiameter: 221) - 77.015) < 0.001)
     }
 
     @Test func aTurnCanStartAnywhereOnTheDial() {

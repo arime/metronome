@@ -47,7 +47,7 @@ enum DialGeometry {
     /// design dial the widest three-digit number's ink reaches about 84.4 pt from the centre
     /// and the pointer's rounded inner end (102 in the dial's 300 pt grid, less its 2.5 pt
     /// round cap, scaled by 0.88) about 87.6 pt: some 3 pt clear when the pointer lies level.
-    static func numberSize(bpm: Int, dialDiameter: Double) -> Double {
+    static func numberSize(dialDiameter: Double) -> Double {
         designNumberSize * dialDiameter / designDial
     }
 

@@ -60,6 +60,19 @@ struct PlayCountTests {
         #expect(count.bar == 1)
     }
 
+    @Test func aCountInBeforeAStartMidBarMakesThatBarOne() {
+        var count = PlayCount()
+        for (i, beat) in (1...4).enumerated() {
+            count.count(b(beat, countIn: true), at: Double(i) * 0.5)
+        }
+        count.count(b(3), at: 2)
+        count.count(b(4), at: 2.5)
+        #expect(count.bar == 1)
+        #expect(count.elapsed(at: 3) == 1)
+        count.count(b(1), at: 3)
+        #expect(count.bar == 2)
+    }
+
     @Test func stopKeepsTheTimeAndTheBar() {
         var count = PlayCount()
         count.count(b(1), at: 10)
@@ -85,6 +98,7 @@ struct PlayCountTests {
         #expect(PlayCount.timeLabel(0) == "0:00")
         #expect(PlayCount.timeLabel(3599.9) == "59:59")
         #expect(PlayCount.timeLabel(3600) == "1:00:00")
+        #expect(PlayCount.timeLabel(3605) == "1:00:05")
         #expect(PlayCount.timeLabel(3727) == "1:02:07")
         #expect(PlayCount.timeLabel(-5) == "0:00")
     }

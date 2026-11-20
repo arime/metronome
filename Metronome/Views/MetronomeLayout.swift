@@ -22,8 +22,9 @@ struct MetronomeLayout: Equatable {
     let controlsGap: CGFloat
     let isCompact: Bool
 
-    /// The 8 pt above the header's 40 pt row and the row.
+    /// The header: 8 pt above its 40 pt row, and the row.
     static let headerHeight: CGFloat = 48
+    /// The gap between the header and the dial's square.
     static let dialTopGap: CGFloat = 4
     static let playerCardHeight: CGFloat = 188
     static let maximumDial: CGFloat = 264

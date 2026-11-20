@@ -166,6 +166,23 @@ struct SyncModelTests {
         #expect(b.engine.stopCount == 0)
     }
 
+    @Test func theLoadedSongDeletedElsewhereCountsAfresh() {
+        let (a, b, song) = twoDevicesSharingASong()
+        b.model.loadSong(song.id, from: nil, start: true)
+        for beat in [1, 2, 3, 4, 1, 2, 3, 4, 1] {
+            b.engine.onBeat?(ScheduledBeat(beat: beat, isAccented: beat == 1, sampleTime: 0))
+        }
+        #expect(b.model.readout().bar == "Bar 3")
+
+        clock.advance()
+        a.model.deleteSong(song.id)
+        cloud.send(.changed, toDevice: 1)
+
+        #expect(b.model.loadedSong == nil)
+        #expect(b.model.readout().time == "0:00")
+        #expect(b.model.readout().bar == "Bar 1")
+    }
+
     @Test func aDeletedSetlistClearsTheFilterAndTheLoadedFromSetlist() {
         let a = makeDevice(), b = makeDevice()
         clock.advance()

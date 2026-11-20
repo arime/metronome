@@ -61,7 +61,7 @@ struct TapTempoPill: View {
 }
 
 /// Whether a tap tempo series is open, for the controls that show it: from a tap until the series
-/// would start over, two seconds later. Shared by the plain screen's pill and Sync mode's pad.
+/// would start over, two seconds later. Shared by the tempo controls' pill and Sync mode's pad.
 struct TapTempoSeries: Equatable {
     /// Goes up by one per tap; restarts the wait for the end of the series.
     private(set) var tapCount = 0

@@ -8,6 +8,8 @@ private final class Uptime {
     var now: TimeInterval = 0
 }
 
+private struct StartFailure: Error {}
+
 /// The elapsed time and bar count the player card's Metronome content shows (7.13).
 @MainActor
 struct PlayerModelTests {
@@ -37,6 +39,26 @@ struct PlayerModelTests {
         let setlist = model.createSetlist()
         songs.forEach { model.setSong($0.id, inSetlist: setlist, included: true) }
         return (model, songs, setlist)
+    }
+
+    /// A model whose loaded song, at 120 BPM in 4/4, has a playable backing track, with
+    /// Backing tracks on, so the player card shows Track content.
+    private func modelWithATrack() throws -> MetronomeModel {
+        let files = TrackFileStore.temporary()
+        let source = FileManager.default.temporaryDirectory.appending(path: "PlayerTrack-\(UUID().uuidString).m4a")
+        try Data("audio".utf8).write(to: source)
+        defer { try? FileManager.default.removeItem(at: source) }
+        let track = BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: 48, bpm: 120)
+        try files.store(source, as: track.fileID)
+        var library = Library()
+        let added = library.addSong(name: "Song", settings: MetronomeSettings(), track: track, now: Date())
+        let song = try #require(added)
+        libraryStore.save(LibraryState(library: library, loadedSongID: song.id))
+        let uptime = uptime
+        return MetronomeModel(
+            engine: engine, store: store, haptics: haptics, libraryStore: libraryStore,
+            trackFiles: files, lengthOfTrack: { _ in 222 }, uptime: { uptime.now }
+        )
     }
 
     /// The beats sound, in order, at the current uptime.
@@ -137,16 +159,67 @@ struct PlayerModelTests {
         #expect(shown(model) == ["1:24", "Bar 3"])
     }
 
-    @Test func switchesAndMuteLeaveTheReadout() {
-        let model = makeModel()
+    @Test func switchesAndMuteLeaveTheReadout() throws {
+        let model = try modelWithATrack()
+        #expect(model.playerContent == .track)
         model.togglePlayback()
         uptime.now = 10
         sound(1, 2, 3, 4, 1)
         uptime.now = 94
         model.togglePlayback()
         model.toggleBackingTracks()
+        #expect(model.playerContent == .metronome)
         model.toggleMute()
         #expect(shown(model) == ["1:24", "Bar 2"])
+        model.toggleBackingTracks()
+        #expect(model.playerContent == .track)
+        #expect(shown(model) == ["1:24", "Bar 2"])
+    }
+
+    @Test func theEndOfTheTrackFreezesTheReadout() throws {
+        let model = try modelWithATrack()
+        playIntoBarThree(model)
+        engine.onTrackEnded?()
+        #expect(model.isPlaying == false)
+        uptime.now = 500
+        #expect(shown(model) == ["1:24", "Bar 3"])
+    }
+
+    @Test func aFailedStartLeavesZeroWithNoRunningTime() {
+        let model = makeModel()
+        playIntoBarThree(model)
+        model.togglePlayback()
+        engine.startError = StartFailure()
+        model.togglePlayback()
+        #expect(model.isPlaying == false)
+        uptime.now = 500
+        #expect(shown(model) == ["0:00", "Bar 1"])
+    }
+
+    @Test func savingAsANewSongCountsAfresh() throws {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
+        playIntoBarThree(model)
+        let saved = try #require(model.saveAsNewSong(name: "Copy", settings: model.settings))
+        #expect(model.loadedSong?.id == saved.id)
+        #expect(shown(model) == ["0:00", "Bar 1"])
+    }
+
+    @Test func namingTheCurrentSettingsCountsAfresh() throws {
+        let model = makeModel()
+        playIntoBarThree(model)
+        let named = try #require(model.createSong(name: "Named", settings: model.settings, addingTo: nil))
+        #expect(model.loadedSong?.id == named.id)
+        #expect(shown(model) == ["0:00", "Bar 1"])
+    }
+
+    @Test func deletingTheLoadedSongCountsAfresh() {
+        let (model, songs, setlist) = modelWithSetlist()
+        model.loadSong(songs[0].id, from: setlist)
+        playIntoBarThree(model)
+        model.deleteSong(songs[0].id)
+        #expect(model.loadedSong == nil)
+        #expect(shown(model) == ["0:00", "Bar 1"])
     }
 
     @Test func aCountInIsNotCounted() {

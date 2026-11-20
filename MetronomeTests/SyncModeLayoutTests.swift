@@ -4,7 +4,7 @@ import Testing
 
 /// Heights are the usable height (inside the safe areas). Sync mode's parts take 514 pt plus
 /// the tiles; the tap pads take the rest.
-struct TrackLayoutTests {
+struct SyncModeLayoutTests {
     private func syncMode(
         width: CGFloat = 375, height: CGFloat, hasBottomInset: Bool = false, beats: Int = 4
     ) -> SyncModeLayout {

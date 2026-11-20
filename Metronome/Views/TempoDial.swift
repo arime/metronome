@@ -87,7 +87,7 @@ struct DialNumber: View {
     let diameter: CGFloat
 
     private var numberSize: CGFloat {
-        DialGeometry.numberSize(bpm: bpm, dialDiameter: diameter)
+        DialGeometry.numberSize(dialDiameter: diameter)
     }
 
     /// The digits are set tighter than normal, but only between digits. Tightening after

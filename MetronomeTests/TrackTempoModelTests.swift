@@ -95,7 +95,7 @@ struct TrackTempoModelTests {
         #expect(model.isSaveOffered == false)
     }
 
-    @Test func anAccentOnTheTrackScreenShowsSave() throws {
+    @Test func anAccentWhileATrackIsInUseShowsSave() throws {
         let model = try makeModel()
         model.toggleAccent(beat: 2)
         #expect(model.isEdited)

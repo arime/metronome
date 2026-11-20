@@ -267,7 +267,7 @@ struct MixSlider: View {
 
 /// Sync mode's card at the bottom, on surface raised: the progress bar and, 14 pt below it, To
 /// the beginning, Rewind, play / stop, Fast-forward and To the end, spread evenly with the outer
-/// two at the edges. No file name, no Previous or Next song and no next-up line. The line's
+/// two at the edges. No file name and no Previous or Next song. The line's
 /// unplayed part, Rewind and Fast-forward are surface selected, so they show on the card.
 struct PlaybackCard: View {
     @Environment(MetronomeModel.self) private var model

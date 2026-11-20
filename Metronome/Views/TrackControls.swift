@@ -322,6 +322,8 @@ struct TrackProgressBar: View {
             .frame(height: Self.height - Self.bandHeight - 2)
         }
         .frame(height: Self.height)
+        // Flattened first, so the knob still covers the played stub when dimmed.
+        .compositingGroup()
         .opacity(isMissing ? 0.4 : 1)
         .allowsHitTesting(!isMissing)
         .accessibilityElement(children: .ignore)

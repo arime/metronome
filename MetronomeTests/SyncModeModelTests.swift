@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import Metronome
 
-/// Sync mode of the track screen: entering and leaving it, its transport buttons, and the time
+/// Sync mode while a track is in use: entering and leaving it, its transport buttons, and the time
 /// signature and accents it saves into the song at once.
 @MainActor
 @Suite
