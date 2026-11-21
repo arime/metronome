@@ -132,7 +132,7 @@ private struct TapTempoPad: View {
     }
 
     private func tap() {
-        model.tapTrackTempo(at: ProcessInfo.processInfo.systemUptime)
+        model.syncTapTempo(at: ProcessInfo.processInfo.systemUptime)
         series.tapped()
     }
 }

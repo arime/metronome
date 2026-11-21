@@ -54,17 +54,20 @@ final class TrackTestBench {
         return track
     }
 
-    /// A model whose loaded song is at 120 BPM in 4/4 with a track at `trackBPM` whose offset is
-    /// 0.48 s. With `missing` the track's file is not stored.
+    /// A model whose loaded song is at `bpm` in 4/4, with the metronome on the song's settings, and
+    /// a track whose offset is 0.48 s; the track stores `trackBPM`, or the song's tempo without it.
+    /// With `missing` the track's file is not stored.
     func makeModel(
-        trackBPM: Int = 120, length: TimeInterval = 222, countIn: CountIn = .twoBars, mix: Double = 0,
-        missing: Bool = false
+        bpm: Int = 120, trackBPM: Int? = nil, length: TimeInterval = 222, countIn: CountIn = .twoBars,
+        mix: Double = 0, missing: Bool = false
     ) throws -> MetronomeModel {
-        let track = try makeTrack(bpm: trackBPM, countIn: countIn, mix: mix, missing: missing)
+        let track = try makeTrack(bpm: trackBPM ?? bpm, countIn: countIn, mix: mix, missing: missing)
+        let settings = MetronomeSettings(bpm: bpm, timeSignature: .fourFour, accents: [1])
         var library = Library()
-        let added = library.addSong(name: "Song", settings: MetronomeSettings(), track: track, now: Date())
+        let added = library.addSong(name: "Song", settings: settings, track: track, now: Date())
         let song = try #require(added)
         libraryStore.save(LibraryState(library: library, loadedSongID: song.id))
+        settingsStore.save(settings)
         return relaunch(length: length)
     }
 

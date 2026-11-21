@@ -123,16 +123,6 @@ struct TrackSongModelTests {
         #expect(engine.stopCount == 0)
     }
 
-    @Test func loadingASongWithATrackPlaysAtTheTracksTempo() throws {
-        let setup = try makeModel()
-        let model = setup.model
-        model.loadSong(setup.other.id, from: setup.setlist)
-        #expect(model.tempoInEffect == 150)
-        #expect(model.settings.bpm == 140)
-        model.loadSong(setup.plain.id, from: setup.setlist)
-        #expect(model.tempoInEffect == 90)
-    }
-
     @Test func loadingAlwaysGoesToZero() throws {
         let setup = try makeModel(length: 200)
         let model = setup.model
@@ -226,14 +216,12 @@ struct TrackSongModelTests {
     @Test func saveAsNewSongHasNoTrackAndStopsAPlayingTrack() throws {
         let setup = try makeModel()
         let model = setup.model
-        // The metronome's tempo is set with the switch off, as the dial sets the track's while it is on.
-        model.toggleBackingTracks()
         model.setBPM(130)
-        model.toggleBackingTracks()
         model.togglePlayback()
         engine.trackTime = 30
         let copy = try #require(model.saveAsNewSong(name: "Copy", settings: model.settings))
         #expect(copy.track == nil)
+        #expect(copy.settings.bpm == 130)
         #expect(model.loadedSongID == copy.id)
         #expect(model.isPlaying == false)
         #expect(model.trackPosition == 0)
@@ -354,15 +342,6 @@ struct TrackSongModelTests {
         #expect(model.library.song(id: setup.other.id)?.track?.bpm == 150)
     }
 
-    @Test func pickingAFileForAMissingTrackKeepsItsTempo() throws {
-        let setup = try makeModel(missing: true)
-        let model = setup.model
-        model.nudgeTrackTempo(by: 13)
-        #expect(model.loadedTrack?.bpm == 133)
-        model.editSong(setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked()))
-        #expect(model.library.song(id: setup.song.id)?.track?.bpm == 133)
-    }
-
     @Test func editingTheLoadedSongsTrackStopsAndGoesToZero() throws {
         let setup = try makeModel()
         let model = setup.model
@@ -403,8 +382,8 @@ struct TrackSongModelTests {
         #expect(model.isPlaying)
         #expect(model.isPlayingTrack)
         #expect(engine.stopCount == 0)
-        // The song's tempo is not the tempo in effect while its track is in use.
-        #expect(engine.lastUpdate?.bpm == 120)
+        #expect(engine.lastUpdate?.bpm == 130)
+        #expect(engine.lastUpdateStartedNewBar == false)
     }
 
     @Test func aNewSongCanBeCreatedWithATrack() throws {
@@ -776,34 +755,21 @@ struct TrackSongModelTests {
         #expect(bEngine.stopCount == 0)
     }
 
-    @Test func aTrackTempoArrivingFromAnotherDeviceReachesThePlayingEngine() throws {
-        let (a, b, bEngine, _, song, _) = try twoDevicesPlayingATrack()
+    @Test func aTempoArrivingFromAnotherDeviceMakesTheSongEdited() throws {
+        let (a, b, bEngine, _, song, bHaptics) = try twoDevicesPlayingATrack()
+        let update = bEngine.lastUpdate
+        let haptics = hapticCount(bHaptics)
         clock.advance()
         a.loadSong(song.id, from: nil)
-        a.nudgeTrackTempo(by: 2)
-        a.savePendingChanges()
+        a.setBPM(102)
+        a.saveChanges()
         cloud.send(.changed, toDevice: 1)
-        #expect(b.loadedTrack?.bpm == 102)
-        #expect(bEngine.lastUpdate?.bpm == 102)
+        #expect(b.loadedSong?.settings.bpm == 102)
+        #expect(b.settings.bpm == 100)
+        #expect(b.isSaveOffered)
+        #expect(bEngine.lastUpdate == update)
         #expect(b.isPlaying)
-        #expect(bEngine.stopCount == 0)
-    }
-
-    @Test func aTrackTempoArrivingWithBackingTracksOffLeavesTheClickAlone() throws {
-        let (a, b, bEngine, _, song, _) = try twoDevicesPlayingATrack()
-        b.togglePlayback()
-        b.toggleBackingTracks()
-        b.togglePlayback()
-        #expect(b.isPlaying)
-        bEngine.lastUpdate = nil
-        clock.advance()
-        a.loadSong(song.id, from: nil)
-        a.nudgeTrackTempo(by: 2)
-        a.savePendingChanges()
-        cloud.send(.changed, toDevice: 1)
-        #expect(b.loadedTrack?.bpm == 102)
-        #expect(bEngine.lastUpdate == nil)
-        #expect(b.isPlaying)
+        #expect(hapticCount(bHaptics) == haptics)
     }
 
     @Test func aTrackRemovedOnAnotherDeviceStopsItsPlayingTrack() throws {
@@ -898,15 +864,15 @@ struct TrackSongModelTests {
         #expect(b.isSyncModeShown == false)
     }
 
-    @Test func aTrackTempoArrivingKeepsSyncModeShown() throws {
+    @Test func aTempoArrivingKeepsSyncModeShown() throws {
         let (a, b, _, _, song, _) = try twoDevicesPlayingATrack()
         b.enterSyncMode()
         clock.advance()
         a.loadSong(song.id, from: nil)
-        a.nudgeTrackTempo(by: 2)
-        a.savePendingChanges()
+        a.setBPM(102)
+        a.saveChanges()
         cloud.send(.changed, toDevice: 1)
-        #expect(b.loadedTrack?.bpm == 102)
+        #expect(b.loadedSong?.settings.bpm == 102)
         #expect(b.isSyncModeShown)
     }
 

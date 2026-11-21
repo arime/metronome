@@ -17,21 +17,21 @@ private struct SyncLabel: View {
 private let labelColumnWidth: CGFloat = 76
 
 /// Tempo and Offset side by side, 10 pt apart, sharing the width equally. − and + repeat while
-/// held; a change applies at once. Tapping the tempo value opens the tempo sheet for the track's
-/// tempo.
+/// held; a change applies at once. The tempo is the song's, the one the dial shows; tapping its
+/// value opens the tempo sheet.
 struct SyncSteppers: View {
     @Environment(MetronomeModel.self) private var model
     @State private var isEntryShown = false
 
     var body: some View {
-        let bpm = model.loadedTrack?.bpm ?? model.tempoInEffect
+        let bpm = model.settings.bpm
         let seconds = Self.seconds(model.loadedTrack?.offset ?? 0)
         HStack(spacing: 10) {
             SyncStepper(
                 label: "TEMPO", value: "\(bpm)", unit: nil,
                 spokenName: "Tempo", spokenValue: "\(bpm) beats per minute",
-                less: ("Slower", { model.nudgeTrackTempo(by: -1) }),
-                more: ("Faster", { model.nudgeTrackTempo(by: 1) }),
+                less: ("Slower", { model.nudgeBPM(by: -1) }),
+                more: ("Faster", { model.nudgeBPM(by: 1) }),
                 typeValue: { isEntryShown = true }
             )
             SyncStepper(
@@ -43,7 +43,7 @@ struct SyncSteppers: View {
         }
         .frame(height: SyncModeLayout.stepperHeight)
         .sheet(isPresented: $isEntryShown) {
-            TempoEntrySheet(current: bpm) { model.setTrackTempo($0) }
+            TempoEntrySheet(current: bpm) { model.setBPM($0) }
                 .environment(model)
         }
     }

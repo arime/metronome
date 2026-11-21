@@ -1,0 +1,183 @@
+import Foundation
+import Testing
+@testable import Metronome
+
+/// A song has one tempo, with its track in use or not: every tempo control sets it as an ordinary
+/// edit, the click plays at it, and the Backing tracks switch changes no setting.
+@MainActor
+@Suite
+struct OneTempoModelTests {
+    private let bench: TrackTestBench
+    private var engine: FakeClickEngine { bench.engine }
+    private var haptics: FakeHaptics { bench.haptics }
+
+    init() throws {
+        bench = try TrackTestBench()
+    }
+
+    /// The loaded song is at 120 BPM in 4/4 with a track, playable unless `missing`.
+    private func makeModel(missing: Bool = false) throws -> MetronomeModel {
+        try bench.makeModel(missing: missing)
+    }
+
+    private func savedSong(_ model: MetronomeModel) -> Song? {
+        model.loadedSongID.flatMap { bench.libraryStore.load().library.song(id: $0) }
+    }
+
+    // MARK: - The tempo controls
+
+    @Test func theDialSetsTheSongsTempoWithATrackInUse() throws {
+        let model = try makeModel()
+        let ticks = haptics.selectionCount
+        model.setBPM(100)
+        #expect(model.settings.bpm == 100)
+        #expect(model.isEdited)
+        #expect(model.isSaveOffered)
+        #expect(haptics.selectionCount == ticks + 1)
+    }
+
+    @Test func minusPlusAndTapTempoSetTheSameTempo() throws {
+        let model = try makeModel()
+        model.nudgeBPM(by: 5)
+        #expect(model.settings.bpm == 125)
+        model.tapTempo(at: 0)
+        model.tapTempo(at: 0.5)
+        #expect(model.settings.bpm == 120)
+    }
+
+    @Test func theTempoStaysInRange() throws {
+        let model = try makeModel()
+        model.setBPM(400)
+        #expect(model.settings.bpm == 300)
+        model.setBPM(10)
+        #expect(model.settings.bpm == 30)
+    }
+
+    @Test func theClickPlaysAtTheSongsTempoWithTheTrack() throws {
+        let model = try makeModel()
+        model.setBPM(100)
+        model.togglePlayback()
+        #expect(engine.startedSettings.last?.bpm == 100)
+        #expect(model.isPlayingTrack)
+    }
+
+    @Test func aDialTurnWhilePlayingFollowsTheGridAndWritesNothing() throws {
+        let model = try makeModel()
+        model.togglePlayback()
+        let writes = bench.libraryDefaults.writes
+        for bpm in 91...110 {
+            model.setBPM(bpm)
+            #expect(engine.lastUpdate?.bpm == bpm)
+            #expect(engine.lastUpdateStartedNewBar == false)
+        }
+        #expect(bench.libraryDefaults.writes == writes)
+        #expect(model.isPlayingTrack)
+    }
+
+    @Test func withTheFileMissingTheDialSetsTheTempo() throws {
+        let model = try makeModel(missing: true)
+        model.setBPM(100)
+        model.togglePlayback()
+        #expect(engine.startedSettings.last?.bpm == 100)
+        #expect(model.isEdited)
+    }
+
+    @Test func syncModesTempoStepperIsTheDials() throws {
+        let model = try makeModel()
+        model.enterSyncMode()
+        model.nudgeBPM(by: 1)
+        #expect(model.settings.bpm == 121)
+        #expect(model.isSaveOffered)
+        model.leaveSyncMode()
+        #expect(model.settings.bpm == 121)
+        #expect(model.isSaveOffered)
+    }
+
+    // MARK: - Save, Revert, Unload and Edit song
+
+    @Test func saveChangesSavesATempoSetWithATrackInUse() throws {
+        let model = try makeModel()
+        model.setBPM(100)
+        model.saveChanges()
+        #expect(savedSong(model)?.settings.bpm == 100)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func revertSetsTheTempoBackWhilePlaying() throws {
+        let model = try makeModel()
+        model.togglePlayback()
+        model.setBPM(100)
+        model.discardChanges()
+        #expect(model.settings.bpm == 120)
+        #expect(engine.lastUpdate?.bpm == 120)
+        #expect(engine.lastUpdateStartedNewBar == false)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func unloadKeepsTheTempo() throws {
+        let model = try makeModel()
+        model.setBPM(100)
+        model.unloadSong()
+        #expect(model.settings.bpm == 100)
+    }
+
+    @Test func editingTheLoadedSongsTempoMovesTheClick() throws {
+        let model = try makeModel()
+        let id = try #require(model.loadedSongID)
+        model.togglePlayback()
+        model.editSong(id, name: "Song", settings: MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1]))
+        #expect(model.settings.bpm == 100)
+        #expect(engine.lastUpdate?.bpm == 100)
+        #expect(engine.lastUpdateStartedNewBar == false)
+        #expect(model.isPlayingTrack)
+        #expect(engine.stopCount == 0)
+    }
+
+    // MARK: - The Backing tracks switch
+
+    @Test func theSwitchChangesNoSetting() throws {
+        let model = try makeModel()
+        model.setBPM(100)
+        model.toggleAccent(beat: 2)
+        model.toggleBackingTracks()
+        #expect(model.settings.bpm == 100)
+        #expect(model.settings.accents == [1, 2])
+        #expect(model.isSaveOffered)
+        model.togglePlayback()
+        #expect(engine.startedSettings.last?.bpm == 100)
+        model.togglePlayback()
+        model.toggleBackingTracks()
+        #expect(model.settings.bpm == 100)
+        #expect(model.settings.accents == [1, 2])
+        #expect(model.isSaveOffered)
+    }
+
+    @Test func thePlayerShowsTheTrackOnlyWhileATrackIsInUse() throws {
+        let model = try makeModel()
+        #expect(model.playerContent == .track)
+        model.toggleBackingTracks()
+        #expect(model.playerContent == .metronome)
+        model.toggleBackingTracks()
+        model.unloadSong()
+        #expect(model.playerContent == .metronome)
+    }
+
+    // MARK: - The meter with a track in use
+
+    @Test func anAccentWhileATrackIsInUseShowsSave() throws {
+        let model = try makeModel()
+        model.toggleAccent(beat: 2)
+        #expect(model.isEdited)
+        #expect(model.isSaveOffered)
+    }
+
+    @Test func aTimeSignatureWhileATrackIsInUseMakesTheSongEdited() throws {
+        let model = try makeModel()
+        model.selectTimeSignature(.threeFour)
+        #expect(model.isEdited)
+        #expect(model.isSaveOffered)
+        #expect(savedSong(model)?.settings.timeSignature == .fourFour)
+        model.saveChanges()
+        #expect(savedSong(model)?.settings.timeSignature == .threeFour)
+    }
+}

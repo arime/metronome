@@ -12,10 +12,10 @@ struct TempoDial: View {
 
     var body: some View {
         ZStack {
-            DialRing(fraction: Tempo.arcFraction(for: model.tempoInEffect))
+            DialRing(fraction: Tempo.arcFraction(for: model.settings.bpm))
             // Over the knob, so the beat lights up its face. Stopped, there is no glow, even
             // mid-fade (section 12).
-            BeatGlow(lastBeat: model.lastBeat, bpm: model.tempoInEffect, diameter: diameter)
+            BeatGlow(lastBeat: model.lastBeat, bpm: model.settings.bpm, diameter: diameter)
                 .opacity(model.isPlaying ? 1 : 0)
             readout
                 .contentShape(Rectangle())
@@ -26,7 +26,7 @@ struct TempoDial: View {
         .gesture(ringDrag)
         .accessibilityElement()
         .accessibilityLabel("Tempo")
-        .accessibilityValue("\(model.tempoInEffect) beats per minute")
+        .accessibilityValue("\(model.settings.bpm) beats per minute")
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: model.nudgeBPM(by: 1)
@@ -36,13 +36,13 @@ struct TempoDial: View {
         }
         .accessibilityAction(named: "Type a tempo") { isEntryShown = true }
         .sheet(isPresented: $isEntryShown) {
-            TempoEntrySheet(current: model.tempoInEffect) { model.setBPM($0) }
+            TempoEntrySheet(current: model.settings.bpm) { model.setBPM($0) }
                 .environment(model)
         }
     }
 
     private var readout: some View {
-        DialNumber(bpm: model.tempoInEffect, diameter: diameter)
+        DialNumber(bpm: model.settings.bpm, diameter: diameter)
     }
 
     /// Turns the knob by the angle the finger travels around the centre, from wherever on the
@@ -66,7 +66,7 @@ struct TempoDial: View {
                     // Measured from here, not from where the touch began, so the first
                     // movement does not arrive as a jump.
                     let turn = DialDrag(
-                        startFraction: Tempo.arcFraction(for: model.tempoInEffect),
+                        startFraction: Tempo.arcFraction(for: model.settings.bpm),
                         dx: dx, dy: dy, dialDiameter: diameter
                     )
                     drag = (value.startLocation, turn)

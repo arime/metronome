@@ -162,10 +162,9 @@ final class MetronomeModel {
 
     /// With a playable track, starts track and click together: with the count-in at 0:00,
     /// otherwise from the position at once. A file that cannot be opened plays the click alone
-    /// for this run. Either way the click plays at the tempo in effect.
+    /// for this run. Either way the click plays at the song's tempo.
     private func start() {
         playCount.restart()
-        let settings = settingsInEffect
         if isTrackPlayable, let track = loadedTrack, let url = trackFiles.url(for: track.fileID) {
             let grid = TrackGrid(
                 offset: track.offsetSeconds, bpm: settings.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
@@ -313,14 +312,13 @@ final class MetronomeModel {
     private(set) var backingTracksOn: Bool
 
     /// Turns backing tracks on or off, with a tick; only while stopped and never in Sync mode.
-    /// The track's position is kept, so off and on again finds the track where it was.
+    /// It changes no setting. The track's position is kept, so off and on again finds the track
+    /// where it was.
     func toggleBackingTracks() {
         guard !isPlaying, !isSyncModeShown else { return }
         backingTracksOn.toggle()
         store.saveBackingTracksOn(backingTracksOn)
         refreshTrackFile()
-        // The swap of the tempo in effect can make the song edited or not.
-        syncSaveOffer()
         haptics?.selection()
     }
 
@@ -329,23 +327,6 @@ final class MetronomeModel {
 
     /// Backing tracks is on and the loaded song has a track, whether its file is here or not.
     var isTrackInUse: Bool { backingTracksOn && loadedTrack != nil }
-
-    /// The tempo the click plays at: the track's while a track is in use, the metronome's otherwise.
-    var tempoInEffect: Int {
-        tempoInEffect(with: loadedTrack)
-    }
-
-    /// The tempo in effect were `track` the loaded song's track.
-    private func tempoInEffect(with track: BackingTrack?) -> Int {
-        if backingTracksOn, let track { track.bpm } else { settings.bpm }
-    }
-
-    /// The settings with the tempo in effect; what the engine and the track's grid get.
-    private var settingsInEffect: MetronomeSettings {
-        var settings = settings
-        settings.setBPM(tempoInEffect)
-        return settings
-    }
 
     /// The track is in use and its file is on this device. Kept rather than read from the file
     /// store, as views read it many times a second; `refreshTrackFile()` updates it.
@@ -428,15 +409,10 @@ final class MetronomeModel {
         if !isTrackPlayable { leaveSyncMode() }
     }
 
-    /// Another song is loaded, or the loaded song's track is another file: back to 0:00. When the
-    /// track that came or went changes the tempo in effect, a click that plays on without the file
-    /// takes it, for example on Unload from a song whose file is missing.
-    private func loadedTrackReplaced(replacing old: BackingTrack?) {
+    /// Another song is loaded, or the loaded song's track is another file: back to 0:00.
+    private func loadedTrackReplaced() {
         trackPosition = 0
         refreshTrackFile()
-        if isPlaying, tempoInEffect != tempoInEffect(with: old) {
-            engine.update(settingsInEffect, startNewBar: false)
-        }
     }
 
     /// Whether the track would play if it were the loaded one: false while the switch is off.
@@ -489,10 +465,11 @@ final class MetronomeModel {
     }
 
     // MARK: - Sync mode
-    // The track's tempo, offset, count-in and mix, and in Sync mode the time signature and the
-    // accents, go into the song at once and never make it edited. The engine and the library in
-    // memory take them at once; saving the library and sending it to iCloud wait for a pause
-    // (`persistSoon`), as a held button or a dragged knob changes them many times a second.
+    // The track's offset, count-in and mix, and in Sync mode the time signature and the accents,
+    // go into the song at once and never make it edited; the tempo is an ordinary edit (`setBPM`).
+    // The engine and the library in memory take them at once; saving the library and sending it
+    // to iCloud wait for a pause (`persistSoon`), as a held button or a dragged knob changes them
+    // many times a second.
 
     /// Whether the Sync mode sheet (6.13) is shown. Not saved, so off at launch.
     private(set) var isSyncModeShown = false
@@ -529,40 +506,13 @@ final class MetronomeModel {
         trackPosition = 0
     }
 
-    /// The Sync tempo stepper: the track's tempo by `delta` BPM, within 30...300. The metronome's
-    /// tempo is not touched, so this never makes the song edited. Only while a track is in use.
-    func nudgeTrackTempo(by delta: Int) {
-        guard let bpm = loadedTrack?.bpm else { return }
-        setTrackTempo(bpm + delta)
-    }
-
-    /// `Set tempo` in the tempo sheet opened from Sync mode: the track's tempo, within 30...300,
-    /// with a tick when it changes. Only while a track is in use; never the metronome's tempo.
-    func setTrackTempo(_ bpm: Int) {
-        guard applyTrackTempo(bpm) else { return }
-        haptics?.selection()
-    }
-
-    /// Sync mode's Tap tempo: the rules of the plain tap tempo, on the track's tempo, with a series
-    /// of its own. A tick for every tap while a track is in use.
-    func tapTrackTempo(at time: TimeInterval) {
-        guard isTrackInUse else { return }
+    /// Sync mode's Tap tempo: the rules of the tempo controls' tap tempo, on the song's tempo, with
+    /// a series of its own. A tick for every tap. Its − / + and typed tempo are the dial's
+    /// `nudgeBPM(by:)` and `setBPM(_:)`.
+    func syncTapTempo(at time: TimeInterval) {
         haptics?.selection()
         guard let bpm = trackTaps.tap(at: time) else { return }
-        applyTrackTempo(bpm)
-    }
-
-    /// Sets the track's tempo, saved into the song and sent to a playing engine. Returns true when
-    /// it changed.
-    @discardableResult
-    private func applyTrackTempo(_ bpm: Int) -> Bool {
-        guard isTrackInUse, var track = loadedTrack else { return false }
-        let bpm = Tempo.clamp(bpm)
-        guard bpm != track.bpm else { return false }
-        track.bpm = bpm
-        saveLoadedTrack(track)
-        if isPlaying { engine.update(settingsInEffect, startNewBar: false) }
-        return true
+        applyBPM(bpm)
     }
 
     /// Each step is 0.01 s; the offset stays between 0:00 and the file's end.
@@ -591,12 +541,12 @@ final class MetronomeModel {
     }
 
     /// Takes the place being heard as beat 1 and sets only the offset from it, folded back to the
-    /// first bar at the track's tempo. Each tap sets it afresh; the tempo is never changed.
+    /// first bar at the song's tempo. Each tap sets it afresh; the tempo is never changed.
     func tapDownbeat() {
         guard canTapDownbeat, let track = loadedTrack, let heard = engine.trackTime, heard >= 0 else { return }
         haptics?.selection()
         let offset = TrackGrid.foldedOffset(
-            heard, bpm: track.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
+            heard, bpm: settings.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
         )
         guard offset != track.offset else { return }
         setOffset(offset)
@@ -631,29 +581,23 @@ final class MetronomeModel {
     }
 
     // MARK: - Tempo
-    // The dial, - / +, tap tempo and the tempo sheet set the tempo in effect: the track's while a
-    // track is in use, saved into the song at once as Sync mode does, and the metronome's otherwise.
+    // The dial, - / +, tap tempo and the tempo sheet, here and in Sync mode, set the song's one
+    // tempo, with a track in use or not: an ordinary edit, saved only with Save changes.
 
     func setBPM(_ bpm: Int) {
-        guard applyTempoInEffect(bpm) else { return }
+        guard applyBPM(bpm) else { return }
         haptics?.selection()
     }
 
     func nudgeBPM(by delta: Int) {
-        setBPM(tempoInEffect + delta)
+        setBPM(settings.bpm + delta)
     }
 
-    /// The tempo controls' series, also while they set the track's tempo; Sync mode keeps its own.
+    /// The tempo controls' series; Sync mode keeps its own.
     func tapTempo(at time: TimeInterval) {
         haptics?.selection()
         guard let bpm = taps.tap(at: time) else { return }
-        applyTempoInEffect(bpm)
-    }
-
-    /// Returns true when it changed.
-    @discardableResult
-    private func applyTempoInEffect(_ bpm: Int) -> Bool {
-        isTrackInUse ? applyTrackTempo(bpm) : applyBPM(bpm)
+        applyBPM(bpm)
     }
 
     /// Sets the metronome's tempo. Returns true when it changed.
@@ -701,10 +645,9 @@ final class MetronomeModel {
     }
 
     /// With a track the bar is worked out again from the offset, so no change starts a new bar.
-    /// The metronome's own settings are stored; the engine gets them with the tempo in effect.
     private func settingsChanged(startNewBar: Bool) {
         store.save(settings)
-        if isPlaying { engine.update(settingsInEffect, startNewBar: startNewBar && !isPlayingTrack) }
+        if isPlaying { engine.update(settings, startNewBar: startNewBar && !isPlayingTrack) }
     }
 
     /// Replaces all the settings at once, as loading a song does.
@@ -725,16 +668,8 @@ final class MetronomeModel {
         loadedFromSetlistID.flatMap(library.setlist(id:))
     }
 
-    /// True when a song is loaded and the current settings differ from it. While a track is in use
-    /// only the time signature and the accents count, as the tempo on screen is the track's; an
-    /// unsaved metronome tempo is kept and counts whenever no track is in use.
-    var isEdited: Bool {
-        guard let saved = loadedSong?.settings else { return false }
-        if isTrackInUse {
-            return saved.timeSignature != settings.timeSignature || saved.accents != settings.accents
-        }
-        return saved != settings
-    }
+    /// True when a song is loaded and the current settings differ from it, with a track in use or not.
+    var isEdited: Bool { loadedSong.map { $0.settings != settings } ?? false }
 
     /// Whether the badge on the header's menu button is shown. It follows `isEdited`, except
     /// that it stays for a moment when the user's own changes bring the settings back to the
@@ -833,14 +768,13 @@ final class MetronomeModel {
         guard let song = library.song(id: id) else { return false }
         let isAnotherSong = id != loadedSongID
         if isAnotherSong, isTrackPlayable || isPlayable(song.track) { stop() }
-        let old = loadedTrack
         loadedSongID = id
         let members = setlistID.flatMap(library.setlist(id:))?.songIDs ?? []
         loadedFromSetlistID = members.contains(id) ? setlistID : nil
         if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: now()) }
         if isAnotherSong {
             loadedSongChanged()
-            loadedTrackReplaced(replacing: old)
+            loadedTrackReplaced()
             apply(song.settings)
             markPlayed(id)
         }
@@ -895,11 +829,10 @@ final class MetronomeModel {
     func unloadSong() {
         guard loadedSongID != nil else { return }
         if isPlayingTrack { stop() }
-        let old = loadedTrack
         loadedSongID = nil
         loadedFromSetlistID = nil
         loadedSongChanged()
-        loadedTrackReplaced(replacing: old)
+        loadedTrackReplaced()
         persistLibrary()
         haptics?.selection()
     }
@@ -922,7 +855,6 @@ final class MetronomeModel {
             track = stored
         }
         if isTrackPlayable || isPlayable(track) { stop() }
-        let old = loadedTrack
         let moment = now()
         guard let song = library.addSong(name: name, settings: newSettings, track: track, now: moment) else { return nil }
         if let setlistID {
@@ -932,7 +864,7 @@ final class MetronomeModel {
         loadedSongID = song.id
         loadedFromSetlistID = setlistID
         loadedSongChanged()
-        loadedTrackReplaced(replacing: old)
+        loadedTrackReplaced()
         apply(song.settings)
         markPlayed(song.id)
         persistLibrary()
@@ -1047,7 +979,7 @@ final class MetronomeModel {
             loadedFromSetlistID = members.contains(song.id) ? setlistID : nil
             if let loadedFromSetlistID { library.touchSetlist(loadedFromSetlistID, now: moment) }
             loadedSongChanged()
-            loadedTrackReplaced(replacing: nil)
+            loadedTrackReplaced()
             markPlayed(song.id)
         }
         persistLibrary()
@@ -1119,7 +1051,7 @@ final class MetronomeModel {
         if isLoaded, settingsChanged, let updated = library.song(id: id) {
             apply(updated.settings, startNewBar: updated.settings.timeSignature != settings.timeSignature)
         }
-        if isLoaded, filePicked || newPart != nil { loadedTrackReplaced(replacing: song.track) }
+        if isLoaded, filePicked || newPart != nil { loadedTrackReplaced() }
         syncSaveOffer()
         persistLibrary()
         return true
@@ -1146,7 +1078,7 @@ final class MetronomeModel {
         guard let track = storePicked(picked, forMissing: missing) else { return false }
         if backingTracksOn, isPlaying { stop() }
         if track != missing { library.setTrack(songID, to: track, now: now()) }
-        loadedTrackReplaced(replacing: missing)
+        loadedTrackReplaced()
         persistLibrary()
         return true
     }
@@ -1168,14 +1100,13 @@ final class MetronomeModel {
     private func deleteWithoutSaving(_ id: UUID) {
         let isLoaded = loadedSongID == id
         if isLoaded, isPlayingTrack { stop() }
-        let old = loadedTrack
         library.deleteSong(id, now: now())
         lastPlayed[id] = nil
         if isLoaded {
             loadedSongID = nil
             loadedFromSetlistID = nil
             loadedSongChanged()
-            loadedTrackReplaced(replacing: old)
+            loadedTrackReplaced()
         }
     }
 
@@ -1428,16 +1359,15 @@ final class MetronomeModel {
     }
 
     /// The loaded song's track changed on another device, or the song went. The same file with a
-    /// new tempo, offset or mix applies at once; a new tempo reaches the click also while the file
-    /// is missing. A track removed or replaced stops playback only while playing with its file,
-    /// and goes to 0:00; an attached one arrives missing and playback carries on.
+    /// new offset or mix applies at once. A track removed or replaced stops playback only while
+    /// playing with its file, and goes to 0:00; an attached one arrives missing and playback
+    /// carries on.
     private func loadedTrackArrived(replacing old: BackingTrack?) {
         guard let old, let track = loadedTrack, track.fileID == old.fileID else {
             if isPlayingTrack { stop() }
-            loadedTrackReplaced(replacing: old)
+            loadedTrackReplaced()
             return
         }
-        if track.bpm != old.bpm, isPlaying, isTrackInUse { engine.update(settingsInEffect, startNewBar: false) }
         if track.offset != old.offset, isPlayingTrack { engine.setOffset(track.offsetSeconds) }
         if track.mix != old.mix { sendMix(track.mix) }
     }
