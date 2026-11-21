@@ -17,6 +17,12 @@ struct PickedTrack: Equatable, Sendable {
     let offset: Int
 }
 
+/// What a `Choose file` pill on the player card was tapped for: the loaded song's missing track's
+/// file, or the loaded song without a track (6.12).
+enum ChooseFileTarget: Equatable, Sendable {
+    case missingTrack(fileID: UUID), song(id: UUID)
+}
+
 /// What saving the song sheet does to the song's backing track.
 enum TrackEdit: Equatable, Sendable {
     case keep, remove, attach(PickedTrack)
@@ -1114,6 +1120,35 @@ final class MetronomeModel {
         loadedTrackReplaced()
         persistLibrary()
         return true
+    }
+
+    /// `Choose file` in the player card's no-track state (6.12): the file is attached to the loaded
+    /// song at once, as a newly attached file of the song sheet (10.3): its offset found, a two-bar
+    /// count-in and the mix at the centre, at the song's saved tempo. The settings are not touched,
+    /// so unsaved changes to the tempo, time signature and accents stay unsaved, with the badge;
+    /// the metronome takes the track's offset, count-in and mix. With Backing tracks on, playback
+    /// stops; either way the position goes to 0:00 (7.10).
+    ///
+    /// Returns false only when the file cannot be stored; then nothing changes. True, doing
+    /// nothing, when the song is no longer the loaded one or has got a track meanwhile.
+    @discardableResult
+    func attachFileToLoadedSong(_ picked: PickedTrack, for songID: UUID) -> Bool {
+        guard loadedSongID == songID, loadedTrack == nil else { return true }
+        guard let track = newTrack(picked, replacing: nil) else { return false }
+        if backingTracksOn, isPlaying { stop() }
+        library.setTrack(songID, to: track, now: now())
+        loadedTrackReplaced()
+        persistLibrary()
+        return true
+    }
+
+    /// `Choose file` on the player card, for what its pill was tapped for.
+    @discardableResult
+    func chooseFile(_ picked: PickedTrack, for target: ChooseFileTarget) -> Bool {
+        switch target {
+        case .missingTrack(let fileID): chooseFileForLoadedTrack(picked, for: fileID)
+        case .song(let id): attachFileToLoadedSong(picked, for: id)
+        }
     }
 
     /// The metronome keeps its settings if the deleted song was the loaded one; playing with
