@@ -43,13 +43,18 @@ struct SettingsStoreTests {
         #expect(store.load() == MetronomeSettings())
     }
 
-    @Test func backingTracksAreOnWhenNothingIsStored() {
-        #expect(store.loadBackingTracksOn() == true)
+    @Test func nothingStoredForBackingTracksReadsAsNil() {
+        #expect(store.loadBackingTracksOn() == nil)
     }
 
     @Test func backingTracksOffIsRemembered() {
         store.saveBackingTracksOn(false)
         #expect(SettingsStore(defaults: defaults).loadBackingTracksOn() == false)
+    }
+
+    @Test func backingTracksOnIsRemembered() {
+        store.saveBackingTracksOn(true)
+        #expect(SettingsStore(defaults: defaults).loadBackingTracksOn() == true)
     }
 
     @Test func trackSettingsAreRememberedAndCleared() {

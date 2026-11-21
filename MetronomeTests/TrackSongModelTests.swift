@@ -938,9 +938,12 @@ struct TrackSongModelTests {
         let haptics = FakeHaptics()
         let files = TrackFileStore(directory: bench.root.appending(path: UUID().uuidString))
         let clock = clock
+        // The devices start with an empty library, where the switch would start off.
+        let store = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        store.saveBackingTracksOn(true)
         let model = MetronomeModel(
             engine: engine,
-            store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            store: store,
             haptics: haptics,
             libraryStore: LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
             sync: LibrarySync(cloud: cloud, defaults: UserDefaults(suiteName: UUID().uuidString)!, syncingDelay: .seconds(3600)),

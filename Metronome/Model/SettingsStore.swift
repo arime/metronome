@@ -62,9 +62,9 @@ struct SettingsStore: @unchecked Sendable {
     /// Kept apart from the settings for the same reason as the sound.
     private static let backingTracksOnKey = "metronome.backingTracksOn.v1"
 
-    /// On when nothing is stored.
-    func loadBackingTracksOn() -> Bool {
-        defaults.object(forKey: Self.backingTracksOnKey) as? Bool ?? true
+    /// nil when nothing is stored; the model then decides the starting value.
+    func loadBackingTracksOn() -> Bool? {
+        defaults.object(forKey: Self.backingTracksOnKey) as? Bool
     }
 
     func saveBackingTracksOn(_ on: Bool) {

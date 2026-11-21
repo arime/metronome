@@ -49,11 +49,53 @@ struct TrackSwitchModelTests {
         return (bench.relaunch(), first, second)
     }
 
-    @Test func theSwitchIsOnAtFirstLaunch() throws {
+    @Test func withATrackInTheLibraryTheSwitchStartsOn() throws {
         let model = try bench.makeModel()
         #expect(model.backingTracksOn)
         #expect(model.isTrackInUse)
         #expect(model.isTrackPlayable)
+        #expect(bench.settingsStore.loadBackingTracksOn() == true)
+    }
+
+    @Test func aFreshInstallStartsWithTheSwitchOff() {
+        let model = bench.relaunch()
+        #expect(model.backingTracksOn == false)
+        #expect(model.playerContent == .metronome)
+        #expect(bench.settingsStore.loadBackingTracksOn() == false)
+    }
+
+    @Test func aLibraryWithoutTracksStartsWithTheSwitchOff() throws {
+        var library = Library()
+        let added = library.addSong(name: "Plain", settings: MetronomeSettings(), now: Date())
+        let song = try #require(added)
+        bench.libraryStore.save(LibraryState(library: library, loadedSongID: song.id))
+        let model = bench.relaunch()
+        #expect(model.loadedSongID == song.id)
+        #expect(model.backingTracksOn == false)
+        #expect(bench.settingsStore.loadBackingTracksOn() == false)
+    }
+
+    @Test func theStartingValueIsStoredSoALaterTrackKeepsIt() throws {
+        let model = bench.relaunch()
+        #expect(model.backingTracksOn == false)
+        let picked = PickedTrack(url: try bench.sourceFile(named: "Take.wav"), fileName: "Take.wav", offset: 48)
+        let song = try #require(model.createSong(name: "Song", settings: model.settings, addingTo: nil, track: picked))
+        #expect(model.loadedSongID == song.id)
+        let relaunched = bench.relaunch()
+        #expect(relaunched.loadedTrack?.fileName == "Take.wav")
+        #expect(relaunched.backingTracksOn == false)
+        #expect(relaunched.isTrackInUse == false)
+    }
+
+    @Test func aStoredValueWins() throws {
+        bench.settingsStore.saveBackingTracksOn(false)
+        let model = try bench.makeModel()
+        #expect(model.loadedTrack != nil)
+        #expect(model.backingTracksOn == false)
+
+        let fresh = try TrackTestBench()
+        fresh.settingsStore.saveBackingTracksOn(true)
+        #expect(fresh.relaunch().backingTracksOn)
     }
 
     @Test func switchedOffTheSongIsPlain() throws {
@@ -204,9 +246,12 @@ struct TrackSwitchModelTests {
         let engine = FakeClickEngine()
         let haptics = FakeHaptics()
         let clock = clock
+        // The devices start with an empty library, where the switch would start off.
+        let store = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        store.saveBackingTracksOn(true)
         let model = MetronomeModel(
             engine: engine,
-            store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            store: store,
             haptics: haptics,
             libraryStore: LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
             sync: LibrarySync(cloud: cloud, defaults: UserDefaults(suiteName: UUID().uuidString)!, syncingDelay: .seconds(3600)),

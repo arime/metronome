@@ -108,12 +108,15 @@ final class MetronomeModel {
         settings = store.load()
         hapticsEnabled = store.loadHapticsEnabled()
         keepScreenAwake = store.loadKeepScreenAwake()
-        backingTracksOn = store.loadBackingTracksOn()
         let sound = store.loadClickSound()
         clickSound = sound
         engine.setSound(sound)
         let state = libraryStore.load()
         library = state.library
+        let stored = store.loadBackingTracksOn()
+        let on = stored ?? state.library.songs.contains { $0.track != nil }
+        backingTracksOn = on
+        if stored == nil { store.saveBackingTracksOn(on) }
         loadedSongID = state.loadedSongID
         loadedFromSetlistID = state.loadedFromSetlistID
         selectedSetlistID = state.selectedSetlistID
@@ -309,7 +312,9 @@ final class MetronomeModel {
     // MARK: - Backing track
 
     /// The Backing tracks switch. Off, every song is a plain metronome. Applies to the whole app,
-    /// is remembered on this device and changes only when tapped.
+    /// is remembered on this device and changes only when tapped. With nothing stored it starts
+    /// on only when the library already holds a song with a track, and that value is stored at
+    /// once, so a track attached or synced later does not change it.
     private(set) var backingTracksOn: Bool
 
     /// Turns backing tracks on or off, with a tick; only while stopped and never in Sync mode.
