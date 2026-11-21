@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Turns backing tracks on or off for the whole app. Shown in the header only for a song with a
-/// backing track. Works only while stopped; while playing it is dimmed and takes no touches (7.12).
+/// Turns backing tracks on or off for the whole app. Shown in the header for every song and with
+/// nothing loaded. Works only while stopped; while playing it is dimmed and takes no touches (7.12).
 struct TrackSwitchButton: View {
     @Environment(MetronomeModel.self) private var model
 

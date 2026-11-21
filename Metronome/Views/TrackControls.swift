@@ -1,8 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The card at the bottom of the metronome screen (6.7): Track content while a track is in
-/// use, Metronome content otherwise. Its size and place never change.
+/// The card at the bottom of the metronome screen (6.7): Track content while Backing tracks is
+/// on, Metronome content while it is off. Its size and place never change.
 struct PlayerCard: View {
     @Environment(MetronomeModel.self) private var model
 
@@ -39,33 +39,44 @@ struct TrackContent: View {
         }
     }
 
-    /// The music note, 8 pt after it the file's name, which takes the space left, and 8 pt
-    /// after that one pill: `Sync`, or `Choose file` while the file is missing. The amber name
-    /// and the pill say the file is missing, so the card does not.
+    /// The music note, 8 pt after it the file's name or `No track selected`, which takes the
+    /// space left, and 8 pt after that at most one pill: `Sync`, or `Choose file` while the file
+    /// is missing and for a song without a track. The amber name and the pill say the file is
+    /// missing, so the card does not.
     private var fileNameRow: some View {
-        let isMissing = model.isTrackMissing
-        let fileName = model.loadedTrack?.fileName ?? ""
+        let card = model.trackCard
         return HStack(spacing: 8) {
             HStack(spacing: 8) {
                 Image(systemName: "music.note")
                     .font(.system(size: 16))
                     .foregroundStyle(Theme.muted)
-                Text(fileName)
+                Text(card.text)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(isMissing ? Theme.amber : Theme.dialWhite)
+                    .foregroundStyle(Self.colour(of: card.textStyle))
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(isMissing ? "Track missing, \(fileName)" : "Backing track, \(fileName)")
-            if isMissing {
-                ChooseFilePill()
-            } else {
+            .accessibilityLabel(card.accessibilityLabel)
+            switch card.pill {
+            case .sync?:
                 CardPill(title: "Sync", sidePadding: 14) { model.enterSyncMode() }
+            case .chooseFile(let target)?:
+                ChooseFilePill(target: target)
+            case nil:
+                EmptyView()
             }
         }
         .frame(height: 30)
+    }
+
+    private static func colour(of style: TrackCard.TextStyle) -> Color {
+        switch style {
+        case .fileName: Theme.dialWhite
+        case .missingFileName: Theme.amber
+        case .noTrack: Theme.muted
+        }
     }
 
     /// Five places spread evenly, the outer two at the edges. Outside a setlist the outer two
@@ -127,28 +138,32 @@ private struct CardPill: View {
     }
 }
 
-/// `Choose file` while the track's file is missing: the Files picker for audio, and the picked
-/// file stored at once for the missing track (6.12). While the pick is read the pill does
-/// nothing and is drawn at 40 % opacity, as the card's other dimmed buttons are.
+/// `Choose file` while the track's file is missing, and for a song without a track: the Files
+/// picker for audio, and the picked file stored at once, for the missing track or attached to the
+/// song (6.12). While the pick is read the pill does nothing and is drawn at 40 % opacity, as the
+/// card's other dimmed buttons are.
 private struct ChooseFilePill: View {
     @Environment(MetronomeModel.self) private var model
+    /// What the card's pill offers to choose a file for now.
+    let target: ChooseFileTarget
     @State private var isPickerShown = false
-    /// The track the pill was tapped for, taken before the picker opens.
-    @State private var chosenFor: UUID?
+    /// What the pill was tapped for, taken before the picker opens.
+    @State private var chosenFor: ChooseFileTarget?
     /// The file being copied and read, for `chosenFor`.
     @State private var pickToRead: URL?
     @State private var isUnplayableShown = false
     @State private var isTrackNotStoredShown = false
 
-    /// The read, tied to the track it is for: another song loaded meanwhile changes it.
+    /// The read, tied to what it is for: another song loaded meanwhile, or the song getting a
+    /// track another way, changes it.
     private struct Read: Equatable {
         let url: URL
-        let fileID: UUID
+        let target: ChooseFileTarget
     }
 
     private var read: Read? {
-        guard let url = pickToRead, let fileID = chosenFor, model.loadedTrack?.fileID == fileID else { return nil }
-        return Read(url: url, fileID: fileID)
+        guard let url = pickToRead, let chosenFor, model.trackCard.pill == .chooseFile(chosenFor) else { return nil }
+        return Read(url: url, target: chosenFor)
     }
 
     var body: some View {
@@ -174,7 +189,7 @@ private struct ChooseFilePill: View {
                 guard let result = await PickedFileReader.readInBackground(read.url) else { return }
                 switch result {
                 case .success(let picked):
-                    if !model.chooseFileForLoadedTrack(picked, for: read.fileID) { isTrackNotStoredShown = true }
+                    if !model.chooseFile(picked, for: read.target) { isTrackNotStoredShown = true }
                     // The model keeps its own copy when it stores the file; nothing is kept for
                     // a retry when it cannot, as the pick is made again from the pill.
                     PickedFileReader.discard(picked)
@@ -192,8 +207,7 @@ private struct ChooseFilePill: View {
     }
 
     private func openPicker() {
-        guard let fileID = model.loadedTrack?.fileID else { return }
-        chosenFor = fileID
+        chosenFor = target
         isPickerShown = true
     }
 }
@@ -280,7 +294,7 @@ struct TrackProgressBar: View {
     }
 
     private var bar: some View {
-        let isMissing = model.isTrackMissing
+        let hasNoFile = !model.trackCard.hasFile
         let length = model.trackLength ?? 0
         let isCountingIn = model.isCountingIn
         let shown = drag?.time ?? model.trackTime
@@ -309,7 +323,7 @@ struct TrackProgressBar: View {
             }
             .frame(height: Self.bandHeight)
             HStack {
-                if !isMissing {
+                if !hasNoFile {
                     Text(isCountingIn ? "Count-in" : TrackTime.label(shown))
                         .foregroundStyle(isCountingIn ? Theme.amber : Theme.muted)
                     Spacer(minLength: 8)
@@ -324,8 +338,8 @@ struct TrackProgressBar: View {
         .frame(height: Self.height)
         // Flattened first, so the knob still covers the played stub when dimmed.
         .compositingGroup()
-        .opacity(isMissing ? 0.4 : 1)
-        .allowsHitTesting(!isMissing)
+        .opacity(hasNoFile ? 0.4 : 1)
+        .allowsHitTesting(!hasNoFile)
         .accessibilityElement(children: .ignore)
         .accessibilityValue(
             isCountingIn ? "Count-in" : "\(TrackTime.spoken(shown)) of \(TrackTime.spoken(length))"
@@ -337,8 +351,9 @@ struct TrackProgressBar: View {
             @unknown default: break
             }
         }
-        // It would read "0 seconds of 0 seconds"; the file-name row already reads "Track missing".
-        .accessibilityHidden(isMissing)
+        // It would read "0 seconds of 0 seconds"; the file-name row already says there is no
+        // file to play.
+        .accessibilityHidden(hasNoFile)
     }
 
     /// The knob and the elapsed time follow the finger; the position changes on lift.
@@ -365,7 +380,7 @@ struct TrackProgressBar: View {
 /// Rewind and Fast-forward: 44 pt round with a double chevron, 15 seconds back or forward. On
 /// surface raised on the player card, and on surface selected on Sync mode's playback card.
 /// Fast-forward is dimmed within the last 15 seconds; both are dimmed, do nothing and are
-/// hidden from VoiceOver while the file is missing.
+/// hidden from VoiceOver while there is no file to play: missing, no track or nothing loaded.
 struct TrackSkipButton: View {
     @Environment(MetronomeModel.self) private var model
     let isForward: Bool
@@ -384,8 +399,8 @@ struct TrackSkipButton: View {
     }
 
     private var button: some View {
-        let isMissing = model.isTrackMissing
-        let isEnabled = !isMissing && (!isForward || model.canSkipForward)
+        let hasNoFile = !model.trackCard.hasFile
+        let isEnabled = !hasNoFile && (!isForward || model.canSkipForward)
         return Button {
             model.skipTrack(by: isForward ? Self.skip : -Self.skip)
         } label: {
@@ -400,6 +415,6 @@ struct TrackSkipButton: View {
         .opacity(isEnabled ? 1 : 0.4)
         .disabled(!isEnabled)
         .accessibilityLabel(isForward ? "Forward 15 seconds" : "Back 15 seconds")
-        .accessibilityHidden(isMissing)
+        .accessibilityHidden(hasNoFile)
     }
 }

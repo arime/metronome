@@ -174,13 +174,16 @@ struct OneTempoModelTests {
         #expect(model.isSaveOffered == false)
     }
 
-    @Test func thePlayerShowsTheTrackOnlyWhileATrackIsInUse() throws {
+    @Test func thePlayerFollowsTheSwitch() throws {
         let model = try makeModel()
         #expect(model.playerContent == .track)
         model.toggleBackingTracks()
         #expect(model.playerContent == .metronome)
         model.toggleBackingTracks()
         model.unloadSong()
+        #expect(model.playerContent == .track)
+        #expect(model.trackCard == .nothingLoaded)
+        model.toggleBackingTracks()
         #expect(model.playerContent == .metronome)
     }
 

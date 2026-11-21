@@ -269,9 +269,10 @@ final class MetronomeModel {
     }
     #endif
 
-    /// Whether the player card shows the metronome's readout and transport or the track's.
+    /// Whether the player card shows the metronome's readout and transport or the track's: it
+    /// follows the Backing tracks switch alone, for every song and with nothing loaded.
     var playerContent: PlayerContent {
-        isTrackInUse ? .track : .metronome
+        backingTracksOn ? .track : .metronome
     }
 
     /// The readout starts again whenever the loaded song becomes another song or none; while
@@ -347,6 +348,11 @@ final class MetronomeModel {
     /// The track is in use but its file is not on this device.
     var isTrackMissing: Bool {
         isTrackInUse && !isTrackPlayable
+    }
+
+    /// What Track content's file-name row shows, and whether its file controls work (6.12).
+    var trackCard: TrackCard {
+        TrackCard.state(loadedSongID: loadedSongID, track: loadedTrack, isPlayable: isTrackPlayable)
     }
 
     /// The file's length in seconds; read with `isTrackPlayable`, so nil while the switch is off.

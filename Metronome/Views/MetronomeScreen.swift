@@ -105,14 +105,12 @@ struct MetronomeScreen: View {
         }
     }
 
-    /// Title, the Backing tracks switch for a song with a backing track, the Sound button and
-    /// the menu button, which carries the badge while the song has unsaved changes.
+    /// Title, the Backing tracks switch, the Sound button and the menu button, which carries the
+    /// badge while the song has unsaved changes.
     private var header: some View {
         HStack(spacing: 8) {
             SongTitle { isLibraryShown = true }
-            if model.loadedTrack != nil {
-                TrackSwitchButton()
-            }
+            TrackSwitchButton()
             SoundButton()
             HeaderMenuButton(
                 openSettings: { isSettingsShown = true },

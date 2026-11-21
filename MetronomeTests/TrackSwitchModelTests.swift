@@ -174,6 +174,40 @@ struct TrackSwitchModelTests {
         #expect(model.backingTracksOn)
     }
 
+    @Test func aSongWithoutATrackHasTrackContentWithTheSwitchOn() throws {
+        let (model, _, second) = try makeTwoSongs(secondHasTrack: false)
+        model.loadSong(second.id, from: nil)
+        #expect(model.playerContent == .track)
+        #expect(model.trackCard == .noTrack(songID: second.id))
+        #expect(model.isTrackInUse == false)
+        model.togglePlayback()
+        #expect(model.isPlaying)
+        #expect(engine.startedTracks.isEmpty)
+        #expect(engine.startedSettings.last?.bpm == 90)
+    }
+
+    @Test func withTheSwitchOffEverySongHasMetronomeContent() throws {
+        let (model, _, second) = try makeTwoSongs(secondHasTrack: false)
+        model.toggleBackingTracks()
+        #expect(model.playerContent == .metronome)
+        model.loadSong(second.id, from: nil)
+        #expect(model.playerContent == .metronome)
+        model.unloadSong()
+        #expect(model.playerContent == .metronome)
+    }
+
+    @Test func theSwitchWorksForASongWithoutATrack() throws {
+        let (model, _, second) = try makeTwoSongs(secondHasTrack: false)
+        model.loadSong(second.id, from: nil)
+        let ticks = haptics.selectionCount
+        model.toggleBackingTracks()
+        #expect(model.backingTracksOn == false)
+        #expect(haptics.selectionCount == ticks + 1)
+        model.togglePlayback()
+        model.toggleBackingTracks()
+        #expect(model.backingTracksOn == false)
+    }
+
     @Test func switchedOffLoadingATrackSongDoesNotStopPlayback() throws {
         let (model, _, second) = try makeTwoSongs(secondHasTrack: true)
         model.toggleBackingTracks()

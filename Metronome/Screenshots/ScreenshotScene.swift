@@ -66,6 +66,12 @@ enum ScreenshotScene: String, CaseIterable {
     case trackFirst
     /// Track content with the track on the setlist's last song, loaded from the setlist.
     case trackLast
+    /// Track content in its no-track state: Backing tracks on and the sample library without a
+    /// track, Seven Bridges loaded from the setlist. On an engine that plays nothing, as
+    /// `trackSyncTimer`'s. Not an App Store screenshot.
+    case trackNone
+    /// Track content of `trackNone` with nothing loaded. Not an App Store screenshot.
+    case trackNothingLoaded
     /// Stage mode for the sample setlist, stopped, with the loaded song's tile marked. Not an App
     /// Store screenshot; for checking stage mode in the simulator.
     case stage
@@ -82,6 +88,11 @@ enum ScreenshotScene: String, CaseIterable {
              .trackMissing, .trackFirst, .trackLast, .stagePlaying: true
         default: false
         }
+    }
+
+    /// The scenes with Backing tracks on and no track in the library.
+    private var isNoTrack: Bool {
+        self == .trackNone || self == .trackNothingLoaded
     }
 
     /// Where in the setlist the song with the track is.
@@ -119,7 +130,9 @@ enum ScreenshotScene: String, CaseIterable {
         let trackFiles = TrackFileStore(
             directory: FileManager.default.temporaryDirectory.appending(path: "ScreenshotTracks", directoryHint: .isDirectory)
         )
-        if self == .trackMissing {
+        if isNoTrack {
+            trackFiles.removeAll(except: [])
+        } else if self == .trackMissing {
             trackFiles.removeAll(except: [])
             sample.attachTrack(
                 BackingTrack(fileID: UUID(), fileName: DemoTrack.fileName, offset: 50), now: Self.date
@@ -138,11 +151,11 @@ enum ScreenshotScene: String, CaseIterable {
         } else {
             libraryStore.save(LibraryState(
                 library: sample.library,
-                loadedSongID: sample.loadedSongID,
+                loadedSongID: self == .trackNothingLoaded ? nil : sample.loadedSongID,
                 // The library opens on the setlist its loaded song came from, so the scene
                 // that shows all songs has the song loaded on its own.
                 loadedFromSetlistID: self == .library || self == .librarySelect || self == .trackSolo
-                    || self == .metronomeSolo ? nil : sample.setlistID,
+                    || self == .metronomeSolo || self == .trackNothingLoaded ? nil : sample.setlistID,
                 selectedSetlistID: self == .setlist || self == .setlistSearch || self == .setlistSelect
                     ? sample.setlistID : nil
             ))
@@ -162,7 +175,8 @@ enum ScreenshotScene: String, CaseIterable {
             model.togglePlayback()
             return model
         }
-        if self == .trackSyncTimer || self == .stagePlaying {
+        if isNoTrack { settingsStore.saveBackingTracksOn(true) }
+        if self == .trackSyncTimer || self == .stagePlaying || isNoTrack {
             let model = MetronomeModel(
                 engine: ScreenshotEngine(soundingBeat: 1, repeats: true, clocksTrack: true),
                 store: settingsStore,
@@ -173,7 +187,7 @@ enum ScreenshotScene: String, CaseIterable {
             )
             if self == .trackSyncTimer {
                 model.enterSyncMode()
-            } else if let trackSongID = sample.loadedSongID {
+            } else if self == .stagePlaying, let trackSongID = sample.loadedSongID {
                 // The track song is the loaded one.
                 model.enterStageMode(setlistID: sample.setlistID)
                 model.tapStageTile(trackSongID)
