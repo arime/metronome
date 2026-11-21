@@ -563,17 +563,16 @@ struct TrackSongModelTests {
 
     // MARK: - Sync mode
 
-    @Test func nudgingTheOffsetSavesWithoutEdited() throws {
+    @Test func nudgingTheOffsetIsAnEdit() throws {
         let setup = try makeModel()
         let model = setup.model
         model.togglePlayback()
         let ticks = haptics.selectionCount
         model.nudgeOffset(by: 1)
-        #expect(model.loadedTrack?.offset == 49)
-        model.savePendingChanges()
-        #expect(bench.libraryStore.load().library.song(id: setup.song.id)?.track?.offset == 49)
-        #expect(model.isEdited == false)
-        #expect(model.isSaveOffered == false)
+        #expect(model.trackSettings?.offset == 49)
+        #expect(model.loadedTrack?.offset == 48)
+        #expect(model.isEdited)
+        #expect(model.isSaveOffered)
         #expect(engine.offsets.last == 0.49)
         #expect(haptics.selectionCount == ticks + 1)
     }
@@ -581,26 +580,27 @@ struct TrackSongModelTests {
     @Test func theOffsetStaysInsideTheFile() throws {
         let model = try makeModel().model
         model.nudgeOffset(by: -100)
-        #expect(model.loadedTrack?.offset == 0)
+        #expect(model.trackSettings?.offset == 0)
 
         let short = try makeModel(length: 2.0).model
         short.nudgeOffset(by: 1000)
-        #expect(short.loadedTrack?.offset == 200)
+        #expect(short.trackSettings?.offset == 200)
     }
 
-    @Test func countInAndMixAreSaved() throws {
+    @Test func countInAndMixAreEdits() throws {
         let setup = try makeModel()
         let model = setup.model
         model.setCountIn(.off)
         model.setMix(-0.5)
-        model.savePendingChanges()
-        let saved = try #require(bench.libraryStore.load().library.song(id: setup.song.id)?.track)
-        #expect(saved.countIn == .off)
-        #expect(saved.mix == -0.5)
         let mix = try #require(engine.mixes.last)
         #expect(mix.click == 1)
         #expect(abs(mix.track - 0.251) < 0.001)
-        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered)
+        #expect(savedTrack(of: setup.song) == setup.song.track)
+        model.saveChanges()
+        let saved = try #require(savedTrack(of: setup.song))
+        #expect(saved.countIn == .off)
+        #expect(saved.mix == -0.5)
         #expect(model.isSaveOffered == false)
     }
 
@@ -632,51 +632,115 @@ struct TrackSongModelTests {
         bench.libraryStore.load().library.song(id: song.id)?.track
     }
 
-    @Test func severalNudgesInARowSaveOnceWithTheLastValue() async throws {
+    @Test func saveChangesWritesTheTrackSettingsWithTheRest() throws {
         let setup = try makeModel()
-        let model = bench.relaunch(saveDelay: .milliseconds(20))
-        let writes = bench.libraryDefaults.writes
-        model.nudgeOffset(by: 1)
-        model.nudgeOffset(by: 1)
+        let model = setup.model
+        model.setBPM(130)
+        model.nudgeOffset(by: 2)
         model.setMix(0.4)
-        model.nudgeOffset(by: 1)
-        #expect(engine.mixes.count == 1)
-        #expect(bench.libraryDefaults.writes == writes)
-        #expect(savedTrack(of: setup.song)?.offset == 48)
-        try await bench.waitForASave(after: writes)
-        #expect(bench.libraryDefaults.writes == writes + 1)
-        #expect(savedTrack(of: setup.song)?.offset == 51)
-        #expect(savedTrack(of: setup.song)?.mix == 0.4)
-    }
-
-    @Test func leavingTheForegroundSavesAtOnce() throws {
-        let setup = try makeModel()
-        let model = setup.model
-        model.setCountIn(.oneBar)
-        model.appDidLeaveForeground()
-        #expect(savedTrack(of: setup.song)?.countIn == .oneBar)
-    }
-
-    @Test func anyOtherSaveIncludesTheWaitingChange() throws {
-        let setup = try makeModel()
-        let model = setup.model
-        model.setMix(-0.3)
-        model.renameSong(setup.plain.id, to: "Plainer")
-        #expect(savedTrack(of: setup.song)?.mix == -0.3)
         let writes = bench.libraryDefaults.writes
-        model.savePendingChanges()
-        #expect(bench.libraryDefaults.writes == writes)
+        model.saveChanges()
+        #expect(bench.libraryDefaults.writes == writes + 1)
+        let saved = bench.libraryStore.load().library
+        #expect(saved.song(id: setup.song.id)?.settings.bpm == 130)
+        #expect(saved.song(id: setup.song.id)?.track?.offset == 50)
+        #expect(saved.song(id: setup.song.id)?.track?.mix == 0.4)
+        guard case .object(let fields)? = saved.songRecords[setup.song.id]?.parts[SongRecord.trackKey]?.value
+        else { Issue.record("no track part"); return }
+        #expect(fields["bpm"] == .number(130))
     }
 
-    @Test func aRelaunchAfterSavingSeesTheChange() throws {
+    @Test func revertSetsTheTrackSettingsBack() throws {
         let setup = try makeModel()
         let model = setup.model
-        model.setMix(-0.3)
+        model.togglePlayback()
+        model.nudgeOffset(by: 2)
+        model.setMix(0.4)
+        model.setCountIn(.off)
+        model.discardChanges()
+        #expect(model.trackSettings == model.loadedTrack?.settings)
+        #expect(engine.offsets.last == 0.48)
+        let mix = try #require(engine.mixes.last)
+        #expect(mix.click == TrackMix.clickGain(at: 0))
+        #expect(mix.track == TrackMix.trackGain(at: 0))
+        #expect(engine.stopCount == 0)
+        #expect(model.isPlaying)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func unsavedTrackSettingsSurviveARelaunch() throws {
+        let setup = try makeModel()
+        let model = setup.model
         model.nudgeOffset(by: 5)
-        model.savePendingChanges()
+        model.setMix(-0.3)
         let relaunched = bench.relaunch()
-        #expect(relaunched.loadedTrack?.mix == -0.3)
-        #expect(relaunched.loadedTrack?.offset == 53)
+        #expect(relaunched.trackSettings?.offset == 53)
+        #expect(relaunched.trackSettings?.mix == -0.3)
+        #expect(relaunched.loadedTrack?.offset == 48)
+        #expect(relaunched.isEdited)
+    }
+
+    @Test func withNothingStoredTheTrackSettingsAreTheSongs() throws {
+        let model = try makeModel().model
+        #expect(model.trackSettings != nil)
+        #expect(model.trackSettings == model.loadedTrack?.settings)
+        #expect(model.isEdited == false)
+    }
+
+    @Test func loadingAnotherSongDropsUnsavedTrackSettings() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.nudgeOffset(by: 2)
+        model.loadSong(setup.plain.id, from: setup.setlist)
+        #expect(model.trackSettings == nil)
+        model.loadSong(setup.song.id, from: setup.setlist)
+        #expect(model.trackSettings?.offset == 48)
+    }
+
+    @Test func unloadDropsTheTrackSettings() throws {
+        let model = try makeModel().model
+        model.nudgeOffset(by: 2)
+        model.unloadSong()
+        #expect(model.trackSettings == nil)
+        #expect(model.isEdited == false)
+    }
+
+    @Test func editingTheLoadedSongsSettingsDropsUnsavedTrackSettings() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.togglePlayback()
+        model.nudgeOffset(by: 2)
+        var settings = setup.song.settings
+        settings.setBPM(130)
+        model.editSong(setup.song.id, name: "Song", settings: settings)
+        #expect(model.trackSettings?.offset == 48)
+        #expect(engine.offsets.last == 0.48)
+        #expect(model.settings.bpm == 130)
+        #expect(model.isPlaying)
+    }
+
+    @Test func renamingTheLoadedSongKeepsUnsavedTrackSettings() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.nudgeOffset(by: 1)
+        model.editSong(setup.song.id, name: "Renamed", settings: setup.song.settings)
+        #expect(model.trackSettings?.offset == 49)
+    }
+
+    @Test func theSwitchKeepsUnsavedTrackSettings() throws {
+        let model = try makeModel().model
+        model.nudgeOffset(by: 1)
+        model.toggleBackingTracks()
+        #expect(model.trackSettings?.offset == 49)
+        #expect(model.isSaveOffered)
+    }
+
+    @Test func replacingTheLoadedSongsFileTakesTheNewTracksSettings() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.nudgeOffset(by: 2)
+        model.editSong(setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked(offset: 12)))
+        #expect(model.trackSettings?.offset == 12)
     }
 
     // MARK: - Changes arriving from another device
@@ -725,17 +789,34 @@ struct TrackSongModelTests {
         return (a.model, b.model, b.engine, b.files, song, b.haptics)
     }
 
-    @Test func anOffsetArrivingFromAnotherDeviceMovesTheGrid() throws {
+    @Test func anOffsetArrivingFromAnotherDeviceMakesTheSongEdited() throws {
+        let (a, b, bEngine, _, song, bHaptics) = try twoDevicesPlayingATrack()
+        let offsets = bEngine.offsets
+        let haptics = hapticCount(bHaptics)
+        clock.advance()
+        a.loadSong(song.id, from: nil)
+        a.nudgeOffset(by: 2)
+        a.saveChanges()
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedTrack?.offset == 50)
+        #expect(b.trackSettings?.offset == 48)
+        #expect(bEngine.offsets == offsets)
+        #expect(b.isSaveOffered)
+        #expect(b.isPlaying)
+        #expect(bEngine.stopCount == 0)
+        #expect(hapticCount(bHaptics) == haptics)
+    }
+
+    @Test func revertTakesTheArrivedOffset() throws {
         let (a, b, bEngine, _, song, _) = try twoDevicesPlayingATrack()
         clock.advance()
         a.loadSong(song.id, from: nil)
         a.nudgeOffset(by: 2)
-        a.savePendingChanges()
+        a.saveChanges()
         cloud.send(.changed, toDevice: 1)
-        #expect(b.loadedTrack?.offset == 50)
+        b.discardChanges()
+        #expect(b.trackSettings?.offset == 50)
         #expect(bEngine.offsets.last == 0.5)
-        #expect(b.isPlaying)
-        #expect(bEngine.stopCount == 0)
     }
 
     @Test func aTempoArrivingFromAnotherDeviceMakesTheSongEdited() throws {
@@ -763,6 +844,7 @@ struct TrackSongModelTests {
         a.editSong(song.id, name: "Song", settings: settings100, track: .remove)
         cloud.send(.changed, toDevice: 1)
         #expect(b.loadedTrack == nil)
+        #expect(b.trackSettings == nil)
         #expect(b.isPlaying == false)
         #expect(bEngine.stopCount == 1)
         #expect(b.trackPosition == 0)
@@ -779,6 +861,7 @@ struct TrackSongModelTests {
         a.editSong(song.id, name: "Song", settings: settings100, track: .attach(try picked("New.wav")))
         cloud.send(.changed, toDevice: 1)
         #expect(b.loadedTrack?.fileName == "New.wav")
+        #expect(b.trackSettings == b.loadedTrack?.settings)
         #expect(b.isTrackMissing)
         #expect(b.isPlaying == false)
         #expect(bEngine.stopCount == 1)
@@ -801,18 +884,19 @@ struct TrackSongModelTests {
         #expect(hapticCount(bHaptics) == haptics)
     }
 
-    @Test func aMixArrivingFromAnotherDeviceReachesTheEngine() throws {
+    @Test func aMixArrivingFromAnotherDeviceMakesTheSongEdited() throws {
         let (a, b, bEngine, _, song, bHaptics) = try twoDevicesPlayingATrack()
+        let mixes = bEngine.mixes.count
         let haptics = hapticCount(bHaptics)
         clock.advance()
         a.loadSong(song.id, from: nil)
         a.setMix(0.5)
-        a.savePendingChanges()
+        a.saveChanges()
         cloud.send(.changed, toDevice: 1)
         #expect(b.loadedTrack?.mix == 0.5)
-        let mix = try #require(bEngine.mixes.last)
-        #expect(mix.click == TrackMix.clickGain(at: 0.5))
-        #expect(mix.track == TrackMix.trackGain(at: 0.5))
+        #expect(b.trackSettings?.mix == 0)
+        #expect(bEngine.mixes.count == mixes)
+        #expect(b.isSaveOffered)
         #expect(b.isPlaying)
         #expect(hapticCount(bHaptics) == haptics)
     }
@@ -871,6 +955,7 @@ struct TrackSongModelTests {
         a.model.editSong(song.id, name: "Song", settings: settings100, track: .attach(try picked()))
         cloud.send(.changed, toDevice: 1)
         #expect(b.model.loadedTrack?.fileName == "Take.wav")
+        #expect(b.model.trackSettings == b.model.loadedTrack?.settings)
         #expect(b.model.isTrackMissing)
         #expect(b.model.isPlaying)
         #expect(b.engine.stopCount == 0)

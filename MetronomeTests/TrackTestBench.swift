@@ -68,21 +68,11 @@ final class TrackTestBench {
         return relaunch(length: length)
     }
 
-    /// Waits until the library has been written again after `writes` writes, or 10 s have passed,
-    /// however busy the main actor is. Only one save can be waiting at a time, so once it has run
-    /// no other can follow, and the count is final.
-    func waitForASave(after writes: Int) async throws {
-        let deadline = ContinuousClock.now + .seconds(10)
-        while libraryDefaults.writes == writes, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
-    }
-
     /// A new model on the same stores, as after the app is opened again.
-    func relaunch(length: TimeInterval = 222, saveDelay: Duration = .milliseconds(300)) -> MetronomeModel {
+    func relaunch(length: TimeInterval = 222) -> MetronomeModel {
         MetronomeModel(
             engine: engine, store: settingsStore, haptics: haptics, libraryStore: libraryStore,
-            syncSettingSaveDelay: saveDelay, trackFiles: trackFiles, lengthOfTrack: { _ in length }
+            trackFiles: trackFiles, lengthOfTrack: { _ in length }
         )
     }
 }

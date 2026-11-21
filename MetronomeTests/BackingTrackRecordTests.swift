@@ -197,6 +197,26 @@ import Testing
         #expect(fields["bpm"] == .number(96))
     }
 
+    @MainActor
+    @Test func aSongWhoseTrackPartHasNoTempoLoadsAtItsTempoPartsTempo() throws {
+        let record = recordWithoutTrackTempo()
+        var library = Library()
+        library.merge(songs: [record], setlists: [])
+        let libraryStore = LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        libraryStore.save(LibraryState(library: library))
+        let model = MetronomeModel(
+            engine: FakeClickEngine(), store: SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            haptics: FakeHaptics(), libraryStore: libraryStore, trackFiles: .temporary()
+        )
+        model.loadSong(record.id, from: nil)
+        #expect(model.settings.bpm == 96)
+        #expect(model.trackSettings == model.loadedTrack?.settings)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+        #expect(model.library.songRecords[record.id] == record)
+        #expect(libraryStore.load().library.songRecords[record.id] == record)
+    }
+
     @Test func mergingLeavesATrackPartWithoutATempoAlone() throws {
         let record = recordWithoutTrackTempo()
         // Another copy whose tempo changed while its track part stayed as it was.

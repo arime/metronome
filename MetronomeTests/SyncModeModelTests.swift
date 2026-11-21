@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import Metronome
 
-/// Sync mode while a track is in use: entering and leaving it, its transport buttons, and the time
-/// signature and accents it saves into the song at once.
+/// Sync mode while a track is in use: entering and leaving it, its transport buttons, and its
+/// changes, which are edits of the song like those made on the metronome screen.
 @MainActor
 @Suite
 struct SyncModeModelTests {
@@ -59,15 +59,17 @@ struct SyncModeModelTests {
         #expect(model.isSyncModeShown == false)
     }
 
-    @Test func doneSavesAWaitingChangeAtOnce() throws {
+    @Test func leavingSyncModeSavesNothing() throws {
         let model = try bench.makeModel()
         model.enterSyncMode()
         model.nudgeOffset(by: 1)
         model.leaveSyncMode()
-        #expect(savedSong(model)?.track?.offset == 49)
+        #expect(savedSong(model)?.track?.offset == 48)
+        #expect(model.trackSettings?.offset == 49)
+        #expect(model.isSaveOffered)
     }
 
-    @Test func leavingTheForegroundKeepsSyncModeAndSaves() throws {
+    @Test func leavingTheForegroundKeepsSyncModeAndTheEdit() throws {
         let model = try bench.makeModel()
         model.enterSyncMode()
         model.togglePlayback()
@@ -75,7 +77,8 @@ struct SyncModeModelTests {
         model.appDidLeaveForeground()
         #expect(model.isPlaying == false)
         #expect(model.isSyncModeShown)
-        #expect(savedSong(model)?.track?.offset == 49)
+        #expect(savedSong(model)?.track?.offset == 48)
+        #expect(model.trackSettings?.offset == 49)
     }
 
     @Test func theSwitchCannotBeTurnedInSyncMode() throws {
@@ -154,27 +157,25 @@ struct SyncModeModelTests {
 
     // MARK: - Time signature and accents
 
-    @Test func aTimeSignatureInSyncModeIsSavedAtOnce() throws {
+    @Test func aTimeSignatureInSyncModeIsAnEdit() throws {
         let model = try bench.makeModel()
         model.enterSyncMode()
         model.selectTimeSignature(.threeFour)
-        #expect(model.loadedSong?.settings.timeSignature == .threeFour)
-        #expect(model.loadedSong?.settings.accents == [1])
-        #expect(model.isEdited == false)
-        #expect(model.isSaveOffered == false)
-        model.savePendingChanges()
+        #expect(model.loadedSong?.settings.timeSignature == .fourFour)
+        #expect(model.settings.timeSignature == .threeFour)
+        #expect(model.settings.accents == [1])
+        #expect(model.isEdited)
+        #expect(model.isSaveOffered)
+        model.saveChanges()
         #expect(savedSong(model)?.settings.timeSignature == .threeFour)
     }
 
-    @Test func anAccentInSyncModeIsSavedAtOnce() throws {
+    @Test func anAccentInSyncModeIsAnEdit() throws {
         let model = try bench.makeModel()
         model.enterSyncMode()
         model.toggleAccent(beat: 3)
-        #expect(model.loadedSong?.settings.accents == [1, 3])
-        #expect(model.isEdited == false)
-        #expect(model.isSaveOffered == false)
-        model.savePendingChanges()
-        #expect(savedSong(model)?.settings.accents == [1, 3])
+        #expect(model.loadedSong?.settings.accents == [1])
+        #expect(model.isSaveOffered)
     }
 
     @Test func outsideSyncModeTheMeterIsNotSaved() throws {
@@ -184,21 +185,27 @@ struct SyncModeModelTests {
         #expect(model.isEdited)
     }
 
-    @Test func severalSyncModeChangesSaveOnce() async throws {
-        let song = try #require(try bench.makeModel().loadedSong)
-        let model = bench.relaunch(saveDelay: .milliseconds(20))
+    @Test func syncModeWritesNothingUntilSaveChanges() throws {
+        let model = try bench.makeModel()
         model.enterSyncMode()
         let writes = bench.libraryDefaults.writes
         model.toggleAccent(beat: 2)
         model.toggleAccent(beat: 3)
         model.nudgeOffset(by: 1)
-        model.toggleAccent(beat: 4)
+        model.setCountIn(.off)
+        model.setMix(0.4)
+        model.nudgeBPM(by: 1)
         model.nudgeOffset(by: 1)
         #expect(bench.libraryDefaults.writes == writes)
-        try await bench.waitForASave(after: writes)
+        model.leaveSyncMode()
+        #expect(bench.libraryDefaults.writes == writes)
+        model.saveChanges()
         #expect(bench.libraryDefaults.writes == writes + 1)
-        let saved = bench.libraryStore.load().library.song(id: song.id)
-        #expect(saved?.settings.accents == [1, 2, 3, 4])
+        let saved = savedSong(model)
+        #expect(saved?.settings.accents == [1, 2, 3])
+        #expect(saved?.settings.bpm == 121)
         #expect(saved?.track?.offset == 50)
+        #expect(saved?.track?.countIn == .off)
+        #expect(saved?.track?.mix == 0.4)
     }
 }

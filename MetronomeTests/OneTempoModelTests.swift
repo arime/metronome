@@ -82,6 +82,16 @@ struct OneTempoModelTests {
         #expect(model.isEdited)
     }
 
+    @Test func withTheFileMissingATempoChangeReachesThePlayingClick() throws {
+        let model = try makeModel(missing: true)
+        model.togglePlayback()
+        #expect(model.isPlaying)
+        #expect(model.isPlayingTrack == false)
+        model.setBPM(100)
+        #expect(engine.lastUpdate?.bpm == 100)
+        #expect(model.isPlaying)
+    }
+
     @Test func syncModesTempoStepperIsTheDials() throws {
         let model = try makeModel()
         model.enterSyncMode()
@@ -142,6 +152,7 @@ struct OneTempoModelTests {
         model.toggleBackingTracks()
         #expect(model.settings.bpm == 100)
         #expect(model.settings.accents == [1, 2])
+        #expect(model.isEdited)
         #expect(model.isSaveOffered)
         model.togglePlayback()
         #expect(engine.startedSettings.last?.bpm == 100)
@@ -149,7 +160,18 @@ struct OneTempoModelTests {
         model.toggleBackingTracks()
         #expect(model.settings.bpm == 100)
         #expect(model.settings.accents == [1, 2])
+        #expect(model.isEdited)
         #expect(model.isSaveOffered)
+    }
+
+    @Test func theSwitchLeavesAnUneditedSongUnedited() throws {
+        let model = try makeModel()
+        model.toggleBackingTracks()
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+        model.toggleBackingTracks()
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
     }
 
     @Test func thePlayerShowsTheTrackOnlyWhileATrackIsInUse() throws {

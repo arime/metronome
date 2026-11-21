@@ -85,12 +85,12 @@ struct LibraryTests {
         #expect(library.song(id: song.id)?.settings.bpm == 140)
     }
 
-    @Test func settingTheMeterLeavesTheTempoPartsTimeAlone() throws {
+    @Test func updatingOnlyTheMeterLeavesTheTempoPartsTimeAlone() throws {
         var library = Library()
         let added = library.addSong(name: "One", settings: settings(100), now: now)
         let song = try #require(added)
-        let meter = MetronomeSettings(bpm: 140, timeSignature: .threeFour, accents: [1])
-        library.updateSongMeter(song.id, settings: meter, now: now + 10)
+        let meter = MetronomeSettings(bpm: 100, timeSignature: .threeFour, accents: [1])
+        library.updateSong(song.id, settings: meter, now: now + 10)
         let parts = try #require(library.songRecords[song.id]?.parts)
         #expect(try #require(parts[SongRecord.meterKey]?.time) > now)
         #expect(parts[SongRecord.tempoKey]?.time == now)
@@ -98,13 +98,48 @@ struct LibraryTests {
         #expect(library.song(id: song.id)?.settings.bpm == 100)
     }
 
-    @Test func settingTheSameMeterStampsNothing() throws {
+    @Test func updatingWithTheSameSettingsStampsNothing() throws {
         var library = Library()
         let added = library.addSong(name: "One", settings: settings(100), now: now)
         let song = try #require(added)
         let before = library
-        library.updateSongMeter(song.id, settings: settings(140), now: now + 10)
+        library.updateSong(song.id, settings: settings(100), now: now + 10)
         #expect(library == before)
+    }
+
+    private func trackSong(_ library: inout Library) throws -> Song {
+        let track = BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: 48)
+        let added = library.addSong(name: "One", settings: settings(100), track: track, now: now)
+        return try #require(added)
+    }
+
+    @Test func updatingASongWritesItsTrackSettings() throws {
+        var library = Library()
+        let song = try trackSong(&library)
+        library.updateSong(song.id, settings: song.settings, trackSettings: TrackSettings(offset: 60), now: now + 10)
+        #expect(library.song(id: song.id)?.track?.offset == 60)
+        let parts = try #require(library.songRecords[song.id]?.parts)
+        #expect(try #require(parts[SongRecord.trackKey]?.time) > now)
+        #expect(parts[SongRecord.tempoKey]?.time == now)
+        #expect(parts[SongRecord.meterKey]?.time == now)
+    }
+
+    @Test func updatingASongWithTheSameTrackSettingsStampsNothing() throws {
+        var library = Library()
+        let song = try trackSong(&library)
+        let before = library
+        library.updateSong(song.id, settings: song.settings, trackSettings: song.track?.settings, now: now + 10)
+        #expect(library == before)
+    }
+
+    @Test func updatingASongWithoutATrackIgnoresTrackSettings() throws {
+        var library = Library()
+        let added = library.addSong(name: "One", settings: settings(100), now: now)
+        let song = try #require(added)
+        let before = library
+        library.updateSong(song.id, settings: song.settings, trackSettings: TrackSettings(offset: 60), now: now + 10)
+        #expect(library == before)
+        #expect(library.song(id: song.id)?.track == nil)
     }
 
     @Test func aSongIsInASetlistOnlyOnceAndRemovingKeepsIt() {

@@ -92,13 +92,11 @@ final class MetronomeModel {
     init(engine: ClickEngine, store: SettingsStore, haptics: HapticsPlaying, libraryStore: LibraryStore,
          sync: LibrarySync? = nil, now: @escaping () -> Date = Date.init,
          saveOfferDelay: Duration = .milliseconds(500),
-         syncSettingSaveDelay: Duration = .milliseconds(300),
          trackFiles: TrackFileStore = TrackFileStore(),
          lengthOfTrack: @escaping (URL) -> TimeInterval? = { try? TrackAudio.length(of: $0) },
          uptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
         self.uptime = uptime
         self.saveOfferDelay = saveOfferDelay
-        self.syncSettingSaveDelay = syncSettingSaveDelay
         self.trackFiles = trackFiles
         self.lengthOfTrack = lengthOfTrack
         self.sync = sync
@@ -122,6 +120,7 @@ final class MetronomeModel {
         lastPlayed = state.lastPlayed
         songOrder = state.songOrder
         setlistOrder = state.setlistOrder
+        trackSettings = loadedTrack.map { store.loadTrackSettings() ?? $0.settings }
         engine.onBeat = { [weak self] beat in self?.beatSounded(beat) }
         engine.onStopped = { [weak self] in self?.engineStopped() }
         engine.onTrackEnded = { [weak self] in self?.trackEnded() }
@@ -154,18 +153,18 @@ final class MetronomeModel {
         becomeStopped()
     }
 
-    /// Also saves a Sync mode change still waiting to be saved. Sync mode stays shown.
+    /// Writes nothing; Sync mode stays shown.
     func appDidLeaveForeground() {
         stop()
-        savePendingChanges()
     }
 
     /// With a playable track, starts track and click together: with the count-in at 0:00,
     /// otherwise from the position at once. A file that cannot be opened plays the click alone
-    /// for this run. Either way the click plays at the song's tempo.
+    /// for this run. Either way the click plays at the song's tempo, and the offset, count-in and
+    /// mix are the metronome's (`trackSettings`).
     private func start() {
         playCount.restart()
-        if isTrackPlayable, let track = loadedTrack, let url = trackFiles.url(for: track.fileID) {
+        if isTrackPlayable, let file = loadedTrack, let track = trackSettings, let url = trackFiles.url(for: file.fileID) {
             let grid = TrackGrid(
                 offset: track.offsetSeconds, bpm: settings.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
             )
@@ -409,9 +408,11 @@ final class MetronomeModel {
         if !isTrackPlayable { leaveSyncMode() }
     }
 
-    /// Another song is loaded, or the loaded song's track is another file: back to 0:00.
+    /// Another song is loaded, or the loaded song's track is another file: back to 0:00, and the
+    /// metronome takes the track's saved offset, count-in and mix, or none without a track.
     private func loadedTrackReplaced() {
         trackPosition = 0
+        keepTrackSettings(loadedTrack?.settings)
         refreshTrackFile()
     }
 
@@ -464,14 +465,17 @@ final class MetronomeModel {
     }
 
     // MARK: - Sync mode
-    // The track's offset, count-in and mix, and in Sync mode the time signature and the accents,
-    // go into the song at once and never make it edited; the tempo is an ordinary edit (`setBPM`).
-    // The engine and the library in memory take them at once; saving the library and sending it
-    // to iCloud wait for a pause (`persistSoon`), as a held button or a dragged knob changes them
-    // many times a second.
+    // Everything Sync mode sets, the tempo, the time signature, the accents and the track's offset,
+    // count-in and mix, is an ordinary edit of the loaded song: it reaches the engine at once, makes
+    // the song edited, and is written only by Save changes. Sync mode itself writes nothing.
 
     /// Whether the Sync mode sheet (6.13) is shown. Not saved, so off at launch.
     private(set) var isSyncModeShown = false
+
+    /// The loaded song's track's offset, count-in and mix as set on the metronome, kept between
+    /// launches on this device; nil without a loaded track. Like `settings`, a working copy:
+    /// `isEdited` compares it with the song's track, Save changes writes it and Revert sets it back.
+    private(set) var trackSettings: TrackSettings?
 
     /// The Sync pill of Track content; only with the file here. Playback carries on as it is.
     func enterSyncMode() {
@@ -479,12 +483,10 @@ final class MetronomeModel {
         isSyncModeShown = true
     }
 
-    /// Done, or the file going away while shown. Playback carries on as it is; a change still
-    /// waiting to be saved is saved and sent at once.
+    /// Done, or the file going away while shown. Playback carries on as it is.
     func leaveSyncMode() {
         guard isSyncModeShown else { return }
         isSyncModeShown = false
-        savePendingChanges()
     }
 
     /// To the beginning: stopped, the position goes to 0:00, so the next Start counts in; playing
@@ -516,19 +518,14 @@ final class MetronomeModel {
 
     /// Each step is 0.01 s; the offset stays between 0:00 and the file's end.
     func nudgeOffset(by steps: Int) {
-        guard let track = loadedTrack else { return }
+        guard var track = trackSettings else { return }
         let last = trackLength.map { Int(($0 * 100).rounded(.down)) } ?? .max
         let offset = min(max(track.offset + steps, 0), last)
         guard offset != track.offset else { return }
-        setOffset(offset)
-        haptics?.selection()
-    }
-
-    private func setOffset(_ offset: Int) {
-        guard var track = loadedTrack else { return }
         track.offset = offset
-        saveLoadedTrack(track)
-        if isPlayingTrack { engine.setOffset(track.offsetSeconds) }
+        changeTrackSettings(track)
+        userChangedSettings()
+        haptics?.selection()
     }
 
     // MARK: - Tap on beat 1
@@ -542,41 +539,54 @@ final class MetronomeModel {
     /// Takes the place being heard as beat 1 and sets only the offset from it, folded back to the
     /// first bar at the song's tempo. Each tap sets it afresh; the tempo is never changed.
     func tapDownbeat() {
-        guard canTapDownbeat, let track = loadedTrack, let heard = engine.trackTime, heard >= 0 else { return }
+        guard canTapDownbeat, var track = trackSettings, let heard = engine.trackTime, heard >= 0 else { return }
         haptics?.selection()
         let offset = TrackGrid.foldedOffset(
             heard, bpm: settings.bpm, beatsPerBar: settings.timeSignature.beatsPerBar
         )
         guard offset != track.offset else { return }
-        setOffset(offset)
+        track.offset = offset
+        changeTrackSettings(track)
+        userChangedSettings()
     }
 
     func setCountIn(_ countIn: CountIn) {
-        guard var track = loadedTrack, track.countIn != countIn else { return }
+        guard var track = trackSettings, track.countIn != countIn else { return }
         track.countIn = countIn
-        saveLoadedTrack(track)
+        changeTrackSettings(track)
+        userChangedSettings()
         haptics?.selection()
     }
 
     /// -1...1; a tick when it arrives at the centre.
     func setMix(_ position: Double) {
-        guard var track = loadedTrack else { return }
+        guard var track = trackSettings else { return }
         let mix = min(max(position, -1), 1)
         guard mix != track.mix else { return }
         track.mix = mix
-        saveLoadedTrack(track)
-        sendMix(mix)
+        changeTrackSettings(track)
+        userChangedSettings()
         if mix == 0 { haptics?.selection() }
+    }
+
+    /// Takes the track settings, remembered on this device, without touching the engine: for a
+    /// track that is another file, or none.
+    private func keepTrackSettings(_ new: TrackSettings?) {
+        trackSettings = new
+        store.saveTrackSettings(new)
+    }
+
+    /// Takes the track settings and applies them at once: a new offset moves the grid while the
+    /// file plays, a new mix reaches the engine; the count-in waits for the next Start at 0:00.
+    private func changeTrackSettings(_ new: TrackSettings) {
+        let old = trackSettings
+        keepTrackSettings(new)
+        if new.offset != old?.offset, isPlayingTrack { engine.setOffset(new.offsetSeconds) }
+        if new.mix != old?.mix { sendMix(new.mix) }
     }
 
     private func sendMix(_ mix: Double) {
         engine.setMix(clickGain: TrackMix.clickGain(at: mix), trackGain: TrackMix.trackGain(at: mix))
-    }
-
-    private func saveLoadedTrack(_ track: BackingTrack) {
-        guard let id = loadedSongID else { return }
-        library.setTrack(id, to: track, now: now())
-        persistSoon()
     }
 
     // MARK: - Tempo
@@ -618,7 +628,7 @@ final class MetronomeModel {
         guard settings.accents != before else { return }
         haptics?.selection()
         settingsChanged(startNewBar: false)
-        meterChanged()
+        userChangedSettings()
     }
 
     /// A different signature resets the accents and, while playing, starts a new bar.
@@ -626,21 +636,7 @@ final class MetronomeModel {
     func selectTimeSignature(_ signature: TimeSignature) {
         guard settings.setTimeSignature(signature) else { return }
         settingsChanged(startNewBar: true)
-        meterChanged()
-    }
-
-    /// In Sync mode the time signature and the accents go into the song at once, as they are, an
-    /// earlier unsaved accent change included; the metronome's tempo is never written. Nothing
-    /// then differs from the song, so the badge on the header's menu button goes away at once,
-    /// as after Save changes.
-    private func meterChanged() {
-        guard isSyncModeShown, let id = loadedSongID else {
-            userChangedSettings()
-            return
-        }
-        library.updateSongMeter(id, settings: settings, now: now())
-        persistSoon()
-        syncSaveOffer()
+        userChangedSettings()
     }
 
     /// With a track the bar is worked out again from the offset, so no change starts a new bar.
@@ -667,8 +663,11 @@ final class MetronomeModel {
         loadedFromSetlistID.flatMap(library.setlist(id:))
     }
 
-    /// True when a song is loaded and the current settings differ from it, with a track in use or not.
-    var isEdited: Bool { loadedSong.map { $0.settings != settings } ?? false }
+    /// True when a song is loaded and the current settings, or the track's offset, count-in and
+    /// mix, differ from it, with a track in use or not.
+    var isEdited: Bool {
+        loadedSong.map { $0.settings != settings || $0.track?.settings != trackSettings } ?? false
+    }
 
     /// Whether the badge on the header's menu button is shown. It follows `isEdited`, except
     /// that it stays for a moment when the user's own changes bring the settings back to the
@@ -678,7 +677,8 @@ final class MetronomeModel {
     @ObservationIgnored private var saveOfferHide: Task<Void, Never>?
     @ObservationIgnored private let saveOfferDelay: Duration
 
-    /// After the user changed the tempo, time signature or accents.
+    /// After the user changed the tempo, time signature, accents, or the track's offset, count-in
+    /// or mix.
     private func userChangedSettings() {
         saveOfferHide?.cancel()
         saveOfferHide = nil
@@ -798,21 +798,23 @@ final class MetronomeModel {
         loadSong(ids[position.index + offset], from: setlistID)
     }
 
-    /// Writes the current settings into the loaded song. The badge on the header's menu button
-    /// goes away at once, with a success haptic.
+    /// Writes the current settings, and the track's offset, count-in and mix, into the loaded
+    /// song. The badge on the header's menu button goes away at once, with a success haptic.
     func saveChanges() {
         guard let id = loadedSongID else { return }
-        library.updateSong(id, settings: settings, now: now())
+        library.updateSong(id, settings: settings, trackSettings: trackSettings, now: now())
         persistLibrary()
         syncSaveOffer()
         haptics?.success()
     }
 
-    /// Sets the metronome back to the loaded song. While playing, the bar carries on
-    /// unless the time signature goes back too, as with any other change of tempo or accents.
+    /// Sets the metronome back to the loaded song, the track's offset, count-in and mix included.
+    /// While playing, the bar carries on unless the time signature goes back too, as with any other
+    /// change of tempo or accents; an offset or mix that goes back applies at once.
     func discardChanges() {
         guard let song = loadedSong, isEdited else { return }
         apply(song.settings, startNewBar: song.settings.timeSignature != settings.timeSignature)
+        if let track = song.track { changeTrackSettings(track.settings) }
         syncSaveOffer()
         haptics?.selection()
     }
@@ -998,7 +1000,8 @@ final class MetronomeModel {
     /// Writes a new name and settings into a song, from Edit in the library. Only what
     /// changed is written, so an untouched part does not win over another device's change.
     /// When it is the loaded song and its settings changed, the metronome takes them, as if
-    /// the song were loaded again: unsaved changes are dropped, and while playing the bar
+    /// the song were loaded again: unsaved changes are dropped, the track's offset, count-in and
+    /// mix included, and while playing the bar
     /// carries on unless the time signature changed. A new name alone leaves the metronome,
     /// and any unsaved changes, as they are.
     ///
@@ -1048,6 +1051,7 @@ final class MetronomeModel {
         }
         if isLoaded, settingsChanged, let updated = library.song(id: id) {
             apply(updated.settings, startNewBar: updated.settings.timeSignature != settings.timeSignature)
+            if let track = updated.track { changeTrackSettings(track.settings) }
         }
         if isLoaded, filePicked || newPart != nil { loadedTrackReplaced() }
         syncSaveOffer()
@@ -1258,37 +1262,11 @@ final class MetronomeModel {
 
     /// Saves the library, and sends it to iCloud when sync is on. Track files no song refers to
     /// any more are deleted, so a picked file must be stored before a song refers to it.
-    /// It saves the whole library in memory, so a save waiting in `persistSoon` is included and
-    /// is no longer needed.
     private func persistLibrary() {
-        pendingSave?.cancel()
-        pendingSave = nil
         syncSaveOffer()
         libraryStore.save(currentLibraryState)
         trackFiles.removeAll(except: library.referencedFileIDs)
         if sync?.isOn == true { exchangeWithCloud() }
-    }
-
-    /// A save waiting for the changes to pause; nil when nothing waits.
-    @ObservationIgnored private var pendingSave: Task<Void, Never>?
-    @ObservationIgnored private let syncSettingSaveDelay: Duration
-
-    /// `persistLibrary()` once `syncSettingSaveDelay` has passed without another call.
-    /// The library in memory already holds the change.
-    private func persistSoon() {
-        pendingSave?.cancel()
-        pendingSave = Task { [weak self, syncSettingSaveDelay] in
-            try? await Task.sleep(for: syncSettingSaveDelay)
-            guard !Task.isCancelled, let self else { return }
-            self.persistLibrary()
-        }
-    }
-
-    /// Saves at once a change still waiting in `persistSoon`; nothing when none waits.
-    /// For leaving Sync mode and the app leaving the foreground.
-    func savePendingChanges() {
-        guard pendingSave != nil else { return }
-        persistLibrary()
     }
 
     private var currentLibraryState: LibraryState {
@@ -1330,8 +1308,8 @@ final class MetronomeModel {
 
     /// Combines the library with iCloud and keeps what the user has open. It never touches the
     /// metronome's settings: none are applied and no haptic plays. A loaded song that arrived
-    /// changed shows as edited, because the settings no longer match it. Only the loaded song's
-    /// track reaches the engine (`loadedTrackArrived`).
+    /// changed shows as edited, because the settings no longer match it. Only a loaded song's
+    /// track that is another file, or none, reaches the metronome (`loadedTrackArrived`).
     /// It saves directly, so it cannot start itself again through `persistLibrary()`, and only
     /// when the exchange changed something, since this runs on every library change.
     private func exchangeWithCloud() {
@@ -1357,16 +1335,14 @@ final class MetronomeModel {
     }
 
     /// The loaded song's track changed on another device, or the song went. The same file with a
-    /// new offset or mix applies at once. A track removed or replaced stops playback only while
-    /// playing with its file, and goes to 0:00; an attached one arrives missing and playback
-    /// carries on.
+    /// new name, offset, count-in or mix changes nothing on the metronome: a new offset, count-in
+    /// or mix makes the song edited, as `exchangeWithCloud` shows. A track removed or replaced
+    /// stops playback only while playing with its file, and goes to 0:00; an attached one arrives
+    /// missing and playback carries on. Either way the metronome takes the arrived track's offset,
+    /// count-in and mix, or none.
     private func loadedTrackArrived(replacing old: BackingTrack?) {
-        guard let old, let track = loadedTrack, track.fileID == old.fileID else {
-            if isPlayingTrack { stop() }
-            loadedTrackReplaced()
-            return
-        }
-        if track.offset != old.offset, isPlayingTrack { engine.setOffset(track.offsetSeconds) }
-        if track.mix != old.mix { sendMix(track.mix) }
+        if let old, let track = loadedTrack, track.fileID == old.fileID { return }
+        if isPlayingTrack { stop() }
+        loadedTrackReplaced()
     }
 }

@@ -112,7 +112,7 @@ private struct TapPads: View {
     }
 }
 
-/// Sets the track's tempo by the plain tap tempo's rules (7.11). Works stopped and playing and is
+/// Sets the song's tempo by the plain tap tempo's rules (7.11). Works stopped and playing and is
 /// never dimmed. While a series is open, from a tap until it would start over two seconds later,
 /// the title reads `Tap again`.
 private struct TapTempoPad: View {

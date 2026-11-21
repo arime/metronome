@@ -190,7 +190,7 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
 
     /// Stamps only the meter part, the time signature with its accents, only when it differs;
     /// the tempo part keeps its value and time.
-    mutating func setMeter(_ settings: MetronomeSettings, now: Date) {
+    private mutating func setMeter(_ settings: MetronomeSettings, now: Date) {
         set(Self.meterKey, to: Self.meterValue(settings), now: now)
     }
 

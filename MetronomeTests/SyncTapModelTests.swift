@@ -32,11 +32,11 @@ struct SyncTapModelTests {
         model.togglePlayback()
         let ticks = haptics.selectionCount
         tapOnBeat1(model, at: 9.30)
-        #expect(model.loadedTrack?.offset == 130)
+        #expect(model.trackSettings?.offset == 130)
         #expect(model.settings.bpm == 120)
         #expect(engine.offsets.last == 1.30)
         #expect(haptics.selectionCount == ticks + 1)
-        #expect(model.isSaveOffered == false)
+        #expect(model.isSaveOffered)
     }
 
     @Test func tapOnBeat1NeverChangesTheTempo() throws {
@@ -49,7 +49,7 @@ struct SyncTapModelTests {
         #expect(model.settings.bpm == 125)
         #expect(engine.lastUpdate == nil)
         // A bar at 125 BPM in 4/4 is 1.92 s: 13.95 − 7 × 1.92 = 0.51.
-        #expect(model.loadedTrack?.offset == 51)
+        #expect(model.trackSettings?.offset == 51)
     }
 
     @Test func theLatestTapOnBeat1Wins() throws {
@@ -57,9 +57,9 @@ struct SyncTapModelTests {
         model.togglePlayback()
         tapOnBeat1(model, at: 9.30)
         tapOnBeat1(model, at: 10.70)
-        #expect(model.loadedTrack?.offset == 70)
+        #expect(model.trackSettings?.offset == 70)
         tapOnBeat1(model, at: 9.50)
-        #expect(model.loadedTrack?.offset == 150)
+        #expect(model.trackSettings?.offset == 150)
         #expect(engine.offsets.last == 1.50)
     }
 
@@ -70,7 +70,7 @@ struct SyncTapModelTests {
         let offsets = engine.offsets.count
         let ticks = haptics.selectionCount
         tapOnBeat1(model, at: 11.30)
-        #expect(model.loadedTrack?.offset == 130)
+        #expect(model.trackSettings?.offset == 130)
         #expect(engine.offsets.count == offsets)
         #expect(haptics.selectionCount == ticks + 1)
     }
@@ -80,12 +80,12 @@ struct SyncTapModelTests {
         let ticks = haptics.selectionCount
         #expect(model.canTapDownbeat == false)
         tapOnBeat1(model, at: 9.30)
-        #expect(model.loadedTrack?.offset == 48)
+        #expect(model.trackSettings?.offset == 48)
 
         model.togglePlayback()
         tapOnBeat1(model, at: -1)
         #expect(model.canTapDownbeat == false)
-        #expect(model.loadedTrack?.offset == 48)
+        #expect(model.trackSettings?.offset == 48)
         #expect(engine.offsets.isEmpty)
         #expect(haptics.selectionCount == ticks)
     }
@@ -97,22 +97,8 @@ struct SyncTapModelTests {
         let ticks = haptics.selectionCount
         tapOnBeat1(model, at: 9.30)
         #expect(model.canTapDownbeat == false)
-        #expect(model.loadedTrack?.offset == 48)
+        #expect(model.trackSettings?.offset == 48)
         #expect(haptics.selectionCount == ticks)
-    }
-
-    @Test func severalTapsOnBeat1SaveOnce() async throws {
-        let song = try #require(try makeModel(bpm: 120).loadedSong)
-        let model = bench.relaunch(saveDelay: .milliseconds(20))
-        model.togglePlayback()
-        let writes = bench.libraryDefaults.writes
-        tapOnBeat1(model, at: 9.30)
-        tapOnBeat1(model, at: 10.70)
-        tapOnBeat1(model, at: 12.90)
-        #expect(bench.libraryDefaults.writes == writes)
-        try await bench.waitForASave(after: writes)
-        #expect(bench.libraryDefaults.writes == writes + 1)
-        #expect(bench.libraryStore.load().library.song(id: song.id)?.track?.offset == 90)
     }
 
     // MARK: - Tap tempo

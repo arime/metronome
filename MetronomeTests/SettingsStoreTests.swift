@@ -51,4 +51,13 @@ struct SettingsStoreTests {
         store.saveBackingTracksOn(false)
         #expect(SettingsStore(defaults: defaults).loadBackingTracksOn() == false)
     }
+
+    @Test func trackSettingsAreRememberedAndCleared() {
+        #expect(store.loadTrackSettings() == nil)
+        let settings = TrackSettings(offset: 53, countIn: .oneBar, mix: -0.3)
+        store.saveTrackSettings(settings)
+        #expect(SettingsStore(defaults: defaults).loadTrackSettings() == settings)
+        store.saveTrackSettings(nil)
+        #expect(SettingsStore(defaults: defaults).loadTrackSettings() == nil)
+    }
 }

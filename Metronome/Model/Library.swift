@@ -179,15 +179,14 @@ struct Library: Codable, Equatable, Sendable {
         songRecords[id]?.setName(name, now: now)
     }
 
-    mutating func updateSong(_ id: UUID, settings: MetronomeSettings, now: Date) {
+    /// Writes the settings and, for a song with a track, `trackSettings` into the track; each part
+    /// is stamped only when it changes. Track settings are ignored for a song without a track.
+    mutating func updateSong(_ id: UUID, settings: MetronomeSettings, trackSettings: TrackSettings? = nil, now: Date) {
         guard song(id: id) != nil else { return }
         songRecords[id]?.setSettings(settings.sanitized(), now: now)
-    }
-
-    /// Writes only the time signature and the accents of `settings`; the song's tempo stays.
-    mutating func updateSongMeter(_ id: UUID, settings: MetronomeSettings, now: Date) {
-        guard song(id: id) != nil else { return }
-        songRecords[id]?.setMeter(settings.sanitized(), now: now)
+        guard let trackSettings, var track = song(id: id)?.track, track.settings != trackSettings else { return }
+        track.settings = trackSettings
+        songRecords[id]?.setTrack(track, now: now)
     }
 
     /// nil removes the track.

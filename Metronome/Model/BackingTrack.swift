@@ -47,3 +47,48 @@ struct BackingTrack: Codable, Equatable, Sendable {
         case fileID, fileName, offset = "firstBeat", countIn, mix
     }
 }
+
+/// A track's offset, count-in and mix: what Sync mode sets, held on the metronome as a working copy
+/// of the loaded song's track's, like the tempo.
+struct TrackSettings: Codable, Equatable, Sendable {
+    /// Hundredths of a second.
+    var offset: Int
+    var countIn: CountIn
+    /// -1 (Click end) ... 0 (centre) ... +1 (Track end).
+    var mix: Double
+
+    init(offset: Int, countIn: CountIn = .twoBars, mix: Double = 0) {
+        self.offset = max(offset, 0)
+        self.countIn = countIn
+        self.mix = min(max(mix, -1), 1)
+    }
+
+    /// Read through `init`, so stored values are kept in range too.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            offset: try container.decode(Int.self, forKey: .offset),
+            countIn: try container.decode(CountIn.self, forKey: .countIn),
+            mix: try container.decode(Double.self, forKey: .mix)
+        )
+    }
+
+    var offsetSeconds: TimeInterval {
+        TimeInterval(offset) / 100
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case offset, countIn, mix
+    }
+}
+
+extension BackingTrack {
+    var settings: TrackSettings {
+        get { TrackSettings(offset: offset, countIn: countIn, mix: mix) }
+        set {
+            offset = newValue.offset
+            countIn = newValue.countIn
+            mix = newValue.mix
+        }
+    }
+}

@@ -25,7 +25,7 @@ struct SyncSteppers: View {
 
     var body: some View {
         let bpm = model.settings.bpm
-        let seconds = Self.seconds(model.loadedTrack?.offset ?? 0)
+        let seconds = Self.seconds(model.trackSettings?.offset ?? 0)
         HStack(spacing: 10) {
             SyncStepper(
                 label: "TEMPO", value: "\(bpm)", unit: nil,
@@ -148,7 +148,7 @@ struct CountInRow: View {
     }
 
     private func option(_ countIn: CountIn) -> some View {
-        let isSelected = model.loadedTrack?.countIn == countIn
+        let isSelected = model.trackSettings?.countIn == countIn
         let title = switch countIn {
         case .off: "Off"
         case .oneBar: "1 bar"
@@ -183,7 +183,7 @@ struct MixRow: View {
             SyncLabel(text: "MIX")
                 .frame(width: labelColumnWidth, alignment: .leading)
             Text("Click")
-            MixSlider(position: model.loadedTrack?.mix ?? 0) { model.setMix($0) }
+            MixSlider(position: model.trackSettings?.mix ?? 0) { model.setMix($0) }
             Text("Track")
         }
         .font(.system(size: 13, weight: .medium))
