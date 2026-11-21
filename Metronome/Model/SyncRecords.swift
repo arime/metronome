@@ -87,6 +87,9 @@ enum SyncClock {
 /// A song together with the time each of its parts last changed, so two copies can be combined.
 struct SongRecord: Codable, Equatable, Sendable, Identifiable {
     static let nameKey = "name", tempoKey = "tempo", meterKey = "meter", trackKey = "track"
+    /// The field in the track part that repeats the song's tempo, so a build that reads a tempo
+    /// for the track from the part finds the song's.
+    static let trackTempoKey = "bpm"
 
     let id: UUID
     var created: Date
@@ -116,6 +119,11 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
 
     /// nil when deleted, or when the name, tempo or meter part is missing or unreadable.
     /// A missing, empty or unreadable track part only means no track.
+    ///
+    /// The tempo is the track part's when the part reads as a track and holds one, also when the
+    /// tempo part holds another, as a build with a tempo for the track apart from the song's can
+    /// leave them: the track's is the one that matches the recording. Otherwise it is the tempo
+    /// part's. Reading writes nothing, so two tempos that differ are not sent on their own.
     var song: Song? {
         guard deleted == nil,
               let name = parts[Self.nameKey]?.value.decoded(String.self),
@@ -127,17 +135,31 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
         return Song(
             id: id,
             name: name,
-            settings: MetronomeSettings(bpm: bpm, timeSignature: signature, accents: Set(accents)),
-            track: track(songBPM: bpm)
+            settings: MetronomeSettings(bpm: trackTempo ?? bpm, timeSignature: signature, accents: Set(accents)),
+            track: parts[Self.trackKey]?.value.decoded(BackingTrack.self)
         )
     }
 
-    /// A track part written by an earlier build has no tempo; it is read with the song's tempo,
-    /// which is written into the part only the next time the track changes.
-    private func track(songBPM: Int) -> BackingTrack? {
-        guard case .object(var fields)? = parts[Self.trackKey]?.value else { return nil }
-        if fields["bpm"] == nil { fields["bpm"] = .number(Double(songBPM)) }
-        return JSONValue.object(fields).decoded(BackingTrack.self)
+    /// The track part's fields, when the part reads as a track; nil when it is missing, empty or
+    /// cannot be read, for example when a later version wrote it.
+    private var readableTrackFields: [String: JSONValue]? {
+        guard let value = parts[Self.trackKey]?.value, case .object(let fields) = value,
+              value.decoded(BackingTrack.self) != nil
+        else { return nil }
+        return fields
+    }
+
+    /// The song's tempo as a readable track part holds it, kept in range. nil for a part without
+    /// one, as the first builds with backing tracks wrote it.
+    private var trackTempo: Int? {
+        readableTrackFields?[Self.trackTempoKey]?.decoded(Int.self).map(Tempo.clamp)
+    }
+
+    /// The track's encoding with the song's tempo in it.
+    private static func trackValue(_ track: BackingTrack, bpm: Int) -> JSONValue? {
+        guard case .object(var fields)? = try? JSONValue(encoding: track) else { return nil }
+        fields[trackTempoKey] = .number(Double(bpm))
+        return .object(fields)
     }
 
     /// The file identifier in the track part, read on its own, so a part this version cannot read
@@ -172,33 +194,27 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
         set(Self.meterKey, to: Self.meterValue(settings), now: now)
     }
 
-    /// Stamps only the tempo part, only when it differs; the meter part keeps its time.
+    /// Writes the song's tempo into the tempo part and into a readable track part that holds a
+    /// tempo, each stamped only when its value differs; the meter part keeps its time. A track
+    /// part without a tempo is left alone.
     private mutating func setTempo(_ settings: MetronomeSettings, now: Date) {
         let value = Self.tempoValue(settings)
-        if parts[Self.tempoKey]?.value != value { keepTrackTempo() }
         set(Self.tempoKey, to: value, now: now)
+        guard var fields = readableTrackFields, trackTempo != nil else { return }
+        fields[Self.trackTempoKey] = value
+        set(Self.trackKey, to: .object(fields), now: now)
     }
 
-    /// Before the song's tempo is changed on this device, writes it into a track part that has
-    /// none, keeping the part's time, so the track keeps the tempo it reads as and the part gets
-    /// no new time.
-    private mutating func keepTrackTempo() {
-        guard let part = parts[Self.trackKey], case .object(var fields) = part.value, fields["bpm"] == nil,
-              let bpm = parts[Self.tempoKey]?.value.decoded(Int.self)
-        else { return }
-        fields["bpm"] = .number(Double(bpm))
-        parts[Self.trackKey] = Part(time: part.time, value: .object(fields))
-    }
-
-    /// Stamps the part only when the track differs from the one read. nil writes JSON null, so
-    /// the removal syncs; a song that never had a track keeps no part. Setting the track as read
-    /// leaves a part without a tempo as it is, so filling the tempo in sends nothing.
+    /// Stamps the part only when the track differs from the one read, and writes the song's tempo,
+    /// as read, into it. nil writes JSON null, so the removal syncs; a song that never had a track
+    /// keeps no part. Setting the track as read leaves a part without a tempo as it is, so
+    /// filling the tempo in sends nothing.
     mutating func setTrack(_ track: BackingTrack?, now: Date) {
         guard let track else {
             if parts[Self.trackKey] != nil { set(Self.trackKey, to: .null, now: now) }
             return
         }
-        guard song?.track != track, let value = try? JSONValue(encoding: track) else { return }
+        guard let song, song.track != track, let value = Self.trackValue(track, bpm: song.settings.bpm) else { return }
         set(Self.trackKey, to: value, now: now)
     }
 

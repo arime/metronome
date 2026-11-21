@@ -180,4 +180,58 @@ struct OneTempoModelTests {
         model.saveChanges()
         #expect(savedSong(model)?.settings.timeSignature == .threeFour)
     }
+
+    // MARK: - A song with two tempos
+
+    /// Saves a library whose one song, not loaded, has 120 in its tempo part and 168 in its track
+    /// part, as a build with a tempo for the track apart from the song's can leave it.
+    private func saveASongWithTwoTempos() throws -> UUID {
+        let moment = Date()
+        var library = Library()
+        let settings = MetronomeSettings(bpm: 120, timeSignature: .fourFour, accents: [1])
+        let added = library.addSong(name: "Two", settings: settings, track: try bench.makeTrack(), now: moment)
+        let song = try #require(added)
+        var record = try #require(library.songRecords[song.id])
+        guard case .object(var fields)? = record.parts[SongRecord.trackKey]?.value else {
+            throw CocoaError(.coderValueNotFound)
+        }
+        fields[SongRecord.trackTempoKey] = .number(168)
+        record.parts[SongRecord.trackKey] = Part(time: moment + 1, value: .object(fields))
+        library.merge(songs: [record], setlists: [])
+        bench.libraryStore.save(LibraryState(library: library))
+        return song.id
+    }
+
+    @Test func aSongWithTwoTemposLoadsAtItsTracksTempoWithoutAWrite() throws {
+        let id = try saveASongWithTwoTempos()
+        let stored = bench.libraryStore.load().library.songRecords[id]
+        let model = bench.relaunch()
+        model.loadSong(id, from: nil)
+        #expect(model.settings.bpm == 168)
+        #expect(model.isEdited == false)
+        #expect(model.library.songRecords[id]?.parts[SongRecord.tempoKey]?.value == .number(120))
+        #expect(bench.libraryStore.load().library.songRecords[id] == stored)
+        model.togglePlayback()
+        #expect(engine.startedSettings.last?.bpm == 168)
+    }
+
+    @Test func savingSuchASongMakesItsTwoTemposOne() throws {
+        let id = try saveASongWithTwoTempos()
+        let model = bench.relaunch()
+        model.loadSong(id, from: nil)
+        model.toggleAccent(beat: 2)
+        model.saveChanges()
+        let record = model.library.songRecords[id]
+        #expect(record?.parts[SongRecord.tempoKey]?.value == .number(168))
+        guard case .object(let fields)? = record?.parts[SongRecord.trackKey]?.value else {
+            Issue.record("no track part"); return
+        }
+        #expect(fields[SongRecord.trackTempoKey] == .number(168))
+    }
+
+    @Test func theLibraryShowsTheTracksTempo() throws {
+        let id = try saveASongWithTwoTempos()
+        let model = bench.relaunch()
+        #expect(model.library.song(id: id)?.settings.bpm == 168)
+    }
 }

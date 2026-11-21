@@ -48,7 +48,7 @@ struct PlayerModelTests {
         let source = FileManager.default.temporaryDirectory.appending(path: "PlayerTrack-\(UUID().uuidString).m4a")
         try Data("audio".utf8).write(to: source)
         defer { try? FileManager.default.removeItem(at: source) }
-        let track = BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: 48, bpm: 120)
+        let track = BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: 48)
         try files.store(source, as: track.fileID)
         var library = Library()
         let added = library.addSong(name: "Song", settings: MetronomeSettings(), track: track, now: Date())

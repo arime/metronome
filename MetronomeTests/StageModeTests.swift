@@ -94,7 +94,7 @@ import Testing
     }
 
     @Test func aTileReadsNumberNameTempoAndState() {
-        let track = BackingTrack(fileID: UUID(), fileName: "Bridges.m4a", offset: 0, bpm: 168)
+        let track = BackingTrack(fileID: UUID(), fileName: "Bridges.m4a", offset: 0)
         let songs = [
             song(a, "Harbour Lights", bpm: 96),
             song(b, "Copper Sky", bpm: 120),
@@ -110,7 +110,7 @@ import Testing
     }
 
     private var trackSongs: [Song] {
-        let track = BackingTrack(fileID: UUID(), fileName: "Bridges.m4a", offset: 0, bpm: 168)
+        let track = BackingTrack(fileID: UUID(), fileName: "Bridges.m4a", offset: 0)
         return [song(a, "Harbour Lights"), song(b, "Seven Bridges", bpm: 168, .sevenEight, track: track)]
     }
 

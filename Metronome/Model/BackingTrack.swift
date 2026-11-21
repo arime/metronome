@@ -13,17 +13,14 @@ struct BackingTrack: Codable, Equatable, Sendable {
     var fileName: String
     /// Hundredths of a second, so 0.01 s steps compare exactly.
     var offset: Int
-    /// The tempo the click plays at with the track, 30...300; the track's own, apart from the song's.
-    var bpm: Int
     var countIn: CountIn
     /// -1 (Click end) ... 0 (centre) ... +1 (Track end).
     var mix: Double
 
-    init(fileID: UUID, fileName: String, offset: Int, bpm: Int, countIn: CountIn = .twoBars, mix: Double = 0) {
+    init(fileID: UUID, fileName: String, offset: Int, countIn: CountIn = .twoBars, mix: Double = 0) {
         self.fileID = fileID
         self.fileName = fileName
         self.offset = max(offset, 0)
-        self.bpm = Tempo.clamp(bpm)
         self.countIn = countIn
         self.mix = min(max(mix, -1), 1)
     }
@@ -35,7 +32,6 @@ struct BackingTrack: Codable, Equatable, Sendable {
             fileID: try container.decode(UUID.self, forKey: .fileID),
             fileName: try container.decode(String.self, forKey: .fileName),
             offset: try container.decode(Int.self, forKey: .offset),
-            bpm: try container.decode(Int.self, forKey: .bpm),
             countIn: try container.decode(CountIn.self, forKey: .countIn),
             mix: try container.decode(Double.self, forKey: .mix)
         )
@@ -46,7 +42,8 @@ struct BackingTrack: Codable, Equatable, Sendable {
     }
 
     /// The offset keeps its stored name, so tracks already on devices and in iCloud still read.
+    /// The song's tempo, which the stored track part repeats, is `SongRecord`'s to write and read.
     private enum CodingKeys: String, CodingKey {
-        case fileID, fileName, offset = "firstBeat", bpm, countIn, mix
+        case fileID, fileName, offset = "firstBeat", countIn, mix
     }
 }

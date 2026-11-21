@@ -66,10 +66,6 @@ enum ScreenshotScene: String, CaseIterable {
     case trackFirst
     /// Track content with the track on the setlist's last song, loaded from the setlist.
     case trackLast
-    /// Track content of `trackScreen` with the track at 168 BPM while the song stays at 120, so
-    /// the two tempos differ. Not an App Store screenshot; for checking that the dial shows the
-    /// track's tempo while the track is in use. The demo file still ticks at 120, so it plays out of sync.
-    case trackOtherTempo
     /// Stage mode for the sample setlist, stopped, with the loaded song's tile marked. Not an App
     /// Store screenshot; for checking stage mode in the simulator.
     case stage
@@ -83,7 +79,7 @@ enum ScreenshotScene: String, CaseIterable {
     var hasTrack: Bool {
         switch self {
         case .trackScreen, .trackPlaying, .trackSync, .trackSyncWide, .trackSyncNine, .trackSyncTimer, .trackSolo,
-             .trackMissing, .trackFirst, .trackLast, .trackOtherTempo, .stagePlaying: true
+             .trackMissing, .trackFirst, .trackLast, .stagePlaying: true
         default: false
         }
     }
@@ -126,16 +122,16 @@ enum ScreenshotScene: String, CaseIterable {
         if self == .trackMissing {
             trackFiles.removeAll(except: [])
             sample.attachTrack(
-                BackingTrack(fileID: UUID(), fileName: DemoTrack.fileName, offset: 50, bpm: 120), now: Self.date
+                BackingTrack(fileID: UUID(), fileName: DemoTrack.fileName, offset: 50), now: Self.date
             )
         } else if hasTrack {
             var track = DemoTrack.make(in: trackFiles)
             if self == .trackSyncWide {
                 track.offset = 2540
-                track.bpm = 288
+                sample.attachTrack(track, bpm: 288, now: Self.date)
+            } else {
+                sample.attachTrack(track, now: Self.date)
             }
-            if self == .trackOtherTempo { track.bpm = 168 }
-            sample.attachTrack(track, now: Self.date)
         }
         if self == .emptyLibrary {
             libraryStore.save(LibraryState())
@@ -243,7 +239,7 @@ private enum DemoTrack {
         } catch {
             fatalError("The demo track could not be written: \(error)")
         }
-        return BackingTrack(fileID: fileID, fileName: fileName, offset: Int(offset * 100), bpm: 120)
+        return BackingTrack(fileID: fileID, fileName: fileName, offset: Int(offset * 100))
     }
 
     private static func write(to url: URL) throws {
@@ -292,12 +288,15 @@ private struct SampleLibrary {
     /// a scene needs the track at an end of the setlist.
     private var trackSongID: UUID?
 
-    /// Gives the track song a backing track and loads it in place of the third song.
-    mutating func attachTrack(_ track: BackingTrack, now: Date) {
-        guard let trackSongID, let song = library.song(id: trackSongID) else { return }
+    /// Gives the track song a backing track at `bpm`, the song's tempo, which is 120 like the
+    /// demo file's ticks unless a scene needs another, and loads it in place of the third song.
+    mutating func attachTrack(_ track: BackingTrack, bpm: Int = 120, now: Date) {
+        guard let trackSongID, var settings = library.song(id: trackSongID)?.settings else { return }
+        settings.setBPM(bpm)
+        library.updateSong(trackSongID, settings: settings, now: now)
         library.setTrack(trackSongID, to: track, now: now)
         loadedSongID = trackSongID
-        loadedSettings = song.settings
+        loadedSettings = library.song(id: trackSongID)?.settings ?? settings
     }
 
     /// `trackIndex` is the place in the setlist of the song that a track can be attached to.

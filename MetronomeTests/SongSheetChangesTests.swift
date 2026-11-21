@@ -104,7 +104,7 @@ import Testing
 
     // MARK: - The Backing track row
 
-    private let savedTrack = BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: 48, bpm: 120)
+    private let savedTrack = BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: 48)
 
     @Test func theRowShowsNoTrack() {
         #expect(TrackRowState(saved: nil, isSavedMissing: false, edit: .keep) == .none)

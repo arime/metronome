@@ -34,11 +34,11 @@ struct TrackSongModelTests {
     /// The model and the three songs of its setlist "Gig", in this order.
     private struct Setup {
         let model: MetronomeModel
-        /// Loaded from the setlist: 120 BPM, 4/4, a track at 120 BPM and 0.48 s, with its file unless `missing`.
+        /// Loaded from the setlist: 120 BPM, 4/4, a track at 0.48 s, with its file unless `missing`.
         let song: Song
         /// 90 BPM, no track.
         let plain: Song
-        /// 140 BPM, a playable track at 150 BPM with a one-bar count-in and the mix at -0.5.
+        /// 140 BPM, a playable track with a one-bar count-in and the mix at -0.5.
         let other: Song
         let setlist: UUID
     }
@@ -47,7 +47,7 @@ struct TrackSongModelTests {
         let moment = Date()
         var library = Library()
         let songTrack = try bench.makeTrack(missing: missing)
-        let otherTrack = try bench.makeTrack(bpm: 150, countIn: .oneBar, mix: -0.5)
+        let otherTrack = try bench.makeTrack(countIn: .oneBar, mix: -0.5)
         let added = [
             library.addSong(name: "Song", settings: MetronomeSettings(), track: songTrack, now: moment),
             library.addSong(
@@ -305,7 +305,6 @@ struct TrackSongModelTests {
         let track = try #require(model.library.song(id: setup.song.id)?.track)
         #expect(track.fileName == "Take.wav")
         #expect(track.fileID == old.fileID)
-        #expect(track.bpm == old.bpm)
         #expect(track.offset == old.offset)
         #expect(track.countIn == old.countIn)
         #expect(track.mix == old.mix)
@@ -317,29 +316,14 @@ struct TrackSongModelTests {
         #expect(edited[SongRecord.meterKey] == parts[SongRecord.meterKey])
     }
 
-    @Test func attachingATrackGivesItTheSongsTempoAsSaved() throws {
+    @Test func attachingATrackWritesTheSongsTempoIntoItsPart() throws {
         let setup = try makeModel()
         let model = setup.model
         let settings = MetronomeSettings(bpm: 95, timeSignature: .fourFour, accents: [1])
         model.editSong(setup.plain.id, name: "Plain", settings: settings, track: .attach(try picked()))
-        #expect(model.library.song(id: setup.plain.id)?.track?.bpm == 95)
-    }
-
-    @Test func aNewSongsTrackTakesTheNewSongsTempo() throws {
-        let setup = try makeModel()
-        let model = setup.model
-        let settings = MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1])
-        let created = try #require(model.createSong(name: "New", settings: settings, addingTo: nil, track: try picked()))
-        #expect(created.track?.bpm == 100)
-        let copy = try #require(model.saveAsNewSong(name: "Copy", settings: settings, track: try picked()))
-        #expect(copy.track?.bpm == 100)
-    }
-
-    @Test func replacingTheFileKeepsTheTracksTempo() throws {
-        let setup = try makeModel()
-        let model = setup.model
-        model.editSong(setup.other.id, name: "Other", settings: setup.other.settings, track: .attach(try picked()))
-        #expect(model.library.song(id: setup.other.id)?.track?.bpm == 150)
+        guard case .object(let fields)? = model.library.songRecords[setup.plain.id]?.parts[SongRecord.trackKey]?.value
+        else { Issue.record("no track part"); return }
+        #expect(fields["bpm"] == .number(95))
     }
 
     @Test func editingTheLoadedSongsTrackStopsAndGoesToZero() throws {
@@ -497,7 +481,6 @@ struct TrackSongModelTests {
         let track = try #require(model.loadedTrack)
         #expect(track.fileName == "Take.wav")
         #expect(track.fileID == old.fileID)
-        #expect(track.bpm == old.bpm)
         #expect(track.offset == old.offset)
         #expect(track.countIn == old.countIn)
         #expect(track.mix == old.mix)

@@ -452,14 +452,13 @@ final class MetronomeModel {
         return track
     }
 
-    /// A picked file stored under a new identifier, with its offset. The tempo, the count-in and
-    /// the mix are kept from the track it replaces; a track that replaces none gets `bpm`, the
-    /// song's tempo as the sheet saves it. nil when the file cannot be stored.
-    private func newTrack(_ picked: PickedTrack, bpm: Int, replacing old: BackingTrack?) -> BackingTrack? {
+    /// A picked file stored under a new identifier, with its offset. The count-in and the mix are
+    /// kept from the track it replaces. nil when the file cannot be stored.
+    private func newTrack(_ picked: PickedTrack, replacing old: BackingTrack?) -> BackingTrack? {
         let fileID = UUID()
         guard store(picked, as: fileID) else { return nil }
         return BackingTrack(
-            fileID: fileID, fileName: picked.fileName, offset: picked.offset, bpm: old?.bpm ?? bpm,
+            fileID: fileID, fileName: picked.fileName, offset: picked.offset,
             countIn: old?.countIn ?? .twoBars, mix: old?.mix ?? 0
         )
     }
@@ -851,7 +850,7 @@ final class MetronomeModel {
         let setlistID = addingToLoadedSetlist ? loadedFromSetlist?.id : nil
         var track: BackingTrack?
         if let picked {
-            guard let stored = newTrack(picked, bpm: newSettings.sanitized().bpm, replacing: nil) else { return nil }
+            guard let stored = newTrack(picked, replacing: nil) else { return nil }
             track = stored
         }
         if isTrackPlayable || isPlayable(track) { stop() }
@@ -967,7 +966,7 @@ final class MetronomeModel {
         let namesCurrentSettings = loadedSongID == nil && newSettings == settings
         var track: BackingTrack?
         if let picked {
-            guard let stored = newTrack(picked, bpm: newSettings.sanitized().bpm, replacing: nil) else { return nil }
+            guard let stored = newTrack(picked, replacing: nil) else { return nil }
             track = stored
         }
         guard let song = library.addSong(name: name, settings: newSettings, track: track, now: moment) else { return nil }
@@ -1030,8 +1029,7 @@ final class MetronomeModel {
                 guard let track = storePicked(picked, forMissing: missing) else { return false }
                 if track != missing { newPart = .some(track) }
             } else {
-                let bpm = newSettings.sanitized().bpm
-                guard let track = newTrack(picked, bpm: bpm, replacing: song.track) else { return false }
+                guard let track = newTrack(picked, replacing: song.track) else { return false }
                 newPart = .some(track)
             }
             filePicked = true

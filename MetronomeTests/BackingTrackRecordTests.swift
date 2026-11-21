@@ -18,7 +18,7 @@ import Testing
     }
 
     private func track(offset: Int = 150) -> BackingTrack {
-        BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: offset, bpm: 120)
+        BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: offset)
     }
 
     @Test func aSongWithoutATrackPartHasNoTrack() {
@@ -29,7 +29,7 @@ import Testing
 
     @Test func settingATrackRoundTrips() {
         var record = record()
-        let track = BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: 237, bpm: 120, countIn: .oneBar, mix: -0.4)
+        let track = BackingTrack(fileID: UUID(), fileName: "Song.m4a", offset: 237, countIn: .oneBar, mix: -0.4)
         record.setTrack(track, now: t(5))
         #expect(record.song?.track == track)
     }
@@ -149,10 +149,10 @@ import Testing
     }
 
     @Test func mixAndOffsetAreKeptInRange() {
-        let high = BackingTrack(fileID: UUID(), fileName: "a", offset: -5, bpm: 120, mix: 3)
+        let high = BackingTrack(fileID: UUID(), fileName: "a", offset: -5, mix: 3)
         #expect(high.mix == 1)
         #expect(high.offset == 0)
-        let low = BackingTrack(fileID: UUID(), fileName: "a", offset: 250, bpm: 120, mix: -2)
+        let low = BackingTrack(fileID: UUID(), fileName: "a", offset: 250, mix: -2)
         #expect(low.mix == -1)
         #expect(low.offset == 250)
         #expect(low.offsetSeconds == 2.5)
@@ -160,16 +160,16 @@ import Testing
     }
 
     @Test func theTrackPartKeepsItsStoredKeyNames() throws {
-        let value = try JSONValue(encoding: BackingTrack(fileID: UUID(), fileName: "a", offset: 48, bpm: 120))
+        let value = try JSONValue(encoding: BackingTrack(fileID: UUID(), fileName: "a", offset: 48))
         guard case .object(let fields) = value else { Issue.record("not an object"); return }
         #expect(fields["firstBeat"] == .number(48))
-        #expect(fields["bpm"] == .number(120))
+        #expect(fields["bpm"] == nil)
         #expect(fields["offset"] == nil)
     }
 
-    // MARK: - The track's tempo
+    // MARK: - A track part without a tempo
 
-    /// A song at 96 BPM whose track part, set at t(1), was written by a build without the track's tempo.
+    /// A song at 96 BPM whose track part, set at t(1), was written by a build that wrote no tempo into it.
     private func recordWithoutTrackTempo(_ fileID: UUID = UUID()) -> SongRecord {
         var record = SongRecord(id: UUID(), name: "Song", settings: settings(96), created: t(1), now: t(1))
         record.parts[SongRecord.trackKey] = Part(time: t(1), value: .object([
@@ -177,12 +177,6 @@ import Testing
             "firstBeat": .number(48), "countIn": .number(2), "mix": .number(0),
         ]))
         return record
-    }
-
-    @Test func aTrackStoredWithoutATempoTakesTheSongsTempo() {
-        let record = recordWithoutTrackTempo()
-        #expect(record.song?.track?.bpm == 96)
-        #expect(record.song?.track?.offset == 48)
     }
 
     @Test func fillingInTheTempoStampsNothing() throws {
@@ -203,16 +197,6 @@ import Testing
         #expect(fields["bpm"] == .number(96))
     }
 
-    @Test func aSongTempoSetHereLeavesTheTrackTempo() throws {
-        let record = recordWithoutTrackTempo()
-        var library = Library()
-        library.merge(songs: [record], setlists: [])
-        library.updateSong(record.id, settings: settings(100), now: t(5))
-        #expect(library.song(id: record.id)?.settings.bpm == 100)
-        #expect(library.song(id: record.id)?.track?.bpm == 96)
-        #expect(library.songRecords[record.id]?.parts[SongRecord.trackKey]?.time == t(1))
-    }
-
     @Test func mergingLeavesATrackPartWithoutATempoAlone() throws {
         let record = recordWithoutTrackTempo()
         // Another copy whose tempo changed while its track part stayed as it was.
@@ -229,13 +213,142 @@ import Testing
         #expect(merged.merged(with: other) == merged)
     }
 
-    @Test func theTrackTempoIsKeptInRange() throws {
-        #expect(BackingTrack(fileID: UUID(), fileName: "a", offset: 0, bpm: 10).bpm == 30)
-        #expect(BackingTrack(fileID: UUID(), fileName: "a", offset: 0, bpm: 400).bpm == 300)
+    // MARK: - The song's tempo in the track part
+
+    private func trackFields(_ record: SongRecord?) -> [String: JSONValue]? {
+        guard case .object(let fields)? = record?.parts[SongRecord.trackKey]?.value else { return nil }
+        return fields
+    }
+
+    /// A song at 100 BPM whose track part, set at t(5), holds the song's tempo.
+    private func recordWithTrack(_ track: BackingTrack) -> SongRecord {
+        var record = record()
+        record.setTrack(track, now: t(5))
+        return record
+    }
+
+    @Test func theTrackPartHoldsTheSongsTempo() throws {
+        var library = Library()
+        let added = library.addSong(name: "Song", settings: settings(100), track: track(), now: t(0))
+        let record = library.songRecords[try #require(added).id]
+        #expect(trackFields(record)?[SongRecord.trackTempoKey] == .number(100))
+        #expect(record?.parts[SongRecord.tempoKey]?.value == .number(100))
+    }
+
+    @Test func aTempoSetHereIsWrittenIntoBothParts() {
+        let track = track()
+        var record = recordWithTrack(track)
+        record.setSettings(settings(110), now: t(10))
+        #expect(record.parts[SongRecord.tempoKey] == Part(time: t(10), value: .number(110)))
+        #expect(record.parts[SongRecord.trackKey]?.time == t(10))
+        #expect(trackFields(record)?[SongRecord.trackTempoKey] == .number(110))
+        #expect(record.parts[SongRecord.meterKey]?.time == t(0))
+        #expect(record.song?.settings.bpm == 110)
+        #expect(record.song?.track == track)
+    }
+
+    @Test func aTempoLeftAloneStampsNeitherPart() {
+        var record = recordWithTrack(track())
+        record.setSettings(MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1, 3]), now: t(10))
+        #expect(record.parts[SongRecord.tempoKey]?.time == t(0))
+        #expect(record.parts[SongRecord.trackKey]?.time == t(5))
+        #expect(record.parts[SongRecord.meterKey]?.time == t(10))
+    }
+
+    @Test func aTrackPartsTempoIsTheSongsTempo() {
+        let record = record(trackPart: trackPart(UUID(), ["bpm": .number(168)]))
+        let parts = record.parts
+        #expect(record.song?.settings.bpm == 168)
+        #expect(record.song?.track?.offset == 48)
+        #expect(record.parts == parts)
+    }
+
+    @Test func savingTheReadTempoOverwritesTheTempoPart() {
+        var record = record(trackPart: trackPart(UUID(), ["bpm": .number(168)]))
+        record.setSettings(settings(168), now: t(10))
+        #expect(record.parts[SongRecord.tempoKey] == Part(time: t(10), value: .number(168)))
+        #expect(record.parts[SongRecord.trackKey]?.time == t(5))
+    }
+
+    @Test func aTrackPartWithoutATempoLeavesTheTempoToTheTempoPart() {
+        var record = recordWithoutTrackTempo()
+        let part = record.parts[SongRecord.trackKey]
+        #expect(record.song?.settings.bpm == 96)
+        record.setSettings(settings(100), now: t(5))
+        #expect(record.song?.settings.bpm == 100)
+        #expect(record.parts[SongRecord.trackKey] == part)
+        #expect(record.parts[SongRecord.trackKey]?.time == t(1))
+        #expect(trackFields(record)?[SongRecord.trackTempoKey] == nil)
+    }
+
+    @Test func anUnreadableTrackPartsTempoIsNotUsed() {
+        let record = record(trackPart: trackPart(UUID(), ["countIn": .number(4), "bpm": .number(168)]))
+        #expect(record.song?.track == nil)
+        #expect(record.song?.settings.bpm == 100)
+    }
+
+    @Test func theTrackPartsTempoIsKeptInRange() {
         for (stored, read) in [(10, 30), (400, 300)] {
-            var record = record()
-            record.parts[SongRecord.trackKey] = Part(time: t(5), value: trackPart(UUID(), ["bpm": .number(Double(stored))]))
-            #expect(record.song?.track?.bpm == read)
+            let record = record(trackPart: trackPart(UUID(), ["bpm": .number(Double(stored))]))
+            #expect(record.song?.settings.bpm == read)
         }
+    }
+
+    @Test func theNewerTrackPartBringsItsTempo() {
+        let track = track()
+        let base = recordWithTrack(track)
+        var a = base
+        a.setSettings(settings(110), now: t(10))
+        var b = base
+        var nudged = track
+        nudged.offset += 1
+        b.setTrack(nudged, now: t(20))
+        #expect(a.merged(with: b).song?.settings.bpm == 100)
+        #expect(a.merged(with: b) == b.merged(with: a))
+    }
+
+    // MARK: - The encoded record, as builds with a tempo for the track read and write it
+
+    /// What a build with a tempo for the track apart from the song's decodes: the tempo part as a
+    /// whole number, and a track part whose tempo is required, as its track type required it.
+    private struct TwoTempoBuildSong: Decodable {
+        struct TempoPart: Decodable { let value: Int }
+        struct TrackPart: Decodable { let value: Track }
+        struct Track: Decodable {
+            let fileID: UUID, fileName: String, firstBeat: Int, bpm: Int, countIn: Int, mix: Double
+        }
+        struct Parts: Decodable { let tempo: TempoPart, track: TrackPart }
+        let parts: Parts
+    }
+
+    @Test func aBuildWithTwoTemposFindsTheSongsTempoInBothParts() throws {
+        let track = track()
+        var record = recordWithTrack(track)
+        record.setSettings(settings(110), now: t(10))
+        let read = try JSONDecoder().decode(TwoTempoBuildSong.self, from: JSONEncoder().encode(record))
+        #expect(read.parts.tempo.value == 110)
+        #expect(read.parts.track.value.bpm == 110)
+        #expect(read.parts.track.value.fileID == track.fileID)
+        #expect(read.parts.track.value.firstBeat == 150)
+    }
+
+    @Test func aRecordWithTwoTemposReadsAtTheTracksTempoAndIsWrittenBackUnchanged() throws {
+        let fileID = UUID()
+        let json = """
+            {"created":0,"id":"\(UUID().uuidString)","parts":{\
+            "meter":{"time":0,"value":{"accents":[1],"signature":"4/4"}},\
+            "name":{"time":0,"value":"Song"},\
+            "tempo":{"time":0,"value":120},\
+            "track":{"time":1,"value":{"bpm":168,"countIn":2,"fileID":"\(fileID.uuidString)",\
+            "fileName":"Song.m4a","firstBeat":48,"mix":0}}}}
+            """
+        let record = try JSONDecoder().decode(SongRecord.self, from: Data(json.utf8))
+        #expect(record.song?.settings.bpm == 168)
+        #expect(record.song?.track?.fileID == fileID)
+        #expect(record.song?.track?.offset == 48)
+        let written = try JSONSerialization.jsonObject(with: JSONEncoder().encode(record)) as? NSDictionary
+        let original = try JSONSerialization.jsonObject(with: Data(json.utf8)) as? NSDictionary
+        #expect(written != nil)
+        #expect(written == original)
     }
 }
