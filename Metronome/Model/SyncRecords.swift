@@ -206,12 +206,17 @@ struct SongRecord: Codable, Equatable, Sendable, Identifiable {
     }
 
     /// Stamps the part only when the track differs from the one read, and writes the song's tempo,
-    /// as read, into it. nil writes JSON null, so the removal syncs; a song that never had a track
-    /// keeps no part. Setting the track as read leaves a part without a tempo as it is, so
-    /// filling the tempo in sends nothing.
+    /// as read, into it. Setting the track as read changes nothing, so a part without a tempo
+    /// stays without one.
+    ///
+    /// nil writes JSON null, so the removal syncs; a song that never had a track keeps no part.
+    /// First the song's tempo, as read, goes into the tempo part, stamped only when it differs, so
+    /// removing the track never changes the song's tempo.
     mutating func setTrack(_ track: BackingTrack?, now: Date) {
         guard let track else {
-            if parts[Self.trackKey] != nil { set(Self.trackKey, to: .null, now: now) }
+            guard parts[Self.trackKey] != nil else { return }
+            if let song { set(Self.tempoKey, to: Self.tempoValue(song.settings), now: now) }
+            set(Self.trackKey, to: .null, now: now)
             return
         }
         guard let song, song.track != track, let value = Self.trackValue(track, bpm: song.settings.bpm) else { return }

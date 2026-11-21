@@ -120,7 +120,9 @@ final class MetronomeModel {
         lastPlayed = state.lastPlayed
         songOrder = state.songOrder
         setlistOrder = state.setlistOrder
-        trackSettings = loadedTrack.map { store.loadTrackSettings() ?? $0.settings }
+        // The stored copy only when it belongs to the loaded track's file. Stored at once, so a
+        // change arriving from another device stays an unsaved difference after a relaunch.
+        keepTrackSettings(loadedTrack.map { store.loadTrackSettings(for: $0.fileID) ?? $0.settings })
         engine.onBeat = { [weak self] beat in self?.beatSounded(beat) }
         engine.onStopped = { [weak self] in self?.engineStopped() }
         engine.onTrackEnded = { [weak self] in self?.trackEnded() }
@@ -444,8 +446,8 @@ final class MetronomeModel {
 
     /// A file picked for a missing track, stored under the identifier the track already has (5.1,
     /// 10.3). Returns the track as it then is: with the picked file's name when the names differ,
-    /// unchanged when they are the same, its tempo, offset, count-in and mix kept either way. nil
-    /// when the file cannot be stored.
+    /// unchanged when they are the same, its offset, count-in and mix kept either way. nil when the
+    /// file cannot be stored.
     private func storePicked(_ picked: PickedTrack, forMissing missing: BackingTrack) -> BackingTrack? {
         guard store(picked, as: missing.fileID) else { return nil }
         var track = missing
@@ -569,11 +571,15 @@ final class MetronomeModel {
         if mix == 0 { haptics?.selection() }
     }
 
-    /// Takes the track settings, remembered on this device, without touching the engine: for a
-    /// track that is another file, or none.
+    /// Takes the track settings, remembered on this device with the loaded track's file, without
+    /// touching the engine: for a track that is another file, or none.
     private func keepTrackSettings(_ new: TrackSettings?) {
         trackSettings = new
-        store.saveTrackSettings(new)
+        if let new, let fileID = loadedTrack?.fileID {
+            store.saveTrackSettings(new, for: fileID)
+        } else {
+            store.removeTrackSettings()
+        }
     }
 
     /// Takes the track settings and applies them at once: a new offset moves the grid while the

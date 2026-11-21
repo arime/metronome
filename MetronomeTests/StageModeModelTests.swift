@@ -258,6 +258,22 @@ struct StageModeModelTests {
         #expect(started.startTime < 0)
     }
 
+    @Test func theLoadedSongsTilePlaysItsUnsavedOffsetAndCountInFromTheTop() throws {
+        let bench = try TrackTestBench()
+        let (model, song) = try trackModelInStageMode(bench)
+        #expect(model.loadedSongID == song)
+        model.nudgeOffset(by: 2)
+        model.setCountIn(.oneBar)
+        model.seekTrack(to: 30)
+        model.tapStageTile(song)
+        let started = try #require(bench.engine.startedTracks.last)
+        #expect(started.offset == 0.5)
+        #expect(started.startTime == 0.5 - 2.0)
+        #expect(started.firstClickIndex == -4)
+        #expect(model.trackSettings?.offset == 50)
+        #expect(model.isEdited)
+    }
+
     @Test func theEndOfTheTrackKeepsItsSongMarked() throws {
         let bench = try TrackTestBench()
         let (model, song) = try trackModelInStageMode(bench)

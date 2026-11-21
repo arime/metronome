@@ -72,21 +72,31 @@ struct SettingsStore: @unchecked Sendable {
     }
 
     /// The loaded song's track's offset, count-in and mix as set on the metronome, kept like the
-    /// settings above so that unsaved ones survive a relaunch.
+    /// settings above so that unsaved ones survive a relaunch, with the identifier of the track's
+    /// file they belong to.
     private static let trackSettingsKey = "metronome.trackSettings.v1"
 
-    /// nil when nothing usable is stored.
-    func loadTrackSettings() -> TrackSettings? {
-        guard let data = defaults.data(forKey: Self.trackSettingsKey) else { return nil }
-        return try? JSONDecoder().decode(TrackSettings.self, from: data)
+    private struct StoredTrackSettings: Codable {
+        let fileID: UUID
+        let settings: TrackSettings
     }
 
-    /// nil removes them.
-    func saveTrackSettings(_ settings: TrackSettings?) {
-        guard let settings, let data = try? JSONEncoder().encode(settings) else {
-            defaults.removeObject(forKey: Self.trackSettingsKey)
-            return
-        }
+    /// nil when nothing usable is stored, or when what is stored belongs to another file. A value
+    /// stored without a file identifier belongs to none.
+    func loadTrackSettings(for fileID: UUID) -> TrackSettings? {
+        guard let data = defaults.data(forKey: Self.trackSettingsKey),
+              let stored = try? JSONDecoder().decode(StoredTrackSettings.self, from: data),
+              stored.fileID == fileID
+        else { return nil }
+        return stored.settings
+    }
+
+    func saveTrackSettings(_ settings: TrackSettings, for fileID: UUID) {
+        guard let data = try? JSONEncoder().encode(StoredTrackSettings(fileID: fileID, settings: settings)) else { return }
         defaults.set(data, forKey: Self.trackSettingsKey)
+    }
+
+    func removeTrackSettings() {
+        defaults.removeObject(forKey: Self.trackSettingsKey)
     }
 }

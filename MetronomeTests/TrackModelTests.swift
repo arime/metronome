@@ -56,6 +56,20 @@ struct TrackModelTests {
         #expect(started.firstClickIndex == 0)
     }
 
+    @Test func startPlaysAnUnsavedCountInAndMix() throws {
+        let model = try makeModel()
+        model.setCountIn(.oneBar)
+        model.setMix(-0.5)
+        model.togglePlayback()
+        let started = try #require(engine.startedTracks.last)
+        #expect(started.startTime == 0.48 - 2.0)
+        #expect(started.firstClickIndex == -4)
+        #expect(started.clickGain == TrackMix.clickGain(at: -0.5))
+        #expect(started.trackGain == TrackMix.trackGain(at: -0.5))
+        #expect(model.loadedTrack?.countIn == .twoBars)
+        #expect(model.loadedTrack?.mix == 0)
+    }
+
     @Test func startAwayFromZeroSkipsTheCountIn() throws {
         let model = try makeModel()
         model.seekTrack(to: 30)

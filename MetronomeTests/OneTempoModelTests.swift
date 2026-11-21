@@ -251,6 +251,20 @@ struct OneTempoModelTests {
         #expect(fields[SongRecord.trackTempoKey] == .number(168))
     }
 
+    @Test func removingTheTrackOfSuchASongKeepsItsTempo() throws {
+        let id = try saveASongWithTwoTempos()
+        let model = bench.relaunch()
+        model.loadSong(id, from: nil)
+        let song = try #require(model.loadedSong)
+        model.editSong(id, name: song.name, settings: song.settings, track: .remove)
+        #expect(model.loadedTrack == nil)
+        #expect(model.loadedSong?.settings.bpm == 168)
+        #expect(model.settings.bpm == 168)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+        #expect(bench.libraryStore.load().library.song(id: id)?.settings.bpm == 168)
+    }
+
     @Test func theLibraryShowsTheTracksTempo() throws {
         let id = try saveASongWithTwoTempos()
         let model = bench.relaunch()

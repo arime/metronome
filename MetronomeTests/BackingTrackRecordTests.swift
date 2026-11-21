@@ -301,6 +301,25 @@ import Testing
         #expect(trackFields(record)?[SongRecord.trackTempoKey] == nil)
     }
 
+    @Test func removingTheTrackKeepsTheSongsTempo() {
+        var record = SongRecord(id: UUID(), name: "Song", settings: settings(120), created: t(0), now: t(0))
+        record.parts[SongRecord.trackKey] = Part(time: t(5), value: trackPart(UUID(), ["bpm": .number(168)]))
+        record.setTrack(nil, now: t(10))
+        #expect(record.song?.settings.bpm == 168)
+        #expect(record.song?.track == nil)
+        #expect(record.parts[SongRecord.tempoKey] == Part(time: t(10), value: .number(168)))
+        #expect(record.parts[SongRecord.trackKey]?.value == .null)
+        #expect(record.parts[SongRecord.meterKey]?.time == t(0))
+    }
+
+    @Test func removingATrackWhoseTempoIsTheTempoPartsStampsNoTempo() {
+        var record = recordWithTrack(track())
+        record.setTrack(nil, now: t(10))
+        #expect(record.parts[SongRecord.tempoKey] == Part(time: t(0), value: .number(100)))
+        #expect(record.parts[SongRecord.trackKey]?.time == t(10))
+        #expect(record.song?.settings.bpm == 100)
+    }
+
     @Test func anUnreadableTrackPartsTempoIsNotUsed() {
         let record = record(trackPart: trackPart(UUID(), ["countIn": .number(4), "bpm": .number(168)]))
         #expect(record.song?.track == nil)

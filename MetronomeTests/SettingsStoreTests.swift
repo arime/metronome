@@ -53,11 +53,24 @@ struct SettingsStoreTests {
     }
 
     @Test func trackSettingsAreRememberedAndCleared() {
-        #expect(store.loadTrackSettings() == nil)
+        let fileID = UUID()
+        #expect(store.loadTrackSettings(for: fileID) == nil)
         let settings = TrackSettings(offset: 53, countIn: .oneBar, mix: -0.3)
-        store.saveTrackSettings(settings)
-        #expect(SettingsStore(defaults: defaults).loadTrackSettings() == settings)
-        store.saveTrackSettings(nil)
-        #expect(SettingsStore(defaults: defaults).loadTrackSettings() == nil)
+        store.saveTrackSettings(settings, for: fileID)
+        #expect(SettingsStore(defaults: defaults).loadTrackSettings(for: fileID) == settings)
+        store.removeTrackSettings()
+        #expect(SettingsStore(defaults: defaults).loadTrackSettings(for: fileID) == nil)
+    }
+
+    @Test func trackSettingsBelongToTheirFile() {
+        store.saveTrackSettings(TrackSettings(offset: 53), for: UUID())
+        #expect(store.loadTrackSettings(for: UUID()) == nil)
+    }
+
+    @Test func trackSettingsStoredWithoutAFileBelongToNone() {
+        let data = Data(#"{"offset":53,"countIn":2,"mix":0}"#.utf8)
+        #expect((try? JSONDecoder().decode(TrackSettings.self, from: data)) != nil)
+        defaults.set(data, forKey: "metronome.trackSettings.v1")
+        #expect(store.loadTrackSettings(for: UUID()) == nil)
     }
 }

@@ -326,6 +326,49 @@ struct TrackSongModelTests {
         #expect(fields["bpm"] == .number(95))
     }
 
+    /// The song's tempo as its track part holds it.
+    private func trackPartTempo(of id: UUID, in model: MetronomeModel) -> JSONValue? {
+        guard case .object(let fields)? = model.library.songRecords[id]?.parts[SongRecord.trackKey]?.value
+        else { return nil }
+        return fields[SongRecord.trackTempoKey]
+    }
+
+    @Test func aCreatedSongsTrackPartHoldsItsTempo() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        let settings = MetronomeSettings(bpm: 100, timeSignature: .fourFour, accents: [1])
+        let song = try #require(model.createSong(name: "New", settings: settings, addingTo: nil, track: try picked()))
+        #expect(trackPartTempo(of: song.id, in: model) == .number(100))
+    }
+
+    @Test func aSongSavedAsNewWithATrackHoldsItsTempoInTheTrackPart() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.setBPM(130)
+        let copy = try #require(model.saveAsNewSong(name: "Copy", settings: model.settings, track: try picked()))
+        #expect(trackPartTempo(of: copy.id, in: model) == .number(130))
+    }
+
+    @Test func aReplacedFilesTrackPartHoldsTheSongsTempo() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        var settings = setup.other.settings
+        settings.setBPM(150)
+        model.editSong(setup.other.id, name: "Other", settings: settings, track: .attach(try picked()))
+        #expect(model.library.song(id: setup.other.id)?.settings.bpm == 150)
+        #expect(trackPartTempo(of: setup.other.id, in: model) == .number(150))
+    }
+
+    @Test func pickingAFileWithAnotherNameForAMissingTrackKeepsThePartsTempo() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        #expect(trackPartTempo(of: setup.song.id, in: model) == .number(120))
+        model.editSong(setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked()))
+        #expect(model.loadedTrack?.fileName == "Take.wav")
+        #expect(trackPartTempo(of: setup.song.id, in: model) == .number(120))
+        #expect(model.loadedSong?.settings.bpm == 120)
+    }
+
     @Test func editingTheLoadedSongsTrackStopsAndGoesToZero() throws {
         let setup = try makeModel()
         let model = setup.model
@@ -678,6 +721,24 @@ struct TrackSongModelTests {
         #expect(relaunched.trackSettings?.mix == -0.3)
         #expect(relaunched.loadedTrack?.offset == 48)
         #expect(relaunched.isEdited)
+        #expect(relaunched.isSaveOffered)
+    }
+
+    @Test func trackSettingsStoredForAnotherFileGiveWayToTheSongsAtLaunch() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.nudgeOffset(by: 5)
+        model.setMix(-0.3)
+        // The loaded song's track becomes another file while the app is not running.
+        var library = model.library
+        let replacement = try bench.makeTrack(countIn: .oneBar, mix: 0.2)
+        library.setTrack(setup.song.id, to: replacement, now: Date())
+        bench.libraryStore.save(LibraryState(library: library, loadedSongID: setup.song.id, loadedFromSetlistID: setup.setlist))
+        let relaunched = bench.relaunch()
+        #expect(relaunched.loadedTrack?.fileID == replacement.fileID)
+        #expect(relaunched.trackSettings == replacement.settings)
+        #expect(relaunched.isEdited == false)
+        #expect(relaunched.isSaveOffered == false)
     }
 
     @Test func withNothingStoredTheTrackSettingsAreTheSongs() throws {
@@ -733,6 +794,41 @@ struct TrackSongModelTests {
         model.toggleBackingTracks()
         #expect(model.trackSettings?.offset == 49)
         #expect(model.isSaveOffered)
+    }
+
+    @Test func saveAsNewSongTakesTheNewSongsTrackSettings() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.nudgeOffset(by: 2)
+        model.setMix(0.4)
+        let copy = try #require(model.saveAsNewSong(name: "Copy", settings: model.settings, track: try picked(offset: 12)))
+        #expect(model.trackSettings == copy.track?.settings)
+        #expect(model.trackSettings?.offset == 12)
+        #expect(model.isEdited == false)
+        let plain = try #require(model.saveAsNewSong(name: "Plain copy", settings: model.settings))
+        #expect(plain.track == nil)
+        #expect(model.trackSettings == nil)
+        #expect(bench.relaunch().trackSettings == nil)
+    }
+
+    @Test func deletingTheLoadedSongDropsItsTrackSettings() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.nudgeOffset(by: 2)
+        model.deleteSong(setup.song.id)
+        #expect(model.trackSettings == nil)
+        #expect(bench.relaunch().trackSettings == nil)
+    }
+
+    @Test func choosingAFileFromTheCardTakesTheTracksSettings() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        model.nudgeOffset(by: 2)
+        model.setCountIn(.off)
+        #expect(model.chooseFileForLoadedTrack(try picked(), for: try #require(setup.song.track?.fileID)))
+        #expect(model.trackSettings == model.loadedTrack?.settings)
+        #expect(model.trackSettings?.offset == 48)
+        #expect(model.isEdited == false)
     }
 
     @Test func replacingTheLoadedSongsFileTakesTheNewTracksSettings() throws {
@@ -899,6 +995,42 @@ struct TrackSongModelTests {
         #expect(b.isSaveOffered)
         #expect(b.isPlaying)
         #expect(hapticCount(bHaptics) == haptics)
+    }
+
+    @Test func anArrivedTrackChangeStaysUnsavedAcrossARelaunch() throws {
+        let a = makeDevice()
+        clock.advance()
+        let song = try #require(a.model.createSong(name: "Song", settings: settings100, addingTo: nil, track: try picked()))
+        // B opens with the song loaded and nothing of its track's settings stored.
+        let settingsStore = SettingsStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let libraryStore = LibraryStore(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        libraryStore.save(LibraryState(library: a.model.library, loadedSongID: song.id))
+        settingsStore.save(settings100)
+        let files = TrackFileStore(directory: bench.root.appending(path: UUID().uuidString))
+        let clock = clock
+        let launchB = { (sync: LibrarySync?) in
+            MetronomeModel(
+                engine: FakeClickEngine(), store: settingsStore, haptics: FakeHaptics(), libraryStore: libraryStore,
+                sync: sync, now: { clock.now() }, trackFiles: files, lengthOfTrack: { _ in 222 }
+            )
+        }
+        let b = launchB(LibrarySync(cloud: cloud, defaults: UserDefaults(suiteName: UUID().uuidString)!, syncingDelay: .seconds(3600)))
+        b.setSyncEnabled(true)
+        #expect(b.isEdited == false)
+
+        clock.advance()
+        a.model.loadSong(song.id, from: nil)
+        a.model.nudgeOffset(by: 2)
+        a.model.saveChanges()
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedTrack?.offset == 50)
+        #expect(b.isEdited)
+
+        let relaunched = launchB(nil)
+        #expect(relaunched.loadedTrack?.offset == 50)
+        #expect(relaunched.trackSettings?.offset == 48)
+        #expect(relaunched.isEdited)
+        #expect(relaunched.isSaveOffered)
     }
 
     @Test func syncModeEndsWhenTheTrackIsRemovedElsewhere() throws {
