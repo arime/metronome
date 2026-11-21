@@ -1003,17 +1003,25 @@ final class MetronomeModel {
         persistLibrary()
     }
 
-    /// Writes a new name and settings into a song, from Edit in the library. Only what
-    /// changed is written, so an untouched part does not win over another device's change.
-    /// When it is the loaded song and its settings changed, the metronome takes them, as if
-    /// the song were loaded again: unsaved changes are dropped, the track's offset, count-in and
-    /// mix included, and while playing the bar
-    /// carries on unless the time signature changed. A new name alone leaves the metronome,
-    /// and any unsaved changes, as they are.
+    /// The tempo, time signature and accents Edit song starts from: for the loaded song the
+    /// metronome's current ones, unsaved changes included; for any other song its saved ones.
+    func editSongSettings(for song: Song) -> MetronomeSettings {
+        song.id == loadedSongID ? settings : song.settings
+    }
+
+    /// Writes a new name and settings into a song, from Edit song. Only what changed is
+    /// written, so an untouched part does not win over another device's change.
+    ///
+    /// For the loaded song, saving is Save changes with the sheet's values: the track's current
+    /// offset, count-in and mix are written with them, the metronome takes the saved song, and
+    /// nothing is left unsaved. Values the metronome already has reach the engine as nothing:
+    /// no new bar, no move of the track. A different tempo or accents keep the bar while playing;
+    /// a different time signature starts a new one.
     ///
     /// The track: a file picked for a missing one is stored under its identifier; the part takes
     /// the picked file's name when it differs and is left alone when it is the same. Any other
-    /// file gets a new identifier and a new part. On the loaded song, a file picked or a playable
+    /// file gets a new identifier and a new part, keeping the count-in and mix, the metronome's
+    /// current ones for the loaded song. On the loaded song, a file picked or a playable
     /// track removed stops playback and goes to 0:00; with the switch off nothing stops, and a
     /// file picked still goes to 0:00.
     ///
@@ -1025,6 +1033,10 @@ final class MetronomeModel {
         guard let song = library.song(id: id), Library.cleanName(name) != nil else { return true }
         let moment = now()
         let isLoaded = loadedSongID == id
+        // The song's track as the metronome has it: for the loaded song, with its current offset,
+        // count-in and mix.
+        var currentTrack = song.track
+        if isLoaded, let trackSettings { currentTrack?.settings = trackSettings }
         var filePicked = false
         // nil leaves the part alone; .some(nil) removes the track.
         var newPart: BackingTrack??
@@ -1034,11 +1046,11 @@ final class MetronomeModel {
         case .remove:
             if song.track != nil { newPart = .some(nil) }
         case .attach(let picked):
-            if let missing = song.track, !trackFiles.hasFile(missing.fileID) {
+            if let missing = currentTrack, !trackFiles.hasFile(missing.fileID) {
                 guard let track = storePicked(picked, forMissing: missing) else { return false }
-                if track != missing { newPart = .some(track) }
+                if track != song.track { newPart = .some(track) }
             } else {
-                guard let track = newTrack(picked, replacing: song.track) else { return false }
+                guard let track = newTrack(picked, replacing: currentTrack) else { return false }
                 newPart = .some(track)
             }
             filePicked = true
@@ -1048,16 +1060,21 @@ final class MetronomeModel {
         if Library.cleanName(name) != song.name {
             library.renameSong(id, to: name, now: moment)
         }
+        // A track that stays takes the metronome's offset, count-in and mix; each part is stamped
+        // only when it changes.
+        let keptTrackSettings = isLoaded && newPart == nil && !filePicked ? trackSettings : nil
         let settingsChanged = newSettings.sanitized() != song.settings
-        if settingsChanged {
-            library.updateSong(id, settings: newSettings, now: moment)
+        let trackSettingsChanged = keptTrackSettings != nil && keptTrackSettings != song.track?.settings
+        if settingsChanged || trackSettingsChanged {
+            library.updateSong(
+                id, settings: settingsChanged ? newSettings : song.settings, trackSettings: keptTrackSettings, now: moment
+            )
         }
         if let newPart {
             library.setTrack(id, to: newPart, now: moment)
         }
-        if isLoaded, settingsChanged, let updated = library.song(id: id) {
+        if isLoaded, let updated = library.song(id: id) {
             apply(updated.settings, startNewBar: updated.settings.timeSignature != settings.timeSignature)
-            if let track = updated.track { changeTrackSettings(track.settings) }
         }
         if isLoaded, filePicked || newPart != nil { loadedTrackReplaced() }
         syncSaveOffer()

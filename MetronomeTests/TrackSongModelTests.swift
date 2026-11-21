@@ -766,26 +766,117 @@ struct TrackSongModelTests {
         #expect(model.isEdited == false)
     }
 
-    @Test func editingTheLoadedSongsSettingsDropsUnsavedTrackSettings() throws {
+    @Test func editingTheLoadedSongsSettingsSavesUnsavedTrackSettings() throws {
         let setup = try makeModel()
         let model = setup.model
         model.togglePlayback()
         model.nudgeOffset(by: 2)
+        model.setMix(0.4)
+        let offsetsSent = engine.offsets.count
         var settings = setup.song.settings
         settings.setBPM(130)
         model.editSong(setup.song.id, name: "Song", settings: settings)
-        #expect(model.trackSettings?.offset == 48)
-        #expect(engine.offsets.last == 0.48)
+        #expect(model.trackSettings?.offset == 50)
+        #expect(model.loadedTrack?.offset == 50)
+        #expect(model.loadedTrack?.mix == 0.4)
+        #expect(engine.offsets.count == offsetsSent)
         #expect(model.settings.bpm == 130)
         #expect(model.isPlaying)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
     }
 
-    @Test func renamingTheLoadedSongKeepsUnsavedTrackSettings() throws {
+    @Test func renamingTheLoadedSongSavesUnsavedTrackSettings() throws {
         let setup = try makeModel()
         let model = setup.model
         model.nudgeOffset(by: 1)
-        model.editSong(setup.song.id, name: "Renamed", settings: setup.song.settings)
+        model.setCountIn(.off)
+        model.editSong(setup.song.id, name: "Renamed", settings: model.editSongSettings(for: setup.song))
         #expect(model.trackSettings?.offset == 49)
+        #expect(model.loadedTrack?.offset == 49)
+        #expect(model.loadedTrack?.countIn == .off)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func savingEditSongUnchangedWhilePlayingLeavesTheTrackAlone() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.togglePlayback()
+        model.seekTrack(to: 30)
+        model.setBPM(130)
+        model.nudgeOffset(by: 2)
+        let position = model.trackPosition
+        let offsetsSent = engine.offsets.count
+        let seeks = engine.seeks.count
+        let mixesSent = engine.mixes.count
+        engine.lastUpdate = nil
+        model.editSong(setup.song.id, name: "Song", settings: model.editSongSettings(for: setup.song))
+        #expect(model.library.song(id: setup.song.id)?.settings.bpm == 130)
+        #expect(model.loadedTrack?.offset == 50)
+        #expect(engine.lastUpdate == nil)
+        #expect(engine.offsets.count == offsetsSent)
+        #expect(engine.seeks.count == seeks)
+        #expect(engine.mixes.count == mixesSent)
+        #expect(engine.stopCount == 0)
+        #expect(model.isPlayingTrack)
+        #expect(model.trackPosition == position)
+        #expect(model.isEdited == false)
+    }
+
+    @Test func editingAnotherSongLeavesTheUnsavedTrackSettingsAlone() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.nudgeOffset(by: 2)
+        var settings = setup.other.settings
+        settings.setBPM(150)
+        model.editSong(setup.other.id, name: "Other", settings: settings)
+        #expect(model.library.song(id: setup.other.id)?.track == setup.other.track)
+        #expect(model.loadedTrack?.offset == 48)
+        #expect(model.trackSettings?.offset == 50)
+        #expect(model.isEdited)
+    }
+
+    @Test func replacingTheLoadedSongsFileKeepsTheCurrentCountInAndMix() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.nudgeOffset(by: 2)
+        model.setCountIn(.off)
+        model.setMix(0.4)
+        model.editSong(setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked(offset: 12)))
+        let track = try #require(model.loadedTrack)
+        #expect(track.offset == 12)
+        #expect(track.countIn == .off)
+        #expect(track.mix == 0.4)
+        #expect(model.trackSettings == track.settings)
+        #expect(model.isEdited == false)
+    }
+
+    @Test func pickingAFileForTheLoadedSongsMissingTrackSavesTheCurrentTrackSettings() throws {
+        let setup = try makeModel(missing: true)
+        let model = setup.model
+        let old = try #require(setup.song.track)
+        model.nudgeOffset(by: 2)
+        model.setCountIn(.off)
+        model.editSong(setup.song.id, name: "Song", settings: setup.song.settings, track: .attach(try picked("Song.m4a")))
+        let track = try #require(model.loadedTrack)
+        #expect(track.fileID == old.fileID)
+        #expect(track.offset == 50)
+        #expect(track.countIn == .off)
+        #expect(model.trackSettings == track.settings)
+        #expect(model.isEdited == false)
+    }
+
+    @Test func removingTheLoadedSongsTrackLeavesNothingUnsaved() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.nudgeOffset(by: 2)
+        model.setBPM(130)
+        model.editSong(setup.song.id, name: "Song", settings: model.editSongSettings(for: setup.song), track: .remove)
+        #expect(model.loadedTrack == nil)
+        #expect(model.trackSettings == nil)
+        #expect(model.loadedSong?.settings.bpm == 130)
+        #expect(model.isEdited == false)
     }
 
     @Test func theSwitchKeepsUnsavedTrackSettings() throws {

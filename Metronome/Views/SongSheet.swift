@@ -1,9 +1,9 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Creates or edits a song. A new song starts from the metronome's current settings;
-/// an edited one from its own. The tempo, time signature and accents in the sheet can be
-/// changed without touching the metronome.
+/// Creates or edits a song. A new song and the loaded song start from the metronome's current
+/// settings; any other song from its own. The tempo, time signature and accents in the sheet can
+/// be changed without touching the metronome.
 struct SongSheet: View {
     enum Purpose {
         /// From Edit in a song row's menu: the song's name and settings are changed.
@@ -144,10 +144,11 @@ struct SongSheet: View {
         .presentationBackground(Theme.surface)
         .onAppear {
             if let editedSong {
-                // Editing starts from the song itself. The keyboard waits for a tap on
-                // the name, as the change is more often to the tempo or accents.
+                // The saved name, and the loaded song's current settings or another song's saved
+                // ones. The keyboard waits for a tap on the name, as the change is more often to
+                // the tempo or accents.
                 name = editedSong.name
-                draft = editedSong.settings
+                draft = model.editSongSettings(for: editedSong)
                 isSavedTrackMissing = editedSong.track != nil && !model.hasTrackFile(for: editedSong)
             } else {
                 draft = model.settings

@@ -452,16 +452,126 @@ struct SongModelTests {
         #expect(model.isSaveOffered == false)
     }
 
-    @Test func renamingTheLoadedSongInEditKeepsUnsavedChanges() {
+    // MARK: - What Edit song starts from
+
+    @Test func editSongStartsFromTheMetronomeForTheLoadedSong() {
         let model = makeModel()
         let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
         model.loadSong(song.id, from: nil)
         model.setBPM(96)
-        model.editSong(song.id, name: "Ballad", settings: song.settings)
-        #expect(model.headerTitle == "Ballad")
+        model.selectTimeSignature(.threeFour)
+        model.toggleAccent(beat: 3)
+        let start = model.editSongSettings(for: song)
+        #expect(start == model.settings)
+        #expect(start == MetronomeSettings(bpm: 96, timeSignature: .threeFour, accents: [1, 3]))
+    }
+
+    @Test func editSongStartsFromTheSavedValuesForASongNotLoaded() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        let other = model.createSong(name: "Other", settings: settings(140, .sixEight), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        model.setBPM(96)
+        #expect(model.editSongSettings(for: other) == other.settings)
+    }
+
+    @Test func editSongForTheLoadedSongWithoutChangesStartsFromItsSavedValues() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90, .threeFour), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        #expect(model.editSongSettings(for: song) == song.settings)
+    }
+
+    @Test func editSongOpenedWithUnsavedChangesCanSaveAtOnce() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        model.setBPM(96)
+        #expect(SongSheetChanges(editing: song).canSave(name: song.name, settings: model.editSongSettings(for: song)))
+    }
+
+    @Test func savingEditSongUnchangedWritesTheCurrentValues() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        model.setBPM(96)
+        model.selectTimeSignature(.threeFour)
+        model.toggleAccent(beat: 2)
+        let current = model.settings
+        model.editSong(song.id, name: song.name, settings: model.editSongSettings(for: song))
+        #expect(model.library.song(id: song.id)?.settings == current)
+        #expect(model.settings == current)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func closingEditSongWithoutSavingKeepsTheUnsavedChanges() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        model.setBPM(96)
+        // Opening the sheet reads the starting values; closing it calls nothing.
+        _ = model.editSongSettings(for: song)
         #expect(model.settings.bpm == 96)
+        #expect(model.library.song(id: song.id)?.settings == song.settings)
         #expect(model.isEdited)
         #expect(model.isSaveOffered)
+    }
+
+    @Test func renamingTheLoadedSongInEditSavesTheCurrentValues() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        model.setBPM(96)
+        model.editSong(song.id, name: "Ballad", settings: model.editSongSettings(for: song))
+        #expect(model.headerTitle == "Ballad")
+        #expect(model.settings.bpm == 96)
+        #expect(model.library.song(id: song.id)?.settings.bpm == 96)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func editSongSetBackToTheSavedValuesSetsTheMetronomeBack() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        model.setBPM(96)
+        // The sheet opened at 96 and was set back to 90 by hand, with a new name.
+        model.editSong(song.id, name: "Ballad", settings: song.settings)
+        #expect(model.headerTitle == "Ballad")
+        #expect(model.settings.bpm == 90)
+        #expect(model.isEdited == false)
+        #expect(model.isSaveOffered == false)
+    }
+
+    @Test func editingAnotherSongLeavesTheUnsavedChangesAlone() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        let other = model.createSong(name: "Other", settings: settings(140), addingTo: nil)!
+        model.loadSong(song.id, from: nil)
+        model.setBPM(96)
+        model.editSong(other.id, name: "Other", settings: settings(150))
+        #expect(model.library.song(id: other.id)?.settings.bpm == 150)
+        #expect(model.library.song(id: song.id)?.settings.bpm == 90)
+        #expect(model.settings.bpm == 96)
+        #expect(model.isEdited)
+    }
+
+    @Test func savingUnchangedCurrentValuesWhilePlayingSendsNoNewBar() {
+        let model = makeModel()
+        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
+        model.loadSong(song.id, from: nil, start: true)
+        model.selectTimeSignature(.threeFour)
+        model.setBPM(96)
+        engine.lastUpdate = nil
+        engine.lastUpdateStartedNewBar = nil
+        model.editSong(song.id, name: song.name, settings: model.editSongSettings(for: song))
+        #expect(model.library.song(id: song.id)?.settings.timeSignature == .threeFour)
+        #expect(engine.lastUpdate == nil)
+        #expect(engine.lastUpdateStartedNewBar == nil)
+        #expect(model.isPlaying)
+        #expect(engine.stopCount == 0)
+        #expect(model.isEdited == false)
     }
 
     @Test func editingTheTempoAloneKeepsTheBarWhilePlaying() {
