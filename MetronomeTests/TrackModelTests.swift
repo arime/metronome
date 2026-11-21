@@ -311,6 +311,7 @@ struct TrackModelTests {
         #expect(model.trackPosition == 0)
         model.togglePlayback()
         let started = try #require(engine.startedTracks.last)
+        #expect(started.startTime < 0)
         #expect(started.firstClickIndex == -8)
     }
 

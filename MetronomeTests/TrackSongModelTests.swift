@@ -73,6 +73,16 @@ struct TrackSongModelTests {
         PickedTrack(url: try bench.sourceFile(named: name), fileName: name, offset: offset)
     }
 
+    /// The names of the copies in the track file store, each its file identifier and extension.
+    private func storedFiles() -> Set<String> {
+        Set((try? FileManager.default.contentsOfDirectory(atPath: trackFiles.directory.path())) ?? [])
+    }
+
+    /// When each part of the song's record last changed.
+    private func partTimes(of id: UUID, in model: MetronomeModel) -> [String: Date] {
+        model.library.songRecords[id]?.parts.mapValues(\.time) ?? [:]
+    }
+
     // MARK: - Changing songs
 
     @Test func loadingASongWithATrackWhilePlayingStops() throws {
@@ -609,8 +619,16 @@ struct TrackSongModelTests {
         let model = setup.model
         model.loadSong(setup.plain.id, from: setup.setlist)
         let writes = bench.libraryDefaults.writes
+        let timesBefore = partTimes(of: setup.plain.id, in: model)
         let pick = try picked(offset: 31)
         #expect(model.chooseFile(pick, for: .song(id: setup.plain.id)))
+        let timesAfter = partTimes(of: setup.plain.id, in: model)
+        for key in [SongRecord.nameKey, SongRecord.tempoKey, SongRecord.meterKey] {
+            #expect(timesAfter[key] != nil)
+            #expect(timesAfter[key] == timesBefore[key])
+        }
+        let trackTime = try #require(timesAfter[SongRecord.trackKey])
+        #expect(timesBefore[SongRecord.trackKey].map { trackTime > $0 } ?? true)
         let track = try #require(model.loadedTrack)
         #expect(track.fileName == "Take.wav")
         #expect(track.offset == 31)
@@ -682,13 +700,16 @@ struct TrackSongModelTests {
         let target = ChooseFileTarget.song(id: setup.plain.id)
         model.loadSong(setup.other.id, from: setup.setlist)
         let library = model.library
+        let files = storedFiles()
         #expect(model.chooseFile(try picked(), for: target))
         #expect(model.library == library)
+        #expect(storedFiles() == files)
         #expect(model.loadedTrack == setup.other.track)
 
         model.unloadSong()
         #expect(model.chooseFile(try picked(), for: target))
         #expect(model.library == library)
+        #expect(storedFiles() == files)
         #expect(model.loadedSongID == nil)
     }
 
@@ -698,9 +719,11 @@ struct TrackSongModelTests {
         model.loadSong(setup.plain.id, from: setup.setlist)
         model.editSong(setup.plain.id, name: "Plain", settings: setup.plain.settings, track: .attach(try picked("First.wav")))
         let library = model.library
+        let files = storedFiles()
         #expect(model.chooseFile(try picked("Second.wav"), for: .song(id: setup.plain.id)))
         #expect(model.loadedTrack?.fileName == "First.wav")
         #expect(model.library == library)
+        #expect(storedFiles() == files)
     }
 
     @Test func chooseFileForAMissingTrackGoesThroughItsTarget() throws {
@@ -951,6 +974,33 @@ struct TrackSongModelTests {
         #expect(model.isEdited == false)
     }
 
+    @Test func aNameOnlyEditSongSaveStampsOnlyTheNameAndTheTrack() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        model.nudgeOffset(by: 1)
+        let before = partTimes(of: setup.song.id, in: model)
+        model.editSong(setup.song.id, name: "Renamed", settings: model.editSongSettings(for: setup.song))
+        let after = partTimes(of: setup.song.id, in: model)
+        for key in [SongRecord.tempoKey, SongRecord.meterKey] {
+            #expect(after[key] != nil)
+            #expect(after[key] == before[key])
+        }
+        for key in [SongRecord.nameKey, SongRecord.trackKey] {
+            let old = try #require(before[key])
+            let new = try #require(after[key])
+            #expect(new > old)
+        }
+    }
+
+    @Test func savingEditSongWithTheSavedValuesStampsNothing() throws {
+        let setup = try makeModel()
+        let model = setup.model
+        let before = partTimes(of: setup.song.id, in: model)
+        #expect(before.count == 4)
+        model.editSong(setup.song.id, name: setup.song.name, settings: model.editSongSettings(for: setup.song))
+        #expect(partTimes(of: setup.song.id, in: model) == before)
+    }
+
     @Test func editingAnotherSongLeavesTheUnsavedTrackSettingsAlone() throws {
         let setup = try makeModel()
         let model = setup.model
@@ -1122,6 +1172,26 @@ struct TrackSongModelTests {
         #expect(b.isPlaying)
         #expect(bEngine.stopCount == 0)
         #expect(hapticCount(bHaptics) == haptics)
+    }
+
+    @Test func aNameOnlyEditSongSaveWritesTheUnsavedOffsetOverAnArrivedOne() throws {
+        let (a, b, _, _, song, _) = try twoDevicesPlayingATrack()
+        b.nudgeOffset(by: 1)
+        clock.advance()
+        a.loadSong(song.id, from: nil)
+        a.nudgeOffset(by: 2)
+        a.saveChanges()
+        cloud.send(.changed, toDevice: 1)
+        #expect(b.loadedTrack?.offset == 50)
+        #expect(b.trackSettings?.offset == 49)
+
+        clock.advance()
+        b.editSong(song.id, name: "Renamed", settings: b.editSongSettings(for: song))
+        #expect(b.loadedTrack?.offset == 49)
+        #expect(b.isEdited == false)
+        cloud.send(.changed, toDevice: 0)
+        #expect(a.library.song(id: song.id)?.name == "Renamed")
+        #expect(a.loadedTrack?.offset == 49)
     }
 
     @Test func revertTakesTheArrivedOffset() throws {

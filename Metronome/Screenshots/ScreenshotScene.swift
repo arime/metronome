@@ -162,6 +162,10 @@ enum ScreenshotScene: String, CaseIterable {
         }
         settingsStore.save(sample.loadedSettings)
         settingsStore.saveClickSound(.woodblock)
+        // Stored rather than left to the switch's starting value, so a scene without a track keeps
+        // Metronome content, the time and bar readout in `playing`, and the no-track scenes keep
+        // Track content, whatever that value or the sample library becomes.
+        if !hasTrack { settingsStore.saveBackingTracksOn(isNoTrack) }
 
         if self == .trackPlaying {
             let model = MetronomeModel(
@@ -175,7 +179,6 @@ enum ScreenshotScene: String, CaseIterable {
             model.togglePlayback()
             return model
         }
-        if isNoTrack { settingsStore.saveBackingTracksOn(true) }
         if self == .trackSyncTimer || self == .stagePlaying || isNoTrack {
             let model = MetronomeModel(
                 engine: ScreenshotEngine(soundingBeat: 1, repeats: true, clocksTrack: true),

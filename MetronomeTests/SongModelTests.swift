@@ -464,6 +464,10 @@ struct SongModelTests {
         let start = model.editSongSettings(for: song)
         #expect(start == model.settings)
         #expect(start == MetronomeSettings(bpm: 96, timeSignature: .threeFour, accents: [1, 3]))
+        // Reading the starting values saves nothing.
+        #expect(model.library.song(id: song.id)?.settings == song.settings)
+        #expect(model.isEdited)
+        #expect(model.isSaveOffered)
     }
 
     @Test func editSongStartsFromTheSavedValuesForASongNotLoaded() {
@@ -503,19 +507,6 @@ struct SongModelTests {
         #expect(model.settings == current)
         #expect(model.isEdited == false)
         #expect(model.isSaveOffered == false)
-    }
-
-    @Test func closingEditSongWithoutSavingKeepsTheUnsavedChanges() {
-        let model = makeModel()
-        let song = model.createSong(name: "Song", settings: settings(90), addingTo: nil)!
-        model.loadSong(song.id, from: nil)
-        model.setBPM(96)
-        // Opening the sheet reads the starting values; closing it calls nothing.
-        _ = model.editSongSettings(for: song)
-        #expect(model.settings.bpm == 96)
-        #expect(model.library.song(id: song.id)?.settings == song.settings)
-        #expect(model.isEdited)
-        #expect(model.isSaveOffered)
     }
 
     @Test func renamingTheLoadedSongInEditSavesTheCurrentValues() {
