@@ -274,6 +274,46 @@ struct TrackModelTests {
         #expect(model.trackPosition == 0)
     }
 
+    @Test func rewindToWithinTheFirstSecondLandsOnZeroAndCountsIn() throws {
+        let model = try makeModel()
+        model.seekTrack(to: 15.4)
+        model.skipTrack(by: -15)
+        #expect(model.trackPosition == 0)
+        model.togglePlayback()
+        let started = try #require(engine.startedTracks.last)
+        #expect(started.startTime < 0)
+        #expect(started.firstClickIndex == -8)
+    }
+
+    @Test func rewindToAfterTheFirstSecondKeepsThePlaceWithoutCountIn() throws {
+        let model = try makeModel()
+        model.seekTrack(to: 16.5)
+        model.skipTrack(by: -15)
+        #expect(model.trackPosition == 1.5)
+        model.togglePlayback()
+        let started = try #require(engine.startedTracks.last)
+        #expect(started.startTime == 1.5)
+        #expect(started.firstClickIndex == 0)
+    }
+
+    @Test func rewindWhilePlayingToWithinTheFirstSecondSeeksToZero() throws {
+        let model = try makeModel()
+        model.togglePlayback()
+        engine.trackTime = 15.4
+        model.skipTrack(by: -15)
+        #expect(engine.seeks == [0])
+        #expect(engine.startCount == 1)
+    }
+
+    @Test func theEndOfAFileShorterThanASecondIsZero() throws {
+        let model = try makeModel(length: 0.5)
+        model.seekTrack(to: 100)
+        #expect(model.trackPosition == 0)
+        model.togglePlayback()
+        let started = try #require(engine.startedTracks.last)
+        #expect(started.firstClickIndex == -8)
+    }
+
     @Test func fastForwardIsRefusedInTheLastFifteenSeconds() throws {
         let model = try makeModel(length: 222)
         model.seekTrack(to: 210)

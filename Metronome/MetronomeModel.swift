@@ -376,7 +376,8 @@ final class MetronomeModel {
 
     private static let skipInterval: TimeInterval = 15
 
-    /// Rewind (-15) or Fast-forward (+15). Rewind within the first 15 seconds goes to 0:00.
+    /// Rewind (-15) or Fast-forward (+15). Rewind within the first 15 seconds goes to 0:00, and so
+    /// does one that lands within the first second.
     func skipTrack(by seconds: TimeInterval) {
         guard isTrackPlayable, seconds < 0 || canSkipForward else { return }
         moveTrack(to: trackTime + seconds)
@@ -385,17 +386,19 @@ final class MetronomeModel {
     /// From the progress bar, when the finger lifts. A drag to within the first second lands on 0:00.
     func seekTrack(to time: TimeInterval) {
         guard isTrackPlayable else { return }
-        moveTrack(to: roundedToStart(time))
+        moveTrack(to: time)
     }
 
-    /// Stopped, moves the position; playing the file, carries on from there with no count-in.
+    /// Every move lands inside the file, and within its first second on 0:00, so that whatever the
+    /// elapsed time shows as 0:00 starts with the count-in. Stopped, moves the position; playing
+    /// the file, carries on from there with no count-in.
     private func moveTrack(to time: TimeInterval) {
-        let clamped = clampedToTrack(time)
+        let place = roundedToStart(clampedToTrack(time))
         if isPlayingTrack {
-            engine.seekTrack(to: clamped)
+            engine.seekTrack(to: place)
             startedBeforeFile = false
         } else {
-            trackPosition = clamped
+            trackPosition = place
         }
     }
 
